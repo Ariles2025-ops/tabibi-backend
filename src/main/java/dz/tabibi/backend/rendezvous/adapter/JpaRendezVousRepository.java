@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,5 +39,11 @@ public class JpaRendezVousRepository implements RendezVousRepository {
     @Override
     public Optional<RendezVous> parId(UUID id) {
         return jpa.findById(id).map(RendezVousEntity::versDomaine);
+    }
+
+    @Override
+    public List<RendezVous> parPatient(UUID patientId) {
+        return jpa.findByPatientIdOrderByDebut(patientId)
+                .stream().map(RendezVousEntity::versDomaine).toList();
     }
 }

@@ -1,6 +1,7 @@
 package dz.tabibi.backend.rendezvous.domain;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,7 @@ public interface RendezVousRepository {
     RendezVous enregistrer(RendezVous rdv);
 
     Optional<RendezVous> parId(UUID id);
+
+    /** Rendez-vous d'un patient, tous statuts, du plus proche au plus lointain. */
+    List<RendezVous> parPatient(UUID patientId);
 }

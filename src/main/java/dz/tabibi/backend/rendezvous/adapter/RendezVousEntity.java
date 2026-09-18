@@ -34,6 +34,10 @@ class RendezVousEntity {
     @Column(name = "statut", nullable = false, length = 20)
     private StatutRdv statut;
 
+    /** Creneau de l'agenda reserve ; absent pour un rendez-vous pris sur un horaire libre. */
+    @Column(name = "creneau_id")
+    private UUID creneauId;
+
     protected RendezVousEntity() { }
 
     static RendezVousEntity de(RendezVous r) {
@@ -43,11 +47,12 @@ class RendezVousEntity {
         e.medecinId = r.medecinId();
         e.debut = r.debut();
         e.statut = r.statut();
+        e.creneauId = r.creneauId();
         return e;
     }
 
     RendezVous versDomaine() {
-        return new RendezVous(id, patientId, medecinId, debut, statut);
+        return new RendezVous(id, patientId, medecinId, debut, statut, creneauId);
     }
 
     UUID getMedecinId() { return medecinId; }

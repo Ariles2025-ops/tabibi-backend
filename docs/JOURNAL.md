@@ -29,3 +29,18 @@
 - Adaptateurs : en memoire (praticiens de demonstration a identifiants fixes, 4 creneaux futurs de 20 min
   chacun) et JPA ; Liquibase 003 (table creneau + index medecin/debut).
 - Tests : creneaux d'un praticien seede, medecin/identifiant inconnu, acces public sans jeton (fiche et creneaux).
+
+## v0.5.0 — Gestion des rendez-vous
+- POST /api/creneaux/{id}/reserver (PATIENT, 201) : le rendez-vous est cree sur l'horaire du creneau,
+  qui cesse d'etre propose ; 409 s'il est deja pris, 404 s'il n'existe pas.
+- GET /api/rendezvous/mes (PATIENT) : mes rendez-vous, tous statuts, du plus proche au plus lointain.
+- POST /api/rendezvous/{id}/annuler (PATIENT, 200) : statut ANNULE et creneau remis a disposition ;
+  403 si le rendez-vous est a un autre patient, 404 s'il n'existe pas ; annuler deux fois ne relibere
+  pas un creneau repris entre-temps.
+- Domaine : RendezVous porte le creneau reserve (creneauId, optionnel) ; Creneau.reserver()/liberer()
+  (copies immuables) ; exceptions CreneauIntrouvable, RendezVousIntrouvable, AccesRefuse.
+- Erreurs : conseil global GestionErreursApi (corps { "erreur": "..." }) : 404 introuvable, 409 conflit,
+  403 acces refuse ; l'ancien @ExceptionHandler du controleur y est deplace.
+- Persistance : RendezVousRepository.parPatient (memoire + JPA), Liquibase 004 (colonne rendez_vous.creneau_id).
+- Tests : reservation (creneau consomme), double reservation, creneau inconnu, liste par patient, annulation
+  (creneau libere, refus si autre patient, idempotence) ; web 401/200/403 par role et codes 201/409/404/403.

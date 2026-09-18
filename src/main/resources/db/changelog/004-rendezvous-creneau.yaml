@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-rendez-vous-creneau
+      author: tabibi
+      changes:
+        - addColumn:
+            tableName: rendez_vous
+            columns:
+              - column: { name: creneau_id, type: uuid }

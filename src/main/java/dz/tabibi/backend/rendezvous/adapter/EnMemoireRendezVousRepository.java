@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,5 +42,13 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
     @Override
     public Optional<RendezVous> parId(UUID id) {
         return Optional.ofNullable(parId.get(id));
+    }
+
+    @Override
+    public List<RendezVous> parPatient(UUID patientId) {
+        return parId.values().stream()
+                .filter(r -> r.patientId().equals(patientId))
+                .sorted(Comparator.comparing(RendezVous::debut))
+                .toList();
     }
 }
