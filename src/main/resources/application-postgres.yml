@@ -1,4 +1,7 @@
 spring:
+  # Le profil postgres reactive JPA/Liquibase (annule l'exclusion du profil par defaut).
+  autoconfigure:
+    exclude: ""
   datasource:
     url: ${TABIBI_DB_URL:jdbc:postgresql://localhost:5432/tabibi}
     username: ${TABIBI_DB_USER:tabibi}

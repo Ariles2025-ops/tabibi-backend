@@ -44,3 +44,6 @@
 - Persistance : RendezVousRepository.parPatient (memoire + JPA), Liquibase 004 (colonne rendez_vous.creneau_id).
 - Tests : reservation (creneau consomme), double reservation, creneau inconnu, liste par patient, annulation
   (creneau libere, refus si autre patient, idempotence) ; web 401/200/403 par role et codes 201/409/404/403.
+
+## v0.5.1 — Correctif demarrage
+- Hors profil `postgres`, l'auto-configuration DataSource/JPA/Liquibase est exclue : l'API demarre sans base (memoire). Le profil `postgres` la reactive.

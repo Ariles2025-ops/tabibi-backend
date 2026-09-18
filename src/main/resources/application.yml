@@ -1,6 +1,12 @@
 spring:
   application:
     name: tabibi-backend
+  # Hors profil « postgres » (dev/tests) : pas de base — on desactive l'auto-config JPA/Liquibase.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
   security:
     oauth2:
       resourceserver:
