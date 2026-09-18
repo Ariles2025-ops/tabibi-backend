@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-medecin
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: medecin
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: nom_complet, type: varchar(160), constraints: { nullable: false } }
+              - column: { name: specialite_slug, type: varchar(60), constraints: { nullable: false } }
+              - column: { name: specialite_fr, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: wilaya_code, type: varchar(4), constraints: { nullable: false } }
+              - column: { name: wilaya_fr, type: varchar(60), constraints: { nullable: false } }
+              - column: { name: ville, type: varchar(80) }
+        - createIndex:
+            indexName: idx_medecin_specialite_wilaya
+            tableName: medecin
+            columns:
+              - column: { name: specialite_slug }
+              - column: { name: wilaya_code }

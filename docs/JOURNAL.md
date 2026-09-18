@@ -15,3 +15,9 @@
 - Liquibase : 1re migration (tables utilisateur, rendez_vous + index).
 - Test d'integration Testcontainers (Docker/CI).
 - L'adaptateur en memoire reste actif hors profil postgres (dev/tests).
+
+## v0.3.0 — Annuaire
+- Recherche publique de praticiens : GET /api/medecins?specialite=&wilaya=&q= (sans connexion).
+- Deux adaptateurs (memoire seeded / JPA + requete JPQL), Liquibase 002 (table medecin + index).
+- Securite : GET annuaire en acces libre ; le reste reste protege.
+- Tests : filtres (specialite/wilaya/texte) + acces public sans jeton.
