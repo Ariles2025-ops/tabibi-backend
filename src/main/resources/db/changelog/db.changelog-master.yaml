@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/001-initial.yaml
   - include:
       file: db/changelog/002-annuaire.yaml
+  - include:
+      file: db/changelog/003-creneaux.yaml

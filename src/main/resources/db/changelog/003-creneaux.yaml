@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-creneau
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: creneau
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: debut, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: duree_minutes, type: int, constraints: { nullable: false } }
+              - column: { name: disponible, type: boolean, defaultValueBoolean: true, constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_creneau_medecin_debut
+            tableName: creneau
+            columns:
+              - column: { name: medecin_id }
+              - column: { name: debut }

@@ -7,6 +7,7 @@ import dz.tabibi.backend.annuaire.domain.Medecin;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,5 +38,16 @@ class AnnuaireServiceTest {
     @Test
     void sans_critere_retourne_tout() {
         assertThat(service.rechercher(CritereRecherche.de(null, null, null))).isNotEmpty();
+    }
+
+    @Test
+    void retrouve_un_medecin_seede_par_identifiant() {
+        Medecin attendu = EnMemoireMedecinRepository.MEDECINS_DEMO.get(0);
+        assertThat(service.parId(attendu.id())).contains(attendu);
+    }
+
+    @Test
+    void identifiant_inconnu_retourne_vide() {
+        assertThat(service.parId(UUID.randomUUID())).isEmpty();
     }
 }
