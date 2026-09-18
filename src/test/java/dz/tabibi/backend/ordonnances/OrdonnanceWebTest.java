@@ -35,8 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Ordonnances : redaction reservee au role MEDECIN, consultation par le patient ou le medecin,
- * verification publique par code sans jeton ; erreurs metier traduites par le conseil global.
+ * Ordonnances : redaction et liste du medecin reservees au role MEDECIN, consultation par le patient
+ * ou le medecin, verification publique par code sans jeton ; erreurs metier traduites par le conseil global.
  */
 @WebMvcTest(OrdonnanceController.class)
 @Import(SecurityConfig.class)
@@ -118,6 +118,21 @@ class OrdonnanceWebTest {
     @Test
     void mes_ordonnances_interdit_a_un_medecin() throws Exception {
         mvc.perform(get("/api/ordonnances/mes").with(medecin())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ordonnances_du_medecin_accessible_au_medecin() throws Exception {
+        when(service.ordonnancesDuMedecin(MEDECIN)).thenReturn(List.of(ordonnance()));
+
+        mvc.perform(get("/api/medecin/ordonnances").with(medecin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$[0].medecinId").value(MEDECIN.toString()))
+           .andExpect(jsonPath("$[0].patientId").value(PATIENT.toString()));
+    }
+
+    @Test
+    void ordonnances_du_medecin_interdit_a_un_patient() throws Exception {
+        mvc.perform(get("/api/medecin/ordonnances").with(patient())).andExpect(status().isForbidden());
     }
 
     @Test

@@ -19,8 +19,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Point d'entree REST des rendez-vous. Reserve aux patients ; les erreurs metier
- * (creneau pris, introuvable, acces refuse) sont traduites par GestionErreursApi.
+ * Point d'entree REST des rendez-vous : reservation, consultation et annulation par le patient,
+ * agenda et rendez-vous honores par le medecin. Les erreurs metier (creneau pris, introuvable,
+ * acces refuse, transition invalide) sont traduites par GestionErreursApi.
  */
 @RestController
 public class RendezVousController {
@@ -33,10 +34,10 @@ public class RendezVousController {
 
     public record DemandeReservation(@NotNull UUID medecinId, @NotNull Instant debut) {}
 
-    /** Vue d'un rendez-vous telle que renvoyee par l'API. */
-    public record RendezVousVue(UUID id, UUID medecinId, UUID creneauId, Instant debut, String statut) {
+    /** Vue d'un rendez-vous telle que renvoyee par l'API (au patient comme au medecin). */
+    public record RendezVousVue(UUID id, UUID patientId, UUID medecinId, UUID creneauId, Instant debut, String statut) {
         static RendezVousVue de(RendezVous r) {
-            return new RendezVousVue(r.id(), r.medecinId(), r.creneauId(), r.debut(), r.statut().name());
+            return new RendezVousVue(r.id(), r.patientId(), r.medecinId(), r.creneauId(), r.debut(), r.statut().name());
         }
     }
 
@@ -45,7 +46,7 @@ public class RendezVousController {
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<RendezVousVue> reserver(@RequestBody DemandeReservation demande,
                                                   @AuthenticationPrincipal Jwt jwt) {
-        RendezVous rdv = service.reserver(patientId(jwt), demande.medecinId(), demande.debut());
+        RendezVous rdv = service.reserver(identifiant(jwt), demande.medecinId(), demande.debut());
         return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.de(rdv));
     }
 
@@ -54,24 +55,38 @@ public class RendezVousController {
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<RendezVousVue> reserverCreneau(@PathVariable UUID id,
                                                          @AuthenticationPrincipal Jwt jwt) {
-        RendezVous rdv = service.reserverCreneau(patientId(jwt), id);
+        RendezVous rdv = service.reserverCreneau(identifiant(jwt), id);
         return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.de(rdv));
     }
 
     @GetMapping("/api/rendezvous/mes")
     @PreAuthorize("hasRole('PATIENT')")
     public List<RendezVousVue> mesRendezVous(@AuthenticationPrincipal Jwt jwt) {
-        return service.mesRendezVous(patientId(jwt)).stream().map(RendezVousVue::de).toList();
+        return service.mesRendezVous(identifiant(jwt)).stream().map(RendezVousVue::de).toList();
     }
 
     @PostMapping("/api/rendezvous/{id}/annuler")
     @PreAuthorize("hasRole('PATIENT')")
     public RendezVousVue annuler(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        return RendezVousVue.de(service.annuler(patientId(jwt), id));
+        return RendezVousVue.de(service.annuler(identifiant(jwt), id));
     }
 
-    /** Le sujet du jeton Keycloak est l'identifiant du patient. */
-    private static UUID patientId(Jwt jwt) {
+    /** Agenda du medecin connecte : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
+    @GetMapping("/api/medecin/rendezvous")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public List<RendezVousVue> agenda(@AuthenticationPrincipal Jwt jwt) {
+        return service.agendaDuMedecin(identifiant(jwt)).stream().map(RendezVousVue::de).toList();
+    }
+
+    /** Le patient est venu : le medecin marque le rendez-vous HONORE (409 s'il n'etait pas confirme). */
+    @PostMapping("/api/rendezvous/{id}/honorer")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public RendezVousVue honorer(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return RendezVousVue.de(service.honorer(identifiant(jwt), id));
+    }
+
+    /** Le sujet du jeton Keycloak est l'identifiant de l'utilisateur, patient ou medecin. */
+    private static UUID identifiant(Jwt jwt) {
         return UUID.fromString(jwt.getSubject());
     }
 }

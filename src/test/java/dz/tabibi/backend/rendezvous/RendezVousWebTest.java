@@ -1,6 +1,7 @@
 package dz.tabibi.backend.rendezvous;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.config.SecurityConfig;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.rendezvous.adapter.RendezVousController;
@@ -30,7 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Gestion des rendez-vous : reservee au role PATIENT (401 sans jeton, 403 pour un autre role),
+ * Gestion des rendez-vous : reservation, liste et annulation reservees au role PATIENT, agenda et
+ * rendez-vous honores reserves au role MEDECIN (401 sans jeton, 403 pour un autre role) ;
  * erreurs metier traduites par le conseil global (409 / 404 / 403 avec corps { "erreur" }).
  */
 @WebMvcTest(RendezVousController.class)
@@ -38,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RendezVousWebTest {
 
     private static final UUID PATIENT = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID MEDECIN = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Autowired MockMvc mvc;
     @MockBean JwtDecoder jwtDecoder; // requis par le resource server, non appele grace a jwt()
@@ -49,7 +52,7 @@ class RendezVousWebTest {
     }
 
     private static RequestPostProcessor medecin() {
-        return jwt().jwt(j -> j.subject(PATIENT.toString()))
+        return jwt().jwt(j -> j.subject(MEDECIN.toString()))
                     .authorities(new SimpleGrantedAuthority("ROLE_MEDECIN"));
     }
 
@@ -131,5 +134,54 @@ class RendezVousWebTest {
         mvc.perform(post("/api/rendezvous/{id}/annuler", rdv.id()).with(patient()))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.statut").value("ANNULE"));
+    }
+
+    @Test
+    void agenda_du_medecin_refuse_sans_jeton() throws Exception {
+        mvc.perform(get("/api/medecin/rendezvous")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void agenda_du_medecin_interdit_a_un_patient() throws Exception {
+        mvc.perform(get("/api/medecin/rendezvous").with(patient())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void agenda_du_medecin_accessible_au_medecin() throws Exception {
+        when(service.agendaDuMedecin(MEDECIN)).thenReturn(List.of(
+                RendezVous.confirmer(PATIENT, MEDECIN, Instant.parse("2026-12-07T09:00:00Z"))));
+
+        mvc.perform(get("/api/medecin/rendezvous").with(medecin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$[0].patientId").value(PATIENT.toString()))
+           .andExpect(jsonPath("$[0].medecinId").value(MEDECIN.toString()))
+           .andExpect(jsonPath("$[0].statut").value("CONFIRME"));
+    }
+
+    @Test
+    void honorer_par_le_medecin_repond_200() throws Exception {
+        RendezVous rdv = RendezVous.confirmer(PATIENT, MEDECIN, Instant.parse("2026-12-07T09:00:00Z"));
+        rdv.honorer();
+        when(service.honorer(MEDECIN, rdv.id())).thenReturn(rdv);
+
+        mvc.perform(post("/api/rendezvous/{id}/honorer", rdv.id()).with(medecin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.statut").value("HONORE"));
+    }
+
+    @Test
+    void honorer_interdit_a_un_patient() throws Exception {
+        mvc.perform(post("/api/rendezvous/{id}/honorer", UUID.randomUUID()).with(patient()))
+           .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void honorer_un_rendezvous_annule_repond_409() throws Exception {
+        when(service.honorer(any(), any()))
+                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirme peut etre honore (statut actuel : ANNULE)."));
+
+        mvc.perform(post("/api/rendezvous/{id}/honorer", UUID.randomUUID()).with(medecin()))
+           .andExpect(status().isConflict())
+           .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirme peut etre honore (statut actuel : ANNULE)."));
     }
 }

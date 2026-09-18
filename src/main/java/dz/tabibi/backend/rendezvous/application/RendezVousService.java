@@ -1,6 +1,7 @@
 package dz.tabibi.backend.rendezvous.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
@@ -83,6 +84,28 @@ public class RendezVousService {
         if (rdv.creneauId() != null) {
             creneaux.parId(rdv.creneauId()).map(Creneau::liberer).ifPresent(creneaux::enregistrer);
         }
+        return repository.enregistrer(rdv);
+    }
+
+    /** Agenda d'un medecin : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
+    public List<RendezVous> agendaDuMedecin(UUID medecinId) {
+        return repository.parMedecin(medecinId);
+    }
+
+    /**
+     * Marque un rendez-vous comme honore (le patient est venu). Reserve au medecin du rendez-vous.
+     * @throws RendezVousIntrouvableException si le rendez-vous n'existe pas.
+     * @throws AccesRefuseException s'il est dans l'agenda d'un autre medecin.
+     * @throws TransitionInvalideException s'il n'est pas confirme (annule ou deja honore).
+     */
+    @Transactional
+    public RendezVous honorer(UUID medecinId, UUID rendezVousId) {
+        RendezVous rdv = repository.parId(rendezVousId)
+                .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
+        if (!rdv.estAvec(medecinId)) {
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+        }
+        rdv.honorer();
         return repository.enregistrer(rdv);
     }
 }

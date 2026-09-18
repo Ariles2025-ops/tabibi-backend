@@ -46,4 +46,10 @@ public class JpaRendezVousRepository implements RendezVousRepository {
         return jpa.findByPatientIdOrderByDebut(patientId)
                 .stream().map(RendezVousEntity::versDomaine).toList();
     }
+
+    @Override
+    public List<RendezVous> parMedecin(UUID medecinId) {
+        return jpa.findByMedecinIdOrderByDebut(medecinId)
+                .stream().map(RendezVousEntity::versDomaine).toList();
+    }
 }

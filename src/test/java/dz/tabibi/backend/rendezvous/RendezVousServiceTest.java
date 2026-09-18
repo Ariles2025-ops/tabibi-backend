@@ -2,6 +2,7 @@ package dz.tabibi.backend.rendezvous;
 
 import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
@@ -151,5 +152,74 @@ class RendezVousServiceTest {
         service.annuler(patient, rdv.id());
 
         assertThat(estDisponible(creneau.id())).isFalse();
+    }
+
+    @Test
+    void honore_un_rendezvous_confirme() {
+        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+
+        RendezVous honore = service.honorer(MEDECIN_DEMO, rdv.id());
+
+        assertThat(honore.id()).isEqualTo(rdv.id());
+        assertThat(honore.statut()).isEqualTo(StatutRdv.HONORE);
+        assertThat(service.agendaDuMedecin(MEDECIN_DEMO))
+                .anyMatch(r -> r.id().equals(rdv.id()) && r.statut() == StatutRdv.HONORE);
+    }
+
+    @Test
+    void refuse_d_honorer_un_rendezvous_annule() {
+        UUID patient = UUID.randomUUID();
+        RendezVous rdv = service.reserverCreneau(patient, premierCreneauDisponible().id());
+        service.annuler(patient, rdv.id());
+
+        assertThatThrownBy(() -> service.honorer(MEDECIN_DEMO, rdv.id()))
+                .isInstanceOf(TransitionInvalideException.class);
+        assertThat(rdv.statut()).isEqualTo(StatutRdv.ANNULE);
+    }
+
+    @Test
+    void refuse_d_honorer_deux_fois() {
+        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+        service.honorer(MEDECIN_DEMO, rdv.id());
+
+        assertThatThrownBy(() -> service.honorer(MEDECIN_DEMO, rdv.id()))
+                .isInstanceOf(TransitionInvalideException.class);
+    }
+
+    @Test
+    void refuse_d_honorer_le_rendezvous_d_un_autre_medecin() {
+        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+
+        assertThatThrownBy(() -> service.honorer(UUID.randomUUID(), rdv.id()))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThat(rdv.statut()).isEqualTo(StatutRdv.CONFIRME);
+    }
+
+    @Test
+    void refuse_d_honorer_un_rendezvous_inconnu() {
+        assertThatThrownBy(() -> service.honorer(MEDECIN_DEMO, UUID.randomUUID()))
+                .isInstanceOf(RendezVousIntrouvableException.class);
+    }
+
+    @Test
+    void agenda_du_medecin_liste_ses_rendezvous_par_date_tous_statuts() {
+        UUID patient = UUID.randomUUID();
+        List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
+        RendezVous annule = service.reserverCreneau(patient, disponibles.get(2).id());
+        service.annuler(patient, annule.id());
+        service.reserverCreneau(UUID.randomUUID(), disponibles.get(0).id());
+        service.reserver(UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z")); // autre medecin
+
+        List<RendezVous> agenda = service.agendaDuMedecin(MEDECIN_DEMO);
+
+        assertThat(agenda).hasSize(2);
+        assertThat(agenda).allMatch(r -> r.medecinId().equals(MEDECIN_DEMO));
+        assertThat(agenda).anyMatch(r -> r.id().equals(annule.id()) && r.statut() == StatutRdv.ANNULE);
+        assertThat(agenda).isSortedAccordingTo(Comparator.comparing(RendezVous::debut));
+    }
+
+    @Test
+    void agenda_d_un_medecin_sans_rendezvous_est_vide() {
+        assertThat(service.agendaDuMedecin(UUID.randomUUID())).isEmpty();
     }
 }

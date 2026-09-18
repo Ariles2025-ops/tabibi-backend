@@ -73,6 +73,13 @@ public class OrdonnanceController {
         return service.mesOrdonnances(identifiant(jwt)).stream().map(OrdonnanceVue::de).toList();
     }
 
+    /** Ordonnances redigees par le medecin connecte, les plus recentes d'abord. */
+    @GetMapping("/api/medecin/ordonnances")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public List<OrdonnanceVue> ordonnancesDuMedecin(@AuthenticationPrincipal Jwt jwt) {
+        return service.ordonnancesDuMedecin(identifiant(jwt)).stream().map(OrdonnanceVue::de).toList();
+    }
+
     /** Une ordonnance, pour son patient ou son medecin auteur (403 sinon, 404 si absente). */
     @GetMapping("/api/ordonnances/{id}")
     @PreAuthorize("hasAnyRole('PATIENT', 'MEDECIN')")

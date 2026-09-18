@@ -51,4 +51,12 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
                 .sorted(Comparator.comparing(RendezVous::debut))
                 .toList();
     }
+
+    @Override
+    public List<RendezVous> parMedecin(UUID medecinId) {
+        return parId.values().stream()
+                .filter(r -> r.medecinId().equals(medecinId))
+                .sorted(Comparator.comparing(RendezVous::debut))
+                .toList();
+    }
 }

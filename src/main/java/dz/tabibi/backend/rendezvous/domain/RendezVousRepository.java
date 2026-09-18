@@ -19,4 +19,7 @@ public interface RendezVousRepository {
 
     /** Rendez-vous d'un patient, tous statuts, du plus proche au plus lointain. */
     List<RendezVous> parPatient(UUID patientId);
+
+    /** Agenda d'un medecin : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
+    List<RendezVous> parMedecin(UUID medecinId);
 }

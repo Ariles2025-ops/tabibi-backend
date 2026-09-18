@@ -105,6 +105,17 @@ class OrdonnanceServiceTest {
     }
 
     @Test
+    void ordonnances_du_medecin_liste_celles_qu_il_a_redigees_les_plus_recentes_d_abord() {
+        Ordonnance ancienne = emiseLe(PATIENT, "2026-01-10T09:00:00Z", StatutOrdonnance.EMISE, "DDDDDDD2");
+        Ordonnance recente = emiseLe(UUID.randomUUID(), "2026-03-01T09:00:00Z", StatutOrdonnance.EMISE, "DDDDDDD3");
+        repository.enregistrer(new Ordonnance(UUID.randomUUID(), UUID.randomUUID(), PATIENT, null, LIGNES,
+                Instant.parse("2026-02-01T09:00:00Z"), "DDDDDDD4", StatutOrdonnance.EMISE)); // autre medecin
+
+        assertThat(service.ordonnancesDuMedecin(MEDECIN)).containsExactly(recente, ancienne);
+        assertThat(service.ordonnancesDuMedecin(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
     void parIdPour_est_accessible_au_patient_et_au_medecin_auteur() {
         Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES);
 

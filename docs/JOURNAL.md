@@ -65,3 +65,21 @@
 - Tests : code de 8 caracteres et statut EMISE, refus sans ligne / sans medicament / sans patient, codes distincts,
   tri par date, acces patient / medecin / tiers, verification (code connu, minuscules, annulee, inconnu),
   codec JSON ; web 401 / 403 / 201, 400, 200 / 403 / 404 et verification publique 200 / 404.
+
+## v0.7.0 — Espace medecin
+- GET /api/medecin/rendezvous (MEDECIN) : agenda du medecin connecte, tous statuts, du plus proche au plus lointain.
+- POST /api/rendezvous/{id}/honorer (MEDECIN, 200) : le patient est venu, statut HONORE ; 404 si inconnu,
+  403 si le rendez-vous est dans l'agenda d'un autre medecin, 409 s'il n'est pas confirme (annule, deja honore).
+- POST /api/medecin/creneaux (MEDECIN, 201, body { debut, dureeMinutes }) : ouvre un creneau disponible ;
+  400 si le debut n'est pas dans le futur ou si la duree sort de 5..120 minutes.
+- GET /api/medecin/ordonnances (MEDECIN) : ordonnances redigees par le medecin, les plus recentes d'abord.
+- Domaine : RendezVous.honorer() (uniquement depuis CONFIRME) et estAvec(medecinId) ; exception commune
+  TransitionInvalide (409) ; CreneauInvalide (400) ; CreneauService.ouvrir ; RendezVousService.agendaDuMedecin
+  et honorer ; OrdonnanceService.ordonnancesDuMedecin.
+- Persistance : RendezVousRepository.parMedecin (memoire + JPA findByMedecinIdOrderByDebut).
+- API : la vue d'un rendez-vous expose desormais patientId (utile a l'agenda du medecin) ; le sujet du jeton
+  vaut identifiant du patient ou du medecin selon le role.
+- Tests : honorer un rendez-vous confirme, refus si annule / deja honore / autre medecin / inconnu, agenda trie
+  tous statuts, creneau ouvert / passe / duree hors bornes / bornes acceptees, ordonnances du medecin ;
+  web 401 / 403 PATIENT / 200 MEDECIN pour l'agenda, 200 / 403 / 409 pour honorer, 401 / 403 / 201 / 400
+  pour l'ouverture d'un creneau, 200 / 403 pour les ordonnances du medecin.

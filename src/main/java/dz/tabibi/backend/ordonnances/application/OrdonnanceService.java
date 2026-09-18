@@ -54,6 +54,11 @@ public class OrdonnanceService {
         return repository.parPatient(patientId);
     }
 
+    /** Ordonnances redigees par un medecin, de la plus recente a la plus ancienne. */
+    public List<Ordonnance> ordonnancesDuMedecin(UUID medecinId) {
+        return repository.parMedecin(medecinId);
+    }
+
     /**
      * Ordonnance par identifiant, pour le patient a qui elle est destinee ou le medecin qui l'a redigee.
      * @throws OrdonnanceIntrouvableException si elle n'existe pas.

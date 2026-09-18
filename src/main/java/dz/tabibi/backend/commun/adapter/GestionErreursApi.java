@@ -1,7 +1,9 @@
 package dz.tabibi.backend.commun.adapter;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
+import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
@@ -30,14 +32,15 @@ public class GestionErreursApi {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }
 
-    /** Contenu refuse par une regle metier (ordonnance sans ligne...). */
-    @ExceptionHandler(OrdonnanceInvalideException.class)
+    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe...). */
+    @ExceptionHandler({OrdonnanceInvalideException.class, CreneauInvalideException.class})
     public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
         return reponse(HttpStatus.BAD_REQUEST, ex);
     }
 
-    @ExceptionHandler(CreneauDejaReserveException.class)
-    public ResponseEntity<ErreurApi> creneauPris(CreneauDejaReserveException ex) {
+    /** Conflit avec l'etat courant (creneau deja pris, transition de statut interdite). */
+    @ExceptionHandler({CreneauDejaReserveException.class, TransitionInvalideException.class})
+    public ResponseEntity<ErreurApi> conflit(RuntimeException ex) {
         return reponse(HttpStatus.CONFLICT, ex);
     }
 

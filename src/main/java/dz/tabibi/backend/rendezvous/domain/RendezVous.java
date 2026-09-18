@@ -1,11 +1,13 @@
 package dz.tabibi.backend.rendezvous.domain;
 
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
+
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * Un rendez-vous entre un patient et un medecin, sur un creneau donne.
- * Le comportement metier (confirmer, annuler) vit dans l'entite.
+ * Le comportement metier (confirmer, annuler, honorer) vit dans l'entite.
  */
 public class RendezVous {
 
@@ -44,9 +46,26 @@ public class RendezVous {
         this.statut = StatutRdv.ANNULE;
     }
 
+    /**
+     * Le patient est venu : le rendez-vous passe a HONORE.
+     * @throws TransitionInvalideException s'il n'est pas confirme (annule ou deja honore).
+     */
+    public void honorer() {
+        if (statut != StatutRdv.CONFIRME) {
+            throw new TransitionInvalideException(
+                    "Seul un rendez-vous confirme peut etre honore (statut actuel : " + statut + ").");
+        }
+        this.statut = StatutRdv.HONORE;
+    }
+
     /** Vrai si le rendez-vous a ete pris par ce patient. */
     public boolean appartientA(UUID unPatientId) {
         return patientId.equals(unPatientId);
+    }
+
+    /** Vrai si le rendez-vous est dans l'agenda de ce medecin. */
+    public boolean estAvec(UUID unMedecinId) {
+        return medecinId.equals(unMedecinId);
     }
 
     public boolean estAnnule() {
