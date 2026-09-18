@@ -1,0 +1,25 @@
+# Environnement local Tabibi : PostgreSQL (pret pour l'etape persistance)
+# + Keycloak (identite). Lancer : docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    container_name: tabibi-postgres
+    environment:
+      POSTGRES_DB: tabibi
+      POSTGRES_USER: tabibi
+      POSTGRES_PASSWORD: tabibi
+    ports: ["5432:5432"]
+    volumes: ["tabibi-pg:/var/lib/postgresql/data"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: tabibi-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports: ["8081:8080"]
+    volumes: ["./infra/keycloak:/opt/keycloak/data/import:ro"]
+
+volumes:
+  tabibi-pg:

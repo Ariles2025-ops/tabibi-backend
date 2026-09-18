@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: tabibi-backend
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Emetteur des jetons = le realm Keycloak (fourni par docker-compose)
+          issuer-uri: ${TABIBI_KEYCLOAK_ISSUER:http://localhost:8081/realms/tabibi}
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
