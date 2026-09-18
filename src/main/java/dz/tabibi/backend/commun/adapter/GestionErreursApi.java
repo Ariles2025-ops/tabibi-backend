@@ -9,6 +9,7 @@ import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
+import dz.tabibi.backend.teleconsultation.domain.TeleconsultationIntrouvableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,7 +30,8 @@ public class GestionErreursApi {
             CreneauIntrouvableException.class,
             RendezVousIntrouvableException.class,
             OrdonnanceIntrouvableException.class,
-            NotificationIntrouvableException.class})
+            NotificationIntrouvableException.class,
+            TeleconsultationIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }

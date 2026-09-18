@@ -44,6 +44,8 @@ Role PATIENT :
 | GET | `/api/rendezvous/mes` | mes rendez-vous, du plus proche au plus lointain |
 | POST | `/api/rendezvous/{id}/annuler` | annule mon rendez-vous, le creneau est remis a disposition |
 | GET | `/api/ordonnances/mes` | mes ordonnances, les plus recentes d'abord |
+| GET | `/api/teleconsultations/mes` | mes teleconsultations, les plus recentes d'abord |
+| POST | `/api/teleconsultations/{id}/consentir` | consentement explicite : le lien de salle m'est remis a partir de la |
 
 Role MEDECIN :
 
@@ -54,14 +56,36 @@ Role MEDECIN :
 | POST | `/api/medecin/creneaux` | ouvre un creneau `{ debut, dureeMinutes }` (201, 400) |
 | POST | `/api/ordonnances` | redige une ordonnance (201, 400) |
 | GET | `/api/medecin/ordonnances` | ordonnances que j'ai redigees |
+| POST | `/api/medecin/teleconsultations` | planifie une teleconsultation `{ rendezVousId }` sur un rendez-vous confirme (201, 404, 403, 409) |
+| GET | `/api/medecin/teleconsultations` | mes teleconsultations, les plus recentes d'abord |
+| POST | `/api/teleconsultations/{id}/demarrer` | ouvre la session (409 sans consentement du patient) |
+| POST | `/api/teleconsultations/{id}/terminer` | clot la session (409 si elle n'est pas en cours) |
+| POST | `/api/teleconsultations/{id}/annuler` | annule une teleconsultation planifiee (409 sinon) |
 
 PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 
 | Methode | Chemin | Description |
 |---|---|---|
 | GET | `/api/ordonnances/{id}` | une ordonnance, pour son patient ou son medecin auteur |
+| GET | `/api/teleconsultations/{id}` | une teleconsultation, pour son patient ou son medecin |
 
 Documentation d'API : `/swagger-ui.html`.
+
+## Teleconsultation
+
+Les sessions video reposent sur **Jitsi Meet** (open source, gratuit, auto-hebergeable, aucun SDK
+proprietaire) : chaque teleconsultation recoit une salle au nom non devinable (`tabibi-` + 32
+caracteres hexadecimaux tires par `SecureRandom`). Le lien vaut `base-url/salleId` et n'est remis
+qu'au medecin, et au patient **apres son consentement explicite** (`lienSalle` vaut `null` sinon) ;
+le medecin ne peut pas demarrer la session sans ce consentement.
+
+Configuration (`application.yml`) :
+
+```yaml
+tabibi:
+  teleconsultation:
+    base-url: ${TABIBI_TELECONSULTATION_BASE_URL:https://meet.jit.si}   # instance publique, remplacable par la votre
+```
 
 ## Notifications
 
@@ -109,6 +133,7 @@ creneaux/        disponibilites et ouverture de creneaux
 rendezvous/      reservation, annulation, agenda, rendez-vous honores
 ordonnances/     redaction, consultation, verification publique par code
 notifications/   boite de reception, port Notifieur et notifieur interne
+teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

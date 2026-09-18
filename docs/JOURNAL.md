@@ -105,3 +105,32 @@
   introuvable, tout marquer lu sans toucher les autres), notifieur interne, format de date, rendez-vous (faux
   Notifieur : qui est prevenu, de quoi, et pas en cas d'echec) ; web 401 sans jeton, 200 PATIENT et MEDECIN,
   compteur, 200 / 403 / 404 pour marquer lue, 200 pour tout marquer lu.
+
+## v0.9.0 — Teleconsultation
+- Choix : salle video Jitsi Meet (open source, gratuit, auto-hebergeable, aucun SDK proprietaire) ; nom de salle
+  non devinable (tabibi- + 32 caracteres hexadecimaux tires par SecureRandom) ; consentement explicite du patient
+  obligatoire avant tout acces au lien (donnees de sante). URL de base configurable :
+  tabibi.teleconsultation.base-url (defaut https://meet.jit.si), lien = base-url/salleId.
+- POST /api/medecin/teleconsultations (MEDECIN, 201, body { rendezVousId }) : planifie une teleconsultation sur un
+  rendez-vous confirme du medecin ; 404 si le rendez-vous est inconnu, 403 s'il est avec un autre medecin, 409 s'il
+  n'est pas confirme ou si une teleconsultation non annulee existe deja ; le patient est prevenu
+  (« Teleconsultation proposee »).
+- GET /api/medecin/teleconsultations (MEDECIN) et GET /api/teleconsultations/mes (PATIENT) : les plus recentes d'abord.
+- GET /api/teleconsultations/{id} (PATIENT ou MEDECIN) : pour le patient destinataire ou le medecin, 403 sinon, 404 si absente.
+- POST /api/teleconsultations/{id}/consentir (PATIENT, 200) : idempotent ; 409 si terminee ou annulee.
+- POST /api/teleconsultations/{id}/demarrer (MEDECIN, 200) : exige PLANIFIEE et le consentement (409 sinon) ; le patient
+  est prevenu (« Teleconsultation demarree »). POST .../terminer (exige EN_COURS) et POST .../annuler (exige PLANIFIEE).
+- Vue { id, rendezVousId, patientId, medecinId, statut, consentementPatientLe, lienSalle, creeLe, demarreeLe, termineeLe } :
+  lienSalle est renseigne pour le medecin toujours, pour le patient uniquement apres consentement, null sinon.
+- Module teleconsultation : Teleconsultation (entite : planifier, consentir, demarrer, terminer, annuler, appartientA,
+  estAvec, patientAConsenti, peutAccederALaSalle), StatutTeleconsultation, GenerateurSalle (expose en bean par
+  TeleconsultationConfig, le domaine reste sans annotation Spring), port TeleconsultationRepository (enregistrer, parId,
+  parPatient, parMedecin, parRendezVous = la derniere non annulee), TeleconsultationService (depend du port
+  RendezVousRepository du module rendezvous, du Notifieur et de la base-url), TeleconsultationIntrouvable (404).
+- Persistance : adaptateur en memoire et JPA (findFirstByRendezVousIdAndStatutNotOrderByCreeLeDesc) ; Liquibase 006
+  (table teleconsultation, salle_id unique, index patient, medecin, rendez-vous), inseree avant 007 dans le master.
+- Tests : domaine (transitions, idempotence du consentement, refus sans consentement, acces a la salle), generateur
+  (format, unicite), service (planifier ok / 404 / 403 / 409 x2, replanification apres annulation, lien cache puis visible,
+  lien du medecin et du tiers, detail, consentement reserve au patient, demarrer sans consentement 409, terminer,
+  annuler, listes triees, notifications) ; web 401 / 403 par role, 201 / 404 / 403 / 409 pour planifier, 200 pour
+  consentir / demarrer / terminer / annuler, 409 sans consentement, lienSalle null pour un patient sans consentement.

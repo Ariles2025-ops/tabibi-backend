@@ -17,6 +17,12 @@ spring:
 server:
   port: 8080
 
+tabibi:
+  teleconsultation:
+    # Salle video Jitsi Meet (open source, sans SDK proprietaire) : instance publique par defaut,
+    # remplacable par une instance auto-hebergee. Le lien d'une salle vaut base-url/salleId.
+    base-url: ${TABIBI_TELECONSULTATION_BASE_URL:https://meet.jit.si}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
