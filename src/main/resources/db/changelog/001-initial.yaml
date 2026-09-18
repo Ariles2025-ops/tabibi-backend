@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-utilisateur
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: utilisateur
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: keycloak_id, type: varchar(64), constraints: { nullable: false, unique: true } }
+              - column: { name: role, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: cree_le, type: timestamptz, defaultValueComputed: now(), constraints: { nullable: false } }
+  - changeSet:
+      id: 001-rendez-vous
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: rendez_vous
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: patient_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: debut, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: statut, type: varchar(20), constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_rdv_medecin_debut
+            tableName: rendez_vous
+            columns:
+              - column: { name: medecin_id }
+              - column: { name: debut }

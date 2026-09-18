@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: ${TABIBI_DB_URL:jdbc:postgresql://localhost:5432/tabibi}
+    username: ${TABIBI_DB_USER:tabibi}
+    password: ${TABIBI_DB_PASSWORD:tabibi}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml

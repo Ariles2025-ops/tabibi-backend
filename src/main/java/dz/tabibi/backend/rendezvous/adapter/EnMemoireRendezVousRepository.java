@@ -3,6 +3,7 @@ package dz.tabibi.backend.rendezvous.adapter;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * sans toucher au domaine ni aux cas d'usage.
  */
 @Repository
+@Profile("!postgres")
 public class EnMemoireRendezVousRepository implements RendezVousRepository {
 
     private final Map<UUID, RendezVous> parId = new ConcurrentHashMap<>();

@@ -9,3 +9,9 @@
 ## A suivre
 - Persistance JPA + Liquibase (1re migration : utilisateur, rendez-vous) sur PostgreSQL.
 - Module annuaire (medecins, specialites, wilayas) + recherche.
+
+## v0.2.0 — Persistance
+- Adaptateur JPA/PostgreSQL derriere le port RendezVousRepository (profil `postgres`).
+- Liquibase : 1re migration (tables utilisateur, rendez_vous + index).
+- Test d'integration Testcontainers (Docker/CI).
+- L'adaptateur en memoire reste actif hors profil postgres (dev/tests).
