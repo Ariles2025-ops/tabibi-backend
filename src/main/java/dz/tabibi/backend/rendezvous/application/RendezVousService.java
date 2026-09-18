@@ -1,10 +1,12 @@
 package dz.tabibi.backend.rendezvous.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
+import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
@@ -16,16 +18,21 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Cas d'usage des rendez-vous. Contient la regle metier, pas le client. */
+/**
+ * Cas d'usage des rendez-vous. Contient la regle metier, pas le client.
+ * Le patient et le medecin sont prevenus (port Notifieur) a la reservation, le medecin a l'annulation.
+ */
 @Service
 public class RendezVousService {
 
     private final RendezVousRepository repository;
     private final CreneauRepository creneaux;
+    private final Notifieur notifieur;
 
-    public RendezVousService(RendezVousRepository repository, CreneauRepository creneaux) {
+    public RendezVousService(RendezVousRepository repository, CreneauRepository creneaux, Notifieur notifieur) {
         this.repository = repository;
         this.creneaux = creneaux;
+        this.notifieur = notifieur;
     }
 
     /**
@@ -36,8 +43,9 @@ public class RendezVousService {
         if (!repository.creneauEstLibre(medecinId, debut)) {
             throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
         }
-        RendezVous rdv = RendezVous.confirmer(patientId, medecinId, debut);
-        return repository.enregistrer(rdv);
+        RendezVous rdv = repository.enregistrer(RendezVous.confirmer(patientId, medecinId, debut));
+        notifierReservation(rdv);
+        return rdv;
     }
 
     /**
@@ -54,8 +62,10 @@ public class RendezVousService {
             throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
         }
         creneaux.enregistrer(creneau.reserver());
-        RendezVous rdv = RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id());
-        return repository.enregistrer(rdv);
+        RendezVous rdv = repository.enregistrer(
+                RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id()));
+        notifierReservation(rdv);
+        return rdv;
     }
 
     /** Rendez-vous d'un patient, tous statuts, du plus proche au plus lointain. */
@@ -84,7 +94,10 @@ public class RendezVousService {
         if (rdv.creneauId() != null) {
             creneaux.parId(rdv.creneauId()).map(Creneau::liberer).ifPresent(creneaux::enregistrer);
         }
-        return repository.enregistrer(rdv);
+        RendezVous annule = repository.enregistrer(rdv);
+        notifieur.notifier(annule.medecinId(), "Rendez-vous annule",
+                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a ete annule par le patient.");
+        return annule;
     }
 
     /** Agenda d'un medecin : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
@@ -107,5 +120,14 @@ public class RendezVousService {
         }
         rdv.honorer();
         return repository.enregistrer(rdv);
+    }
+
+    /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */
+    private void notifierReservation(RendezVous rdv) {
+        String date = FormatDate.lisible(rdv.debut());
+        notifieur.notifier(rdv.patientId(), "Rendez-vous confirme",
+                "Votre rendez-vous du " + date + " est confirme.");
+        notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous",
+                "Un patient a reserve un rendez-vous le " + date + ".");
     }
 }

@@ -7,6 +7,7 @@ import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
+import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
 import dz.tabibi.backend.rendezvous.application.RendezVousService;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
@@ -16,6 +17,7 @@ import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -27,9 +29,26 @@ class RendezVousServiceTest {
 
     private static final UUID MEDECIN_DEMO = EnMemoireMedecinRepository.MEDECINS_DEMO.get(0).id();
 
+    /** Faux notifieur : memorise les appels pour verifier qui a ete prevenu, et de quoi. */
+    static class FauxNotifieur implements Notifieur {
+        record Appel(UUID destinataireId, String sujet, String message) {}
+
+        final List<Appel> appels = new ArrayList<>();
+
+        @Override
+        public void notifier(UUID destinataireId, String sujet, String message) {
+            appels.add(new Appel(destinataireId, sujet, message));
+        }
+
+        List<Appel> pour(UUID destinataireId) {
+            return appels.stream().filter(a -> a.destinataireId().equals(destinataireId)).toList();
+        }
+    }
+
     private final CreneauRepository creneaux = new EnMemoireCreneauRepository();
+    private final FauxNotifieur notifieur = new FauxNotifieur();
     private final RendezVousService service =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux);
+            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur);
 
     private Creneau premierCreneauDisponible() {
         return creneaux.disponiblesPour(MEDECIN_DEMO).get(0);
@@ -51,6 +70,11 @@ class RendezVousServiceTest {
         assertThat(rdv.statut()).isEqualTo(StatutRdv.CONFIRME);
         assertThat(rdv.medecinId()).isEqualTo(medecin);
         assertThat(rdv.creneauId()).isNull();
+        assertThat(notifieur.pour(patient)).hasSize(1);
+        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirme");
+        assertThat(notifieur.pour(patient).get(0).message()).contains("04/12/2026");
+        assertThat(notifieur.pour(medecin)).hasSize(1);
+        assertThat(notifieur.pour(medecin).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
     }
 
     @Test
@@ -58,9 +82,12 @@ class RendezVousServiceTest {
         UUID medecin = UUID.randomUUID();
         Instant debut = Instant.parse("2026-12-04T09:00:00Z");
         service.reserver(UUID.randomUUID(), medecin, debut);
+        UUID second = UUID.randomUUID();
 
-        assertThatThrownBy(() -> service.reserver(UUID.randomUUID(), medecin, debut))
+        assertThatThrownBy(() -> service.reserver(second, medecin, debut))
                 .isInstanceOf(CreneauDejaReserveException.class);
+        assertThat(notifieur.pour(second)).isEmpty();
+        assertThat(notifieur.pour(medecin)).hasSize(1);
     }
 
     @Test
@@ -77,6 +104,13 @@ class RendezVousServiceTest {
         assertThat(rdv.creneauId()).isEqualTo(creneau.id());
         assertThat(estDisponible(creneau.id())).isFalse();
         assertThat(creneaux.disponiblesPour(MEDECIN_DEMO)).noneMatch(c -> c.id().equals(creneau.id()));
+        assertThat(notifieur.appels).hasSize(2);
+        assertThat(notifieur.pour(patient)).hasSize(1);
+        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirme");
+        assertThat(notifieur.pour(patient).get(0).message()).contains("07/12/2026");
+        assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1);
+        assertThat(notifieur.pour(MEDECIN_DEMO).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
+        assertThat(notifieur.pour(MEDECIN_DEMO).get(0).message()).contains("07/12/2026");
     }
 
     @Test
@@ -122,6 +156,10 @@ class RendezVousServiceTest {
         assertThat(estDisponible(creneau.id())).isTrue();
         assertThat(creneaux.disponiblesPour(MEDECIN_DEMO)).anyMatch(c -> c.id().equals(creneau.id()));
         assertThat(service.mesRendezVous(patient)).allMatch(r -> r.statut() == StatutRdv.ANNULE);
+        assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(2);
+        assertThat(notifieur.pour(MEDECIN_DEMO).get(1).sujet()).isEqualTo("Rendez-vous annule");
+        assertThat(notifieur.pour(MEDECIN_DEMO).get(1).message()).contains("07/12/2026");
+        assertThat(notifieur.pour(patient)).hasSize(1); // seule la confirmation initiale
     }
 
     @Test
@@ -133,6 +171,7 @@ class RendezVousServiceTest {
                 .isInstanceOf(AccesRefuseException.class);
         assertThat(rdv.statut()).isEqualTo(StatutRdv.CONFIRME);
         assertThat(estDisponible(creneau.id())).isFalse();
+        assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1); // pas d'annulation notifiee
     }
 
     @Test
@@ -148,10 +187,12 @@ class RendezVousServiceTest {
         RendezVous rdv = service.reserverCreneau(patient, creneau.id());
         service.annuler(patient, rdv.id());
         service.reserverCreneau(UUID.randomUUID(), creneau.id()); // un autre patient reprend le creneau
+        int notificationsAvant = notifieur.appels.size();
 
         service.annuler(patient, rdv.id());
 
         assertThat(estDisponible(creneau.id())).isFalse();
+        assertThat(notifieur.appels).hasSize(notificationsAvant); // la seconde annulation ne previent personne
     }
 
     @Test

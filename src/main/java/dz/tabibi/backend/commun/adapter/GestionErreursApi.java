@@ -4,6 +4,7 @@ import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
+import dz.tabibi.backend.notifications.domain.NotificationIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
@@ -27,7 +28,8 @@ public class GestionErreursApi {
     @ExceptionHandler({
             CreneauIntrouvableException.class,
             RendezVousIntrouvableException.class,
-            OrdonnanceIntrouvableException.class})
+            OrdonnanceIntrouvableException.class,
+            NotificationIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }

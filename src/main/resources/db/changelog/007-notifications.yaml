@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-notification
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: notification
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: destinataire_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: canal, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: sujet, type: varchar(200), constraints: { nullable: false } }
+              - column: { name: message, type: text, constraints: { nullable: false } }
+              - column: { name: lue, type: boolean, defaultValueBoolean: false, constraints: { nullable: false } }
+              - column: { name: cree_le, type: timestamptz, constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_notification_destinataire_cree_le
+            tableName: notification
+            columns:
+              - column: { name: destinataire_id }
+              - column: { name: cree_le }

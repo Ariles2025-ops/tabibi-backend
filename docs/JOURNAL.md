@@ -83,3 +83,25 @@
   tous statuts, creneau ouvert / passe / duree hors bornes / bornes acceptees, ordonnances du medecin ;
   web 401 / 403 PATIENT / 200 MEDECIN pour l'agenda, 200 / 403 / 409 pour honorer, 401 / 403 / 201 / 400
   pour l'ouverture d'un creneau, 200 / 403 pour les ordonnances du medecin.
+
+## v0.8.0 — Notifications
+- Boite de reception de l'utilisateur connecte, quel que soit son role (401 sans jeton) :
+  GET /api/notifications/mes (les plus recentes d'abord), GET /api/notifications/non-lues/nombre ({ nombre }),
+  POST /api/notifications/{id}/lue (403 si adressee a un autre utilisateur, 404 si inconnue),
+  POST /api/notifications/toutes-lues ({ nombre } de notifications passees a lues).
+- Module notifications : Notification (record immuable, marquerLue() en copie), CanalNotification (INTERNE seul
+  realise ; SMS et EMAIL reserves), port NotificationRepository (enregistrer, parId, parDestinataire, nombreNonLues),
+  port Notifieur (notifier(destinataire, sujet, message)) : point d'extension des canaux, un adaptateur SMS / e-mail
+  s'y branchera sans toucher au domaine ; NotificationService ; NotifieurInterne (@Component) qui depose la
+  notification et la trace dans le journal (identifiant, destinataire et sujet seulement : le message peut porter des
+  informations de sante) ; exception NotificationIntrouvable (404) dans GestionErreursApi.
+- Branchement : RendezVousService recoit un Notifieur ; a la reservation (horaire libre ou creneau) le patient est
+  prevenu (« Rendez-vous confirme », avec la date) et le medecin aussi (« Nouveau rendez-vous ») ; a l'annulation
+  effective le medecin est prevenu (« Rendez-vous annule ») ; une seconde annulation ne previent personne.
+- Commun : FormatDate.lisible(instant) presente les dates des messages a l'heure d'Algerie (07/12/2026 a 10:00).
+- Persistance : adaptateur en memoire et adaptateur JPA ; Liquibase 007 (table notification, index destinataire +
+  date de creation).
+- Tests : service (liste triee par destinataire, nombre de non lues, marquer lue et idempotence, refus d'un tiers,
+  introuvable, tout marquer lu sans toucher les autres), notifieur interne, format de date, rendez-vous (faux
+  Notifieur : qui est prevenu, de quoi, et pas en cas d'echec) ; web 401 sans jeton, 200 PATIENT et MEDECIN,
+  compteur, 200 / 403 / 404 pour marquer lue, 200 pour tout marquer lu.
