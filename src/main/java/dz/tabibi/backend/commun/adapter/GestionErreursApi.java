@@ -2,6 +2,8 @@ package dz.tabibi.backend.commun.adapter;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
+import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
+import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import org.springframework.http.HttpStatus;
@@ -20,9 +22,18 @@ public class GestionErreursApi {
     /** Corps de toute reponse d'erreur metier. */
     public record ErreurApi(String erreur) {}
 
-    @ExceptionHandler({CreneauIntrouvableException.class, RendezVousIntrouvableException.class})
+    @ExceptionHandler({
+            CreneauIntrouvableException.class,
+            RendezVousIntrouvableException.class,
+            OrdonnanceIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
+    }
+
+    /** Contenu refuse par une regle metier (ordonnance sans ligne...). */
+    @ExceptionHandler(OrdonnanceInvalideException.class)
+    public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
+        return reponse(HttpStatus.BAD_REQUEST, ex);
     }
 
     @ExceptionHandler(CreneauDejaReserveException.class)

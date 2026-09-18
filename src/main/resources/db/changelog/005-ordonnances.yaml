@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-ordonnance
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: ordonnance
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: patient_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: rendez_vous_id, type: uuid }
+              - column: { name: lignes_json, type: text, constraints: { nullable: false } }
+              - column: { name: emise_le, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: code_verification, type: varchar(16), constraints: { nullable: false, unique: true } }
+              - column: { name: statut, type: varchar(20), constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_ordonnance_patient
+            tableName: ordonnance
+            columns:
+              - column: { name: patient_id }
+        - createIndex:
+            indexName: idx_ordonnance_medecin
+            tableName: ordonnance
+            columns:
+              - column: { name: medecin_id }

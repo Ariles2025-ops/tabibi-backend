@@ -47,3 +47,21 @@
 
 ## v0.5.1 — Correctif demarrage
 - Hors profil `postgres`, l'auto-configuration DataSource/JPA/Liquibase est exclue : l'API demarre sans base (memoire). Le profil `postgres` la reactive.
+
+## v0.6.0 — Ordonnances
+- POST /api/ordonnances (MEDECIN, 201) : redaction d'une ordonnance pour un patient (rendez-vous facultatif),
+  au moins une ligne { medicament, posologie, duree } sinon 400 ; code de verification de 8 caracteres
+  (SecureRandom, sans O/0/I/1 pour eviter les confusions), statut EMISE.
+- GET /api/ordonnances/mes (PATIENT) : mes ordonnances, les plus recentes d'abord.
+- GET /api/ordonnances/{id} (PATIENT ou MEDECIN) : accessible au patient destinataire et au medecin auteur ;
+  403 sinon, 404 si absente.
+- GET /api/ordonnances/verifier/{code} (public, sans jeton) : { valide, emiseLe, statut }, sans aucune donnee
+  personnelle ; le code est accepte en minuscules ; 404 si le code est inconnu.
+- Module ordonnances : Ordonnance (record immuable), LigneOrdonnance, StatutOrdonnance, CodeVerification,
+  ResultatVerification, port OrdonnanceRepository (enregistrer, parId, parPatient, parMedecin, parCode),
+  OrdonnanceService ; exceptions OrdonnanceInvalide (400) et OrdonnanceIntrouvable (404) dans GestionErreursApi.
+- Adaptateurs : en memoire et JPA (lignes stockees en JSON dans lignes_json via l'ObjectMapper de Spring) ;
+  Liquibase 005 (table ordonnance, code unique, index patient et medecin).
+- Tests : code de 8 caracteres et statut EMISE, refus sans ligne / sans medicament / sans patient, codes distincts,
+  tri par date, acces patient / medecin / tiers, verification (code connu, minuscules, annulee, inconnu),
+  codec JSON ; web 401 / 403 / 201, 400, 200 / 403 / 404 et verification publique 200 / 404.

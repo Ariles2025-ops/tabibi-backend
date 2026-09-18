@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/003-creneaux.yaml
   - include:
       file: db/changelog/004-rendezvous-creneau.yaml
+  - include:
+      file: db/changelog/005-ordonnances.yaml

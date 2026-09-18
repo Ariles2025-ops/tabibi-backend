@@ -31,6 +31,8 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/medecins", "/api/medecins/**").permitAll()
+                // Verification d'une ordonnance par son code (pharmacien) : sans jeton, sans donnee personnelle.
+                .requestMatchers(HttpMethod.GET, "/api/ordonnances/verifier/**").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter())));
         return http.build();
