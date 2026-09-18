@@ -33,6 +33,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/medecins", "/api/medecins/**").permitAll()
                 // Verification d'une ordonnance par son code (pharmacien) : sans jeton, sans donnee personnelle.
                 .requestMatchers(HttpMethod.GET, "/api/ordonnances/verifier/**").permitAll()
+                // Administration : verrou par chemin, en plus du @PreAuthorize des controleurs (defense en profondeur).
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter())));
         return http.build();

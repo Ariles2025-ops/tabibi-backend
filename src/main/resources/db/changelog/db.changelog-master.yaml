@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/006-teleconsultations.yaml
   - include:
       file: db/changelog/007-notifications.yaml
+  - include:
+      file: db/changelog/008-administration.yaml

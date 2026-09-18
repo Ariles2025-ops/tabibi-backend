@@ -30,4 +30,10 @@ public class JpaMedecinRepository implements MedecinRepository {
     public Optional<Medecin> parId(UUID id) {
         return jpa.findById(id).map(MedecinEntity::versDomaine);
     }
+
+    @Override
+    public Medecin enregistrer(Medecin medecin) {
+        jpa.save(MedecinEntity.de(medecin));
+        return medecin;
+    }
 }

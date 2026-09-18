@@ -134,3 +134,38 @@
   lien du medecin et du tiers, detail, consentement reserve au patient, demarrer sans consentement 409, terminer,
   annuler, listes triees, notifications) ; web 401 / 403 par role, 201 / 404 / 403 / 409 pour planifier, 200 pour
   consentir / demarrer / terminer / annuler, 409 sans consentement, lienSalle null pour un patient sans consentement.
+
+## v0.10.0 — Administration
+- POST /api/medecin/candidature (MEDECIN, 201, body { nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr,
+  ville, numeroOrdre, telephone }) : depot d'une candidature a l'annuaire ; 400 si nom, specialite, wilaya ou numero
+  d'ordre manque ; 409 si une candidature en attente ou validee existe deja (une refusee peut etre redeposee).
+- GET /api/medecin/candidature (MEDECIN) : derniere candidature du medecin connecte, 404 s'il n'en a depose aucune.
+- GET /api/admin/candidatures?statut= (ADMIN, statut optionnel) : les plus anciennes d'abord.
+- POST /api/admin/candidatures/{id}/valider (ADMIN, 200) : statut VALIDEE, le medecin est publie dans l'annuaire
+  (fiche sous l'identifiant de son jeton) et prevenu (« Candidature validee ») ; 404 si inconnue, 409 si deja traitee.
+- POST /api/admin/candidatures/{id}/refuser (ADMIN, 200, body { motif }) : statut REFUSEE, le medecin est prevenu avec
+  le motif (« Candidature refusee ») ; 400 sans motif, 404, 409.
+- GET /api/admin/statistiques (ADMIN) : { candidaturesEnAttente, candidaturesValidees, candidaturesRefusees }.
+- Vue { id, medecinId, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone,
+  statut, motifRefus, deposeeLe, traiteeLe }.
+- Securite : SecurityConfig verrouille /api/admin/** au role ADMIN avant anyRequest (defense en profondeur, en plus du
+  @PreAuthorize des controleurs).
+- Module administration : CandidatureMedecin (record immuable : deposer, valider, refuser, estEnAttente),
+  DemandeCandidature, StatutCandidature, StatistiquesAdministration, port CandidatureRepository (enregistrer, parId,
+  derniereDuMedecin, lister(statut optionnel), compter), AdministrationService ; exceptions CandidatureIntrouvable (404)
+  et CandidatureInvalide (400) dans GestionErreursApi ; le doublon de candidature est un conflit (TransitionInvalide, 409).
+- Annuaire : nouveau port MedecinRepository.enregistrer(Medecin) (memoire : les praticiens de demonstration restent
+  seedes, la recherche est triee par nom comme en JPA ; JPA : MedecinEntity.de + save) ; les libelles facultatifs absents
+  (specialiteFr, wilayaFr) sont remplaces par le code correspondant a la publication, l'annuaire les exigeant.
+- Persistance : adaptateur en memoire (ordre de depot conserve) et JPA ; Liquibase 008 (table candidature_medecin,
+  index medecin_id et statut).
+- Keycloak : trois comptes de demonstration dans infra/keycloak/tabibi-realm.json (patient.demo / patient,
+  medecin.demo / medecin avec l'identifiant du premier praticien de demonstration 00000000-0000-0000-0000-000000000001,
+  admin.demo / admin), mots de passe non temporaires et direct access grants actives sur tabibi-web pour obtenir un jeton
+  en ligne de commande en dev local uniquement.
+- Tests : domaine (depot et nettoyage des champs, donnees obligatoires, valider / refuser depuis EN_ATTENTE seulement,
+  motif obligatoire), service (depot, incomplete, doublon 409 en attente et validee, redepot apres refus, validation qui
+  publie dans l'annuaire et previent, libelles completes, refus avec motif et notification, refus sans motif 400,
+  liste triee et filtree, statistiques) ; web 401 sans jeton, 403 PATIENT et MEDECIN sur /api/admin/**, 200 ADMIN,
+  MEDECIN 201 / 200 / 404, 409 doublon, 400 candidature incomplete et refus sans motif ; SecuriteWebTest complete
+  (/api/admin/** refuse a un MEDECIN et a un PATIENT, 401 sans jeton).

@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-candidature-medecin
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: candidature_medecin
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: nom_complet, type: varchar(160), constraints: { nullable: false } }
+              - column: { name: specialite_slug, type: varchar(60), constraints: { nullable: false } }
+              - column: { name: specialite_fr, type: varchar(120) }
+              - column: { name: wilaya_code, type: varchar(4), constraints: { nullable: false } }
+              - column: { name: wilaya_fr, type: varchar(60) }
+              - column: { name: ville, type: varchar(80) }
+              - column: { name: numero_ordre, type: varchar(40), constraints: { nullable: false } }
+              - column: { name: telephone, type: varchar(30) }
+              - column: { name: statut, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: motif_refus, type: text }
+              - column: { name: deposee_le, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: traitee_le, type: timestamptz }
+        - createIndex:
+            indexName: idx_candidature_medecin
+            tableName: candidature_medecin
+            columns:
+              - column: { name: medecin_id }
+        - createIndex:
+            indexName: idx_candidature_statut
+            tableName: candidature_medecin
+            columns:
+              - column: { name: statut }

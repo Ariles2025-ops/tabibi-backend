@@ -14,8 +14,44 @@
       "clientId": "tabibi-web",
       "publicClient": true,
       "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
       "redirectUris": ["http://localhost:4200/*"],
       "webOrigins": ["http://localhost:4200"]
+    }
+  ],
+  "users": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "username": "patient.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Patient",
+      "lastName": "Demo",
+      "email": "patient.demo@tabibi.local",
+      "credentials": [{ "type": "password", "value": "patient", "temporary": false }],
+      "realmRoles": ["PATIENT"]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "username": "medecin.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Amina",
+      "lastName": "Belkacem",
+      "email": "medecin.demo@tabibi.local",
+      "credentials": [{ "type": "password", "value": "medecin", "temporary": false }],
+      "realmRoles": ["MEDECIN"]
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "username": "admin.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Demo",
+      "email": "admin.demo@tabibi.local",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["ADMIN"]
     }
   ]
 }

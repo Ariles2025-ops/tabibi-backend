@@ -21,6 +21,18 @@ class MedecinEntity {
 
     protected MedecinEntity() {}
 
+    static MedecinEntity de(Medecin m) {
+        MedecinEntity e = new MedecinEntity();
+        e.id = m.id();
+        e.nomComplet = m.nomComplet();
+        e.specialiteSlug = m.specialiteSlug();
+        e.specialiteFr = m.specialiteFr();
+        e.wilayaCode = m.wilayaCode();
+        e.wilayaFr = m.wilayaFr();
+        e.ville = m.ville();
+        return e;
+    }
+
     Medecin versDomaine() {
         return new Medecin(id, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville);
     }

@@ -8,7 +8,8 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 ## Securite
 
 - Chaque requete porte un **JWT** signe par **Keycloak** (realm `tabibi`) ; l'autorisation se fait par
-  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`) dans `SecurityConfig` puis par `@PreAuthorize`.
+  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`) dans `SecurityConfig` (dont le verrou `/api/admin/**`
+  reserve au role ADMIN) puis par `@PreAuthorize` sur chaque endpoint.
 - Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient ou medecin selon le role.
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
   400 (contenu invalide), 403 (acces refuse a une ressource d'un autre utilisateur),
@@ -61,6 +62,8 @@ Role MEDECIN :
 | POST | `/api/teleconsultations/{id}/demarrer` | ouvre la session (409 sans consentement du patient) |
 | POST | `/api/teleconsultations/{id}/terminer` | clot la session (409 si elle n'est pas en cours) |
 | POST | `/api/teleconsultations/{id}/annuler` | annule une teleconsultation planifiee (409 sinon) |
+| POST | `/api/medecin/candidature` | depose ma candidature a l'annuaire `{ nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone }` (201, 400, 409) |
+| GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
 
 PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 
@@ -68,6 +71,15 @@ PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 |---|---|---|
 | GET | `/api/ordonnances/{id}` | une ordonnance, pour son patient ou son medecin auteur |
 | GET | `/api/teleconsultations/{id}` | une teleconsultation, pour son patient ou son medecin |
+
+Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig`) :
+
+| Methode | Chemin | Description |
+|---|---|---|
+| GET | `/api/admin/candidatures?statut=EN_ATTENTE` | candidatures, statut optionnel, les plus anciennes d'abord |
+| POST | `/api/admin/candidatures/{id}/valider` | valide : le medecin est publie dans l'annuaire et prevenu (404, 409) |
+| POST | `/api/admin/candidatures/{id}/refuser` | refuse avec `{ motif }` : le medecin est prevenu du motif (400, 404, 409) |
+| GET | `/api/admin/statistiques` | `{ candidaturesEnAttente, candidaturesValidees, candidaturesRefusees }` |
 
 Documentation d'API : `/swagger-ui.html`.
 
@@ -113,6 +125,26 @@ mvn spring-boot:run           # API sur http://localhost:8080 (en memoire)
 # Keycloak : http://localhost:8081 (admin / admin)
 ```
 
+### Comptes de demonstration Keycloak (dev local uniquement)
+
+Le realm importe (`infra/keycloak/tabibi-realm.json`) contient trois utilisateurs aux mots de passe
+simples, a ne jamais reutiliser ailleurs qu'en local :
+
+| Utilisateur | Mot de passe | Role | Identifiant (`sub`) |
+|---|---|---|---|
+| `patient.demo` | `patient` | PATIENT | `11111111-1111-1111-1111-111111111111` |
+| `medecin.demo` | `medecin` | MEDECIN | `00000000-0000-0000-0000-000000000001` (Dr Amina Belkacem, premier praticien de demonstration de l'annuaire en memoire) |
+| `admin.demo` | `admin` | ADMIN | `33333333-3333-3333-3333-333333333333` |
+
+Obtenir un jeton en ligne de commande (le client public `tabibi-web` accepte le flux
+« direct access grants » pour le dev local) :
+
+```bash
+curl -s -X POST http://localhost:8081/realms/tabibi/protocol/openid-connect/token \
+  -d client_id=tabibi-web -d grant_type=password -d username=medecin.demo -d password=medecin \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])'
+```
+
 ## Tester
 
 ```bash
@@ -134,6 +166,7 @@ rendezvous/      reservation, annulation, agenda, rendez-vous honores
 ordonnances/     redaction, consultation, verification publique par code
 notifications/   boite de reception, port Notifieur et notifieur interne
 teleconsultation/ sessions video Jitsi Meet avec consentement du patient
+administration/  candidatures des medecins, validation par l'administrateur, statistiques
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

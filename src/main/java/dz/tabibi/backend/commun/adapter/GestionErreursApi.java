@@ -1,5 +1,7 @@
 package dz.tabibi.backend.commun.adapter;
 
+import dz.tabibi.backend.administration.domain.CandidatureIntrouvableException;
+import dz.tabibi.backend.administration.domain.CandidatureInvalideException;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
@@ -31,13 +33,17 @@ public class GestionErreursApi {
             RendezVousIntrouvableException.class,
             OrdonnanceIntrouvableException.class,
             NotificationIntrouvableException.class,
-            TeleconsultationIntrouvableException.class})
+            TeleconsultationIntrouvableException.class,
+            CandidatureIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }
 
-    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe...). */
-    @ExceptionHandler({OrdonnanceInvalideException.class, CreneauInvalideException.class})
+    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete...). */
+    @ExceptionHandler({
+            OrdonnanceInvalideException.class,
+            CreneauInvalideException.class,
+            CandidatureInvalideException.class})
     public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
         return reponse(HttpStatus.BAD_REQUEST, ex);
     }
