@@ -538,3 +538,26 @@
   et corps transmis pour le patient et le medecin, 401 sans jeton, 403 pour un tiers, 404 si inconnue),
   OpenPdfGenerateurOrdonnanceTest (vrai document : commence par %PDF-, se termine par %%EOF, plus de 1 ko,
   ordonnance annulee et champs absents, deux documents distincts).
+
+## v0.24.0 — Limitation de debit sur les points publics
+- commun/adapter/LimiteurDebit : seau a jetons par cle (capacite, recharge continue de capacite jetons par periode,
+  horloge injectee), ConcurrentHashMap avec purge des entrees inactives depuis une periode entiere (au plus une purge
+  par periode, declenchee au fil de l'eau, ou purger() a la main) ; Decision { autorise, attenteSecondes } (delai avant
+  le prochain jeton, au moins 1 s) ; sans dependance externe.
+- commun/adapter/FiltreLimiteDebit (OncePerRequestFilter) : regles methode + chemin exact ou prefixe /** avec un limiteur
+  chacune ; cle = premier element de X-Forwarded-For quand server.forward-headers-strategy est actif (reverse proxy),
+  sinon adresse distante (« inconnue » a defaut) ; refus 429 { "erreur": "Trop de requetes, reessayez dans un
+  instant." } avec Retry-After ; les autres routes ne sont ni limitees ni comptees.
+- commun/adapter/LimiteDebitConfig (@Configuration, @ConditionalOnProperty tabibi.limite-debit.actif, defaut true) :
+  FilterRegistrationBean a l'ordre SecurityProperties.DEFAULT_FILTER_ORDER - 1 (avant la securite : une rafale est
+  refusee sans decoder de jeton) ; non chargee par les slices web. Regles : GET /api/medecins/** 120/min,
+  GET /api/ordonnances/verifier/** 30/min, POST /api/dawini/besoins, POST /api/conversations, POST /api/avis 20/min
+  chacun ; quotas tabibi.limite-debit.annuaire-par-minute / verification-par-minute / publication-par-minute.
+- application.yml (tabibi.limite-debit.*, TABIBI_LIMITE_DEBIT_ACTIF) ; README (Securite, Configuration, structure) ;
+  limites documentees : seaux par instance (pas de partage entre replicas), refus 429 absents du journal des acces.
+- Tests : LimiteurDebitTest (horloge reglable : capacite puis refus avec attente, recharge sans depasser la capacite,
+  attente d'au moins 1 s, cles independantes, purge des cles inactives, purge automatique au plus une fois par periode,
+  parametres invalides), FiltreLimiteDebitTest (MockHttpServletRequest / Response : 429 apres depassement avec
+  Retry-After et corps JSON sans atteindre la chaine, quota propre a chaque route et a chaque IP, recharge, routes non
+  concernees jamais limitees ni comptees, X-Forwarded-For ignore hors proxy et premier element derriere un proxy avec
+  repli sur l'adresse distante, adresse inconnue, regles par defaut et ordre du filtre, regle incomplete refusee).

@@ -21,6 +21,16 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 - **Journal des acces** : chaque requete `/api/**` est tracee (qui, quoi, quand, resultat, IP tronquee, duree ;
   jamais le corps ni les parametres) par le filtre `FiltreAudit`, consultable par l'administrateur
   (`GET /api/admin/audit`) ; voir la section « Journal des acces ».
+- **Limitation de debit** : un seau a jetons par adresse IP (`LimiteurDebit`, en memoire, sans dependance) protege
+  les routes publiques et les publications sensibles aux abus, par le filtre `FiltreLimiteDebit` place **avant** la chaine
+  de Spring Security (`LimiteDebitConfig`) : `GET /api/medecins/**` 120 req/min, `GET /api/ordonnances/verifier/**`
+  30 req/min (un code de verification ne se devine pas par force brute), `POST /api/dawini/besoins`,
+  `POST /api/conversations` et `POST /api/avis` 20 req/min chacun. Au-dela : `429 { "erreur": "Trop de requetes,
+  reessayez dans un instant." }` avec l'en-tete `Retry-After` (secondes). Derriere le reverse proxy (profil `postgres`,
+  `server.forward-headers-strategy` actif), l'adresse est le premier element de `X-Forwarded-For` ; en acces direct
+  l'en-tete est ignore (n'importe qui peut l'ecrire). Quotas dans `tabibi.limite-debit.*`, `TABIBI_LIMITE_DEBIT_ACTIF=false`
+  retire le filtre. Les seaux sont propres a chaque instance de l'API (pas de partage entre replicas) et les refus 429
+  ne figurent pas dans le journal des acces (ils sont refuses avant la securite).
 - **CORS** : le front web appelle l'API depuis une autre origine ; seules les origines listees dans
   `tabibi.cors.origines` (`CorsProprietes`, variable `TABIBI_CORS_ORIGINES`) sont acceptees, sur `/api/**`,
   methodes GET/POST/PUT/DELETE/OPTIONS, en-tetes `Authorization` et `Content-Type`, sans cookies
@@ -38,6 +48,7 @@ poste de developpement (`src/main/resources/application.yml`) :
 | `TABIBI_WEB_BASE_URL` | `http://localhost:4200` | adresse publique du front web, vers laquelle renvoie le QR code d'une ordonnance imprimee (`/verifier?code=XXXX`) |
 | `TABIBI_TELECONSULTATION_BASE_URL` | `https://meet.jit.si` | instance Jitsi Meet des teleconsultations |
 | `TABIBI_RAPPELS_ACTIFS` | `true` | `false` coupe le planificateur des rappels |
+| `TABIBI_LIMITE_DEBIT_ACTIF` | `true` | `false` retire la limitation de debit par adresse IP (quotas dans `tabibi.limite-debit.*`) |
 | `SPRING_PROFILES_ACTIVE` | (aucun : en memoire) | `postgres` active JPA / Liquibase sur PostgreSQL |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | `jdbc:postgresql://localhost:5432/tabibi` / `tabibi` / `tabibi` | base PostgreSQL (profil `postgres`) |
 | `SERVER_FORWARD_HEADERS_STRATEGY` | `native` (profil `postgres`) | prise en compte des en-tetes `X-Forwarded-*` du reverse proxy ; `none` en acces direct |
@@ -429,7 +440,7 @@ cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-
 rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
 audit/           journal des acces : EntreeAudit, AdresseIp (troncature), port AuditRepository, FiltreAudit (servlet, apres la securite), AuditConfig, consultation ADMIN
 identite/        MoiController
-commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
+commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date, limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig)
 config/          securite (JWT + roles Keycloak, CORS : CorsProprietes), horloge (Clock) et planification (@EnableScheduling)
 ```
 

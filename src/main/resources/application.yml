@@ -30,6 +30,14 @@ tabibi:
     # Salle video Jitsi Meet (open source, sans SDK proprietaire) : instance publique par defaut,
     # remplacable par une instance auto-hebergee. Le lien d'une salle vaut base-url/salleId.
     base-url: ${TABIBI_TELECONSULTATION_BASE_URL:https://meet.jit.si}
+  limite-debit:
+    # Limitation de debit par adresse IP (seau a jetons, en memoire, sans dependance) sur les routes
+    # publiques et les publications ; 429 + Retry-After au-dela du quota. false retire le filtre
+    # (tests de charge, limitation deja assuree par le reverse proxy).
+    actif: ${TABIBI_LIMITE_DEBIT_ACTIF:true}
+    annuaire-par-minute: 120        # GET /api/medecins/** (recherche, fiche, creneaux, avis)
+    verification-par-minute: 30     # GET /api/ordonnances/verifier/** (codes devinables par force brute sinon)
+    publication-par-minute: 20      # POST /api/dawini/besoins, POST /api/conversations, POST /api/avis (chacun)
   rappels:
     # Rappel de rendez-vous 24 h avant, envoye toutes les heures par le planificateur ;
     # false coupe le planificateur (l'appel manuel POST /api/admin/rappels/executer reste possible).
