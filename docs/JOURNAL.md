@@ -480,3 +480,32 @@
 - README : badge CI (organisation a remplacer), ou trouver l'image (tags latest et sha-<commit>, visibilite du
   paquet GHCR, tag fige pour un deploiement reproductible), Dependabot.
 
+## v0.22.0 — Durcissement du realm Keycloak
+- infra/keycloak/tabibi-realm.json : bruteForceProtected (failureFactor 5, waitIncrementSeconds 60,
+  maxFailureWaitSeconds 900, permanentLockout false, maxDeltaTimeSeconds 43200, quickLoginCheckMilliSeconds 1000,
+  minimumQuickLoginWaitSeconds 60), passwordPolicy « length(10) and digits(1) and lowerCase(1) and upperCase(1) and
+  notUsername », otpPolicyType totp (HmacSHA1, 6 chiffres, 30 s, fenetre 1 ; MFA disponible, non imposee : le README
+  explique comment l'imposer aux roles ADMIN / MEDECIN par un flux browser conditionnel et l'action requise
+  « Configure OTP »), sslRequired external, accessTokenLifespan 300, ssoSessionIdleTimeout 1800,
+  ssoSessionMaxLifespan 36000, rememberMe false ; roles decrits ; client tabibi-web (public, standard flow, implicit
+  desactive, PKCE S256, redirectUris http://localhost:4200/* et https://tabibi.example/*, webOrigins explicites,
+  post.logout.redirect.uris +, directAccessGrantsEnabled true conserve pour le dev et documente comme reglage a
+  desactiver en production) ; nouveau client tabibi-mobile (public, PKCE S256, redirect dz.tabibi.app:/oauthredirect,
+  sans direct access grants).
+- Comptes de demonstration conserves avec leurs mots de passe simples, importes haches (pbkdf2-sha512, 210 000
+  iterations, secretData / credentialData) : Keycloak valide la politique de mot de passe a l'import des valeurs en
+  clair (RepresentationToModel.createCredentials -> PasswordCredentialProvider), ce qui aurait fait echouer l'import
+  du realm ; les empreintes sont verifiees par RealmKeycloakTest contre les mots de passe du README.
+- infra/keycloak/realm-production.py : derive infra/keycloak/production/tabibi-realm.json (ignore par git) : users
+  retires, directAccessGrantsEnabled false sur tous les clients, tabibi.example remplace par le domaine reel (argument
+  ou DOMAINE de .env), adresses localhost retirees ; docker-compose.prod.yml monte ce repertoire dans Keycloak ;
+  README : les comptes de demo ne doivent JAMAIS exister en production, suppression par la console ou kcadm.sh.
+- Realm copie dans le depot tabibi-infra-docs (infra/keycloak/tabibi-realm.json).
+- README : section Securite Keycloak, comptes de demonstration, jeton en ligne de commande (dev seulement),
+  deploiement (generation du realm de production, administrateur temporaire).
+- Tests : RealmKeycloakTest (Jackson, fichier lu depuis le repertoire du projet : force brute, politique de mot de
+  passe, OTP, sslRequired, durees de jeton et de session, rememberMe, roles PATIENT / MEDECIN / SECRETAIRE / ADMIN /
+  PHARMACIE, client web public avec PKCE et origines explicites sans joker, client mobile public avec PKCE sans mot
+  de passe direct, cinq comptes de demonstration haches sans valeur en clair dont l'empreinte PBKDF2-SHA512 est
+  recalculee et comparee, identifiants fixes et roles).
+

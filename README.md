@@ -255,7 +255,13 @@ par `docker build -t tabibi-backend .`) pour tester localement la configuration 
 ### Comptes de demonstration Keycloak (dev local uniquement)
 
 Le realm importe (`infra/keycloak/tabibi-realm.json`) contient cinq utilisateurs aux mots de passe
-simples, a ne jamais reutiliser ailleurs qu'en local :
+simples, a ne jamais reutiliser ailleurs qu'en local. **Ils ne doivent JAMAIS exister en production** :
+le realm de production est derive par `infra/keycloak/realm-production.py`, qui les retire (voir
+« Securite Keycloak ») ; si une instance en a herite, les supprimer dans la console (Users) ou par
+`kcadm.sh delete users/<id> -r tabibi`. Les mots de passe sont importes haches (PBKDF2-SHA512,
+`secretData` / `credentialData`) : la politique de mot de passe du realm, qui les refuserait en clair a
+l'import, ne s'applique qu'aux changements de mot de passe ; `RealmKeycloakTest` verifie que les
+empreintes correspondent bien aux mots de passe ci-dessous.
 
 | Utilisateur | Mot de passe | Role | Identifiant (`sub`) |
 |---|---|---|---|
@@ -266,7 +272,9 @@ simples, a ne jamais reutiliser ailleurs qu'en local :
 | `secretaire.demo` | `secretaire` | SECRETAIRE | `55555555-5555-5555-5555-555555555555` (a rattacher par `medecin.demo` via `POST /api/medecin/secretaires`) |
 
 Obtenir un jeton en ligne de commande (le client public `tabibi-web` accepte le flux
-« direct access grants » pour le dev local) :
+« direct access grants » **pour le dev local seulement** : `directAccessGrantsEnabled` est un reglage de
+developpement, desactive en production par `realm-production.py` ; les applications passent par le flux
+Authorization Code + PKCE) :
 
 ```bash
 curl -s -X POST http://localhost:8081/realms/tabibi/protocol/openid-connect/token \
@@ -304,7 +312,7 @@ du paquet, ou `docker login ghcr.io` sur le serveur avec un jeton `read:packages
 | Service | Image | Role |
 |---|---|---|
 | `postgres` | `postgres:16-alpine` | bases `tabibi` (donnees de patients) et `keycloak` (role dedie, cree par `infra/postgres/init/01-keycloak.sh` a la premiere initialisation du volume), `healthcheck` `pg_isready` |
-| `keycloak` | `quay.io/keycloak/keycloak:26.0` | `start --import-realm` (mode production), `KC_DB=postgres`, `KC_HOSTNAME=https://auth.<domaine>`, `KC_HTTP_ENABLED=true` et `KC_PROXY_HEADERS=xforwarded` derriere Caddy, administrateur initial par variables |
+| `keycloak` | `quay.io/keycloak/keycloak:26.0` | `start --import-realm` (mode production) du realm `infra/keycloak/production/tabibi-realm.json` genere par `realm-production.py`, `KC_DB=postgres`, `KC_HOSTNAME=https://auth.<domaine>`, `KC_HTTP_ENABLED=true` et `KC_PROXY_HEADERS=xforwarded` derriere Caddy, administrateur initial par variables (compte temporaire : creer un administrateur permanent puis le supprimer) |
 | `backend` | `ghcr.io/<org>/tabibi-backend:latest` | `SPRING_PROFILES_ACTIVE=postgres`, `SPRING_DATASOURCE_*`, `TABIBI_KEYCLOAK_ISSUER=https://auth.<domaine>/realms/tabibi` (emetteur attendu), cles de signature lues en interne (`SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/...`), `TABIBI_CORS_ORIGINES=https://<domaine>`, `SERVER_FORWARD_HEADERS_STRATEGY=native` ; demarre une fois PostgreSQL sain |
 | `web` | `ghcr.io/<org>/tabibi-web:latest` | front Angular (depot `tabibi-web`) |
 | `caddy` | `caddy:2-alpine` | reverse proxy, certificats Let's Encrypt automatiques (`infra/caddy/Caddyfile`) : `<domaine>` -> `web:80`, `api.<domaine>` -> `backend:8080`, `auth.<domaine>` -> `keycloak:8080` ; HSTS, `nosniff` |
@@ -314,6 +322,7 @@ premier demarrage (obtention des certificats).
 
 ```bash
 cp .env.example .env            # puis renseigner DOMAINE, ACME_EMAIL, ORG_GITHUB et les secrets (openssl rand -base64 32)
+infra/keycloak/realm-production.py   # realm de production : sans comptes de demo, sans mot de passe direct, domaine reel
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps                       # backend « healthy » apres une minute environ
@@ -338,6 +347,34 @@ les fichiers de plus de 14 jours (`RETENTION_JOURS`). A planifier chaque nuit :
 
 Restauration : `docker compose -f docker-compose.prod.yml exec -T postgres pg_restore -U tabibi -d tabibi --clean --if-exists < tabibi-<horodatage>.dump`.
 Les sauvegardes contiennent des donnees de sante : copie chiffree hors du serveur, acces restreint.
+
+## Securite Keycloak
+
+Le realm `tabibi` (`infra/keycloak/tabibi-realm.json`, verifie par `RealmKeycloakTest`) est durci :
+
+- **Force brute** : `bruteForceProtected` (5 echecs, attente croissante de 60 s, 15 min au plus, verrouillage
+  temporaire jamais permanent).
+- **Mots de passe** : `length(10) and digits(1) and lowerCase(1) and upperCase(1) and notUsername`.
+- **MFA** : politique OTP `totp` (6 chiffres, 30 s), disponible pour tout utilisateur (console du compte, « Signing in »).
+  Pour l'**imposer aux roles ADMIN et MEDECIN** : console d'administration, Authentication > Flows, dupliquer le flux
+  `browser`, dans le sous-flux « Browser - Conditional OTP » ajouter la condition « Condition - user role » (role
+  `ADMIN`, puis une seconde pour `MEDECIN`, ou un role composite) et passer « OTP Form » a *Required*, puis
+  Action > *Bind flow* > Browser flow : a la prochaine connexion, l'utilisateur concerne recoit l'action requise
+  « Configure OTP » et enregistre son application d'authentification. Pour un compte donne : Users > compte >
+  « Required user actions » > *Configure OTP*.
+- **Sessions et jetons** : jeton d'acces de 5 min (`accessTokenLifespan: 300`), session inactive close apres 30 min
+  (`ssoSessionIdleTimeout: 1800`), 10 h au plus, pas de « se souvenir de moi », `sslRequired: external` (HTTPS
+  obligatoire hors reseau local).
+- **Clients** : `tabibi-web` (public, Authorization Code + PKCE S256, `redirectUris` et `webOrigins` explicites :
+  `http://localhost:4200` et `https://tabibi.example`, jamais `*`) et `tabibi-mobile` (public, PKCE S256, redirection
+  `dz.tabibi.app:/oauthredirect`, sans mot de passe direct). `directAccessGrantsEnabled: true` sur `tabibi-web` est
+  un reglage de dev (jeton par `curl`), a desactiver en production.
+- **Production** : `infra/keycloak/realm-production.py [domaine]` ecrit `infra/keycloak/production/tabibi-realm.json`
+  (ignore par git) a partir du realm de dev : comptes de demonstration retires, `directAccessGrantsEnabled` a `false`
+  sur tous les clients, `tabibi.example` remplace par le domaine reel et adresses `localhost` retirees ; c'est ce
+  fichier que `docker-compose.prod.yml` monte dans Keycloak. Le realm n'est importe qu'au premier demarrage
+  (base vide) : ensuite, les reglages se changent dans la console.
+- Le meme realm est copie dans le depot `tabibi-infra-docs` (`infra/keycloak/tabibi-realm.json`).
 
 ## Tester
 

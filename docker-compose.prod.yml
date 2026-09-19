@@ -44,7 +44,9 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD manquant dans .env}
     volumes:
-      - ./infra/keycloak:/opt/keycloak/data/import:ro
+      # Realm de production derive du realm de dev par infra/keycloak/realm-production.py (sans les
+      # comptes de demonstration, sans mot de passe direct, avec le domaine reel) : a generer avant le premier demarrage.
+      - ./infra/keycloak/production:/opt/keycloak/data/import:ro
     depends_on:
       postgres:
         condition: service_healthy
