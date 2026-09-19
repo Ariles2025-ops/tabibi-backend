@@ -33,6 +33,8 @@ Tout utilisateur authentifie :
 | Methode | Chemin | Description |
 |---|---|---|
 | GET | `/api/moi` | identite portee par le jeton |
+| GET | `/api/moi/profil` | mon profil `{ utilisateurId, nomComplet, telephone, dateNaissance, wilayaCode, langue, misAJourLe }` (404 tant qu'il n'est pas renseigne) |
+| PUT | `/api/moi/profil` | renseigne ou remplace mon profil `{ nomComplet, telephone, dateNaissance, wilayaCode, langue }` (400 si invalide : nom 2..120, telephone algerien, date de naissance passee, langue fr / ar / kab / en) |
 | GET | `/api/notifications/mes` | mes notifications, les plus recentes d'abord |
 | GET | `/api/notifications/non-lues/nombre` | `{ "nombre": n }` |
 | POST | `/api/notifications/{id}/lue` | marque une notification lue (403 si elle n'est pas a moi, 404 si inconnue) |
@@ -201,6 +203,7 @@ administration/  candidatures des medecins, validation par l'administrateur, sta
 messagerie/      conversations patient-medecin (apres un rendez-vous) et messages
 avis/            avis verifies des patients (rendez-vous honore), synthese publique, moderation
 dawini/          besoins de medicaments des patients et reponses des pharmacies (role PHARMACIE)
+profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue)
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

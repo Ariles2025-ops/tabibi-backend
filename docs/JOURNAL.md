@@ -270,3 +270,26 @@
   invalide / besoin inconnu sans rien enregistrer, reponses pour patient tiers 403 et pharmacie) ; web 401 sans jeton,
   PATIENT 201 / 400 / 200 / 409 / 403 / 404, PHARMACIE 200 / 201 / 400 sans wilaya / 409 / 404, MEDECIN 403 sur les
   routes PHARMACIE et PATIENT 403 sur les routes PHARMACIE, patientId absent de la vue pharmacie, reponses selon le role.
+
+## v0.14.0 — Profil
+- GET /api/moi/profil (tout utilisateur authentifie) : profil de l'utilisateur connecte, identifie par le sujet de
+  son jeton ; 404 (ProfilIntrouvable, corps { erreur }) tant qu'il ne l'a jamais renseigne.
+- PUT /api/moi/profil (tout utilisateur authentifie, 200, body { nomComplet, telephone, dateNaissance, wilayaCode,
+  langue }) : renseigne ou remplace le profil (un seul par utilisateur, misAJourLe = date de l'appel) ; 400 si une
+  regle n'est pas respectee.
+- Vue ProfilVue { utilisateurId, nomComplet, telephone, dateNaissance (yyyy-MM-dd), wilayaCode, langue, misAJourLe }.
+- Domaine : Profil (record immuable, renseigner avec validation) : nom complet obligatoire de 2 a 120 caracteres ;
+  telephone facultatif, chiffres seulement une fois les espaces retires, 9 a 10 chiffres commencant par 0 (mobile
+  0550123456 ou fixe 021123456) ; date de naissance facultative, dans le passe a l'heure d'Algerie et posterieure a
+  1900 ; wilaya facultative (au plus 4 caracteres) ; langue facultative parmi fr, ar, kab, en (fr par defaut, casse
+  ignoree) ; les espaces autour sont retires, les facultatifs blancs effaces. DemandeProfil, port ProfilRepository
+  (parUtilisateur, enregistrer = creation ou remplacement), ProfilService (monProfil, enregistrer) ; exceptions
+  ProfilInvalide (400) et ProfilIntrouvable (404) dans GestionErreursApi.
+- Persistance : adaptateur en memoire (un profil par utilisateur) et JPA (cle = identifiant de l'utilisateur, save
+  insere ou met a jour) ; Liquibase 012 (table profil : utilisateur_id cle primaire, nom_complet varchar(120),
+  telephone varchar(20), date_naissance date, wilaya_code varchar(4), langue varchar(3), mis_a_jour_le).
+- Tests : domaine (profil complet, nettoyage, nom obligatoire et bornes 2 / 120, telephones mobiles et fixes acceptes,
+  formats refuses, date de naissance hier / aujourd'hui / demain a l'heure d'Algerie, 1900 refuse et 1901 accepte,
+  wilaya bornee, langues et defaut fr, utilisateur et demande obligatoires), service (vide avant, creation datee,
+  remplacement sans doublon, un profil par utilisateur, refus sans toucher au profil existant) ; web 401 sans jeton,
+  404 sans profil, PUT 200 puis GET 200, accessible a un medecin, 400 invalide.

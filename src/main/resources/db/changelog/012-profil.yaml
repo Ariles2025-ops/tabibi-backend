@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-profil
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: profil
+            columns:
+              - column: { name: utilisateur_id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: nom_complet, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: telephone, type: varchar(20) }
+              - column: { name: date_naissance, type: date }
+              - column: { name: wilaya_code, type: varchar(4) }
+              - column: { name: langue, type: varchar(3), constraints: { nullable: false } }
+              - column: { name: mis_a_jour_le, type: timestamptz, constraints: { nullable: false } }
