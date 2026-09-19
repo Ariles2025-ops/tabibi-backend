@@ -20,10 +20,11 @@ jobs:
       - name: Diag deps prometheus (temporaire)
         if: always()
         run: |
+          mvn -B dependency:tree > /tmp/tree.txt 2>&1 || true
           {
             echo '## Deps micrometer / prometheus'
             echo '```'
-            mvn -B -q dependency:tree -Dincludes='io.micrometer:*,io.prometheus:*' 2>&1 | tail -50
+            grep -iE 'micrometer|prometheus' /tmp/tree.txt || echo '(aucune ligne micrometer/prometheus)'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Build & tests
