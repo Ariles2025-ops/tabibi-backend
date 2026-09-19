@@ -78,6 +78,11 @@ services:
   web:
     image: ghcr.io/${ORG_GITHUB}/tabibi-web:${WEB_TAG:-latest}
     restart: unless-stopped
+    environment:
+      # L'image web derive l'API (https://api.DOMAINE) et Keycloak (https://auth.DOMAINE/realms/tabibi) de DOMAINE
+      # pour ecrire assets/config.json et sa politique de securite (CSP). Surcharges possibles : TABIBI_API_URL,
+      # TABIBI_KEYCLOAK_ISSUER, TABIBI_KEYCLOAK_CLIENT_ID.
+      DOMAINE: ${DOMAINE:?DOMAINE manquant dans .env}
     networks: [interne]
 
   caddy:

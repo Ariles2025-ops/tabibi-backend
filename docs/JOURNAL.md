@@ -509,3 +509,8 @@
   de passe direct, cinq comptes de demonstration haches sans valeur en clair dont l'empreinte PBKDF2-SHA512 est
   recalculee et comparee, identifiants fixes et roles).
 
+
+## v0.22.1 — Correctif orchestration
+- docker-compose.prod.yml : le service `web` recoit DOMAINE (l'image tabibi-web en derive l'URL de l'API et de Keycloak
+  pour assets/config.json et sa CSP) ; sans cette variable, le front retombait sur localhost.
+- pom.xml : version alignee sur le journal (0.22.x).
