@@ -18,6 +18,10 @@ server:
   port: 8080
 
 tabibi:
+  cors:
+    # Origines (schema://hote:port) autorisees a appeler l'API depuis un navigateur, separees par
+    # des virgules : le serveur de dev Angular par defaut ; en production, l'origine publique du front.
+    origines: ${TABIBI_CORS_ORIGINES:http://localhost:4200}
   teleconsultation:
     # Salle video Jitsi Meet (open source, sans SDK proprietaire) : instance publique par defaut,
     # remplacable par une instance auto-hebergee. Le lien d'une salle vaut base-url/salleId.

@@ -385,3 +385,23 @@
   ignore, bornes de la fenetre : a l'instant inclus, 23 h 59 inclus, 24 h exclu, passe exclu ; deja rappele ignore et
   date intacte ; annule et honore ignores ; deux executions n'envoient qu'une fois ; rien a envoyer), RappelWebTest
   (401 sans jeton, PATIENT et MEDECIN 403, ADMIN 200 { nombre }).
+
+## v0.18.0 — CORS
+- Le front web (Angular, http://localhost:4200 en dev) appelle l'API depuis le navigateur : sans CORS tout appel est
+  bloque. SecurityConfig ajoute http.cors(...) avec un CorsConfigurationSource (bean corsConfigurationSource) sur
+  /api/** : origines de la propriete tabibi.cors.origines, methodes GET/POST/PUT/DELETE/OPTIONS, en-tetes Authorization
+  et Content-Type, credentials false (API sans etat, jeton en en-tete), max-age 3600. Une origine ou une methode non
+  autorisee est refusee (403, sans en-tete Access-Control-Allow-Origin) avant d'atteindre l'API.
+- config/CorsProprietes : liste d'origines lue par @Value("${tabibi.cors.origines:http://localhost:4200}") (valeur par
+  defaut robuste : la propriete est facultative), blancs et entrees vides retires ; enregistree par @Import depuis
+  SecurityConfig, donc presente dans les @WebMvcTest existants qui n'importent que SecurityConfig, sans rien changer
+  a ces tests. application.yml : tabibi.cors.origines: ${TABIBI_CORS_ORIGINES:http://localhost:4200} (liste separee
+  par des virgules).
+- README : section Configuration (variables d'environnement, dont TABIBI_CORS_ORIGINES), CORS dans Securite, structure.
+- Tests : CorsWebTest (@WebMvcTest sur AnnuaireController, public : preflight OPTIONS depuis http://localhost:4200
+  avec Access-Control-Request-Method GET repond 200 avec Access-Control-Allow-Origin, Allow-Methods, Allow-Headers
+  Authorization, Max-Age 3600 et sans Allow-Credentials, sans atteindre le controleur ; origine inconnue et methode
+  PATCH refusees 403 sans en-tete ; requete simple GET depuis le front avec l'en-tete, depuis une origine inconnue
+  refusee), CorsProprietesTest (nettoyage des blancs et entrees vides, liste vide sans origine, configuration CORS
+  construite par SecurityConfig : chemin /api/** seul, origines, methodes, en-tetes, credentials false, max-age).
+

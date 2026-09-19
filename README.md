@@ -15,6 +15,22 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
   400 (contenu invalide), 403 (acces refuse a une ressource d'un autre utilisateur),
   404 (introuvable), 409 (conflit avec l'etat courant).
+- **CORS** : le front web appelle l'API depuis une autre origine ; seules les origines listees dans
+  `tabibi.cors.origines` (`CorsProprietes`, variable `TABIBI_CORS_ORIGINES`) sont acceptees, sur `/api/**`,
+  methodes GET/POST/PUT/DELETE/OPTIONS, en-tetes `Authorization` et `Content-Type`, sans cookies
+  (`credentials: false`), preflight garde 1 h. Une autre origine est refusee (403) avant d'atteindre l'API.
+
+## Configuration
+
+Toute la configuration passe par des variables d'environnement, avec des valeurs par defaut pour le
+poste de developpement (`src/main/resources/application.yml`) :
+
+| Variable | Defaut | Role |
+|---|---|---|
+| `TABIBI_KEYCLOAK_ISSUER` | `http://localhost:8081/realms/tabibi` | emetteur des jetons (realm Keycloak) |
+| `TABIBI_CORS_ORIGINES` | `http://localhost:4200` | origines autorisees a appeler l'API depuis un navigateur, separees par des virgules (ex. `https://tabibi.example,https://www.tabibi.example`) |
+| `TABIBI_TELECONSULTATION_BASE_URL` | `https://meet.jit.si` | instance Jitsi Meet des teleconsultations |
+| `TABIBI_RAPPELS_ACTIFS` | `true` | `false` coupe le planificateur des rappels |
 
 ## Endpoints
 
@@ -251,7 +267,7 @@ cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-
 rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
-config/          securite (JWT + roles Keycloak), horloge (Clock) et planification (@EnableScheduling)
+config/          securite (JWT + roles Keycloak, CORS : CorsProprietes), horloge (Clock) et planification (@EnableScheduling)
 ```
 
 Le detail de chaque version est dans `docs/JOURNAL.md`.
