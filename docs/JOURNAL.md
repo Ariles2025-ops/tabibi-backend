@@ -232,3 +232,41 @@
   triee et filtree) ; web 401 sans jeton, PATIENT 201 / 400 / 409 / 404 / 403, public 200 sans jeton et anonymise,
   moyenne nulle sans avis, MEDECIN signaler 200 / 403 / 404, ADMIN liste / masquer / retablir 200 / 409 / 404,
   PATIENT et MEDECIN 403 sur /api/admin/avis.
+
+## v0.13.0 — Dawini
+- Nouveau role Keycloak PHARMACIE (roles du realm, traduit en ROLE_PHARMACIE par KeycloakRoleConverter sans changement)
+  et compte de demonstration pharmacie.demo / pharmacie (44444444-4444-4444-4444-444444444444) dans
+  infra/keycloak/tabibi-realm.json ; README (roles, comptes de demo).
+- POST /api/dawini/besoins (PATIENT, 201, body { medicament, wilayaCode, commune, precision }) : publie un besoin de
+  medicament ouvert ; 400 si le medicament ou la wilaya manque, ou si une donnee est trop longue (medicament 200,
+  wilaya 4, commune 120, precision 500 caracteres) ; espaces autour retires, facultatifs blancs effaces.
+- GET /api/dawini/besoins/mes (PATIENT) : mes besoins, tous statuts, les plus recents d'abord, avec nombreReponses.
+- POST /api/dawini/besoins/{id}/cloturer (PATIENT, 200) : 404 si inconnu, 403 s'il est a un autre patient, 409 si deja
+  cloture ; un besoin cloture n'est plus propose aux pharmacies et n'accepte plus de reponse.
+- GET /api/dawini/besoins?wilaya=16 (PHARMACIE) : besoins ouverts de la wilaya, les plus recents d'abord, patientId
+  null (jamais expose aux pharmacies) ; 400 sans wilaya (BesoinInvalide, corps { erreur }).
+- POST /api/dawini/besoins/{id}/reponses (PHARMACIE, 201, body { nomPharmacie, disponible, prixDa, commentaire }) :
+  400 si le nom ou la disponibilite manque, prix negatif ou commentaire > 500 ; 404 ; 409 si le besoin est cloture ou si
+  cette pharmacie a deja repondu (une reponse par pharmacie et par besoin) ; le patient est prevenu (« Reponse d'une
+  pharmacie », « Une pharmacie a repondu a votre demande de medicament. »).
+- GET /api/dawini/besoins/{id}/reponses (PATIENT proprietaire, 403 sinon, ou PHARMACIE) : les plus anciennes d'abord ;
+  le controleur choisit reponsesPourPatient ou reponsesPourPharmacie selon le role porte par le jeton (Authentication).
+- Vues : BesoinVue { id, patientId, medicament, wilayaCode, commune, precision, statut, publieLe, clotureLe,
+  nombreReponses } et ReponseVue { id, besoinId, pharmacieId, nomPharmacie, disponible, prixDa, commentaire, repondueLe }.
+- Module dawini : BesoinMedicament (record immuable : publier avec validation, cloturer en copie datee, estOuvert,
+  estDe), DemandeBesoin, StatutBesoin, ReponsePharmacie (record immuable : repondre avec validation), DemandeReponse,
+  ports BesoinRepository (enregistrer, parId, parPatient, ouvertsParWilaya) et ReponseRepository (enregistrer,
+  parBesoin, parBesoinEtPharmacie, compterParBesoin), DawiniService (Notifieur) ; exceptions BesoinIntrouvable (404),
+  BesoinInvalide et ReponseInvalide (400) dans GestionErreursApi ; cloture double, besoin cloture et double reponse
+  sont des conflits (TransitionInvalide, 409).
+- Persistance : adaptateurs en memoire (ordre de publication conserve a date egale) et JPA
+  (findByWilayaCodeAndStatutOrderByPublieLeDesc, findByBesoinIdAndPharmacieId, countByBesoinId) ; Liquibase 011
+  (table besoin_medicament : index patient_id et (wilaya_code, statut) ; table reponse_pharmacie : unique
+  (besoin_id, pharmacie_id), index besoin_id).
+- Tests : domaine (publication et nettoyage, obligatoires, longueurs bornees, cloture en copie et unique ; reponse
+  complete, prix et commentaire facultatifs, nom et disponibilite obligatoires, prix negatif, bornes), service
+  (publication, validation, liste triee, cloture 403 / 409 / 404, besoins ouverts par wilaya excluant clotures et autres
+  wilayas, wilaya obligatoire, reponse ok + notification sans detail, besoin cloture 409, double reponse 409, reponse
+  invalide / besoin inconnu sans rien enregistrer, reponses pour patient tiers 403 et pharmacie) ; web 401 sans jeton,
+  PATIENT 201 / 400 / 200 / 409 / 403 / 404, PHARMACIE 200 / 201 / 400 sans wilaya / 409 / 404, MEDECIN 403 sur les
+  routes PHARMACIE et PATIENT 403 sur les routes PHARMACIE, patientId absent de la vue pharmacie, reponses selon le role.

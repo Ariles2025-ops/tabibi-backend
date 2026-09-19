@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/009-messagerie.yaml
   - include:
       file: db/changelog/010-avis.yaml
+  - include:
+      file: db/changelog/011-dawini.yaml

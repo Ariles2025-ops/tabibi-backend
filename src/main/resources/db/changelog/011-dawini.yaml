@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-besoin-medicament
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: besoin_medicament
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: patient_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: medicament, type: varchar(200), constraints: { nullable: false } }
+              - column: { name: wilaya_code, type: varchar(4), constraints: { nullable: false } }
+              - column: { name: commune, type: varchar(120) }
+              - column: { name: precision, type: varchar(500) }
+              - column: { name: statut, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: publie_le, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: cloture_le, type: timestamptz }
+        - createIndex:
+            indexName: idx_besoin_patient
+            tableName: besoin_medicament
+            columns:
+              - column: { name: patient_id }
+        - createIndex:
+            indexName: idx_besoin_wilaya_statut
+            tableName: besoin_medicament
+            columns:
+              - column: { name: wilaya_code }
+              - column: { name: statut }
+  - changeSet:
+      id: 011-reponse-pharmacie
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: reponse_pharmacie
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: besoin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: pharmacie_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: nom_pharmacie, type: varchar(160), constraints: { nullable: false } }
+              - column: { name: disponible, type: boolean, constraints: { nullable: false } }
+              - column: { name: prix_da, type: int }
+              - column: { name: commentaire, type: varchar(500) }
+              - column: { name: repondue_le, type: timestamptz, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            constraintName: uk_reponse_besoin_pharmacie
+            tableName: reponse_pharmacie
+            columnNames: besoin_id, pharmacie_id
+        - createIndex:
+            indexName: idx_reponse_besoin
+            tableName: reponse_pharmacie
+            columns:
+              - column: { name: besoin_id }

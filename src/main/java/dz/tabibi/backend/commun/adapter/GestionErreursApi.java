@@ -8,6 +8,9 @@ import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
+import dz.tabibi.backend.dawini.domain.BesoinIntrouvableException;
+import dz.tabibi.backend.dawini.domain.BesoinInvalideException;
+import dz.tabibi.backend.dawini.domain.ReponseInvalideException;
 import dz.tabibi.backend.messagerie.domain.ConversationIntrouvableException;
 import dz.tabibi.backend.messagerie.domain.MessageInvalideException;
 import dz.tabibi.backend.notifications.domain.NotificationIntrouvableException;
@@ -40,18 +43,21 @@ public class GestionErreursApi {
             TeleconsultationIntrouvableException.class,
             CandidatureIntrouvableException.class,
             ConversationIntrouvableException.class,
-            AvisIntrouvableException.class})
+            AvisIntrouvableException.class,
+            BesoinIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }
 
-    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete, message vide, note hors bornes...). */
+    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete, message vide, note hors bornes, besoin sans medicament...). */
     @ExceptionHandler({
             OrdonnanceInvalideException.class,
             CreneauInvalideException.class,
             CandidatureInvalideException.class,
             MessageInvalideException.class,
-            AvisInvalideException.class})
+            AvisInvalideException.class,
+            BesoinInvalideException.class,
+            ReponseInvalideException.class})
     public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
         return reponse(HttpStatus.BAD_REQUEST, ex);
     }

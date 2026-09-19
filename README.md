@@ -8,9 +8,10 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 ## Securite
 
 - Chaque requete porte un **JWT** signe par **Keycloak** (realm `tabibi`) ; l'autorisation se fait par
-  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`) dans `SecurityConfig` (dont le verrou `/api/admin/**`
-  reserve au role ADMIN) puis par `@PreAuthorize` sur chaque endpoint.
-- Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient ou medecin selon le role.
+  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`, `PHARMACIE`) dans `SecurityConfig` (dont le verrou
+  `/api/admin/**` reserve au role ADMIN) puis par `@PreAuthorize` sur chaque endpoint ; `KeycloakRoleConverter`
+  traduit tout role du realm en autorite `ROLE_*`.
+- Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient, medecin ou pharmacie selon le role.
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
   400 (contenu invalide), 403 (acces refuse a une ressource d'un autre utilisateur),
   404 (introuvable), 409 (conflit avec l'etat courant).
@@ -51,6 +52,9 @@ Role PATIENT :
 | POST | `/api/conversations` | ouvre une conversation `{ medecinId }` avec un medecin deja consulte (201, 200 si elle existe, 403 sans rendez-vous commun) |
 | POST | `/api/avis` | depose un avis `{ rendezVousId, note, commentaire }` sur un rendez-vous honore (201, 400, 404, 403, 409 si non honore ou deja note) |
 | GET | `/api/avis/mes` | mes avis, tous statuts, les plus recents d'abord |
+| POST | `/api/dawini/besoins` | publie un besoin de medicament `{ medicament, wilayaCode, commune, precision }` (201, 400) |
+| GET | `/api/dawini/besoins/mes` | mes besoins, tous statuts, les plus recents d'abord, avec `nombreReponses` |
+| POST | `/api/dawini/besoins/{id}/cloturer` | cloture mon besoin (404, 403, 409 si deja cloture) |
 
 Role MEDECIN :
 
@@ -69,6 +73,19 @@ Role MEDECIN :
 | POST | `/api/medecin/candidature` | depose ma candidature a l'annuaire `{ nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone }` (201, 400, 409) |
 | GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
 | POST | `/api/avis/{id}/signaler` | signale a l'administrateur un avis publie qui me concerne (403 sinon, 409 s'il n'est pas publie) |
+
+Role PHARMACIE (Dawini) :
+
+| Methode | Chemin | Description |
+|---|---|---|
+| GET | `/api/dawini/besoins?wilaya=16` | besoins ouverts de la wilaya, les plus recents d'abord, sans `patientId` (400 sans wilaya) |
+| POST | `/api/dawini/besoins/{id}/reponses` | repond `{ nomPharmacie, disponible, prixDa, commentaire }` (201, 400, 404, 409 si cloture ou deja repondu) ; le patient est prevenu |
+
+PATIENT (proprietaire, 403 sinon) ou PHARMACIE :
+
+| Methode | Chemin | Description |
+|---|---|---|
+| GET | `/api/dawini/besoins/{id}/reponses` | reponses des pharmacies a un besoin, les plus anciennes d'abord (404) |
 
 PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 
@@ -115,7 +132,8 @@ tabibi:
 Les cas d'usage previennent les utilisateurs par le port `Notifieur` (module `notifications`) :
 a la reservation d'un rendez-vous, le patient (« Rendez-vous confirme ») et le medecin (« Nouveau
 rendez-vous ») ; a l'annulation, le medecin (« Rendez-vous annule ») ; a chaque message de la
-messagerie, l'autre participant (« Nouveau message », sans le contenu). Aujourd'hui l'adaptateur
+messagerie, l'autre participant (« Nouveau message », sans le contenu) ; a chaque reponse d'une
+pharmacie sur Dawini, le patient (« Reponse d'une pharmacie », sans detail). Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
 au domaine. Les messages ne sont jamais journalises.
@@ -139,7 +157,7 @@ mvn spring-boot:run           # API sur http://localhost:8080 (en memoire)
 
 ### Comptes de demonstration Keycloak (dev local uniquement)
 
-Le realm importe (`infra/keycloak/tabibi-realm.json`) contient trois utilisateurs aux mots de passe
+Le realm importe (`infra/keycloak/tabibi-realm.json`) contient quatre utilisateurs aux mots de passe
 simples, a ne jamais reutiliser ailleurs qu'en local :
 
 | Utilisateur | Mot de passe | Role | Identifiant (`sub`) |
@@ -147,6 +165,7 @@ simples, a ne jamais reutiliser ailleurs qu'en local :
 | `patient.demo` | `patient` | PATIENT | `11111111-1111-1111-1111-111111111111` |
 | `medecin.demo` | `medecin` | MEDECIN | `00000000-0000-0000-0000-000000000001` (Dr Amina Belkacem, premier praticien de demonstration de l'annuaire en memoire) |
 | `admin.demo` | `admin` | ADMIN | `33333333-3333-3333-3333-333333333333` |
+| `pharmacie.demo` | `pharmacie` | PHARMACIE | `44444444-4444-4444-4444-444444444444` |
 
 Obtenir un jeton en ligne de commande (le client public `tabibi-web` accepte le flux
 « direct access grants » pour le dev local) :
@@ -181,6 +200,7 @@ teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 administration/  candidatures des medecins, validation par l'administrateur, statistiques
 messagerie/      conversations patient-medecin (apres un rendez-vous) et messages
 avis/            avis verifies des patients (rendez-vous honore), synthese publique, moderation
+dawini/          besoins de medicaments des patients et reponses des pharmacies (role PHARMACIE)
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

@@ -6,7 +6,8 @@
       { "name": "PATIENT" },
       { "name": "MEDECIN" },
       { "name": "SECRETAIRE" },
-      { "name": "ADMIN" }
+      { "name": "ADMIN" },
+      { "name": "PHARMACIE" }
     ]
   },
   "clients": [
@@ -52,6 +53,17 @@
       "email": "admin.demo@tabibi.local",
       "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
       "realmRoles": ["ADMIN"]
+    },
+    {
+      "id": "44444444-4444-4444-4444-444444444444",
+      "username": "pharmacie.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Pharmacie",
+      "lastName": "Demo",
+      "email": "pharmacie.demo@tabibi.local",
+      "credentials": [{ "type": "password", "value": "pharmacie", "temporary": false }],
+      "realmRoles": ["PHARMACIE"]
     }
   ]
 }
