@@ -1,5 +1,6 @@
 package dz.tabibi.backend.teleconsultation.domain;
 
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 
 import java.time.Instant;
@@ -71,7 +72,8 @@ public class Teleconsultation {
                     "Seule une teleconsultation planifiee peut etre demarree (statut actuel : " + statut + ").");
         }
         if (!patientAConsenti()) {
-            throw new TransitionInvalideException("Le patient n'a pas encore consenti a la teleconsultation.");
+            throw new TransitionInvalideException("Le patient n'a pas encore consenti a la teleconsultation.",
+                    Cles.TELECONSULTATION_SANS_CONSENTEMENT);
         }
         this.statut = StatutTeleconsultation.EN_COURS;
         this.demarreeLe = quand;

@@ -1,6 +1,7 @@
 package dz.tabibi.backend.listeattente.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
@@ -40,7 +41,8 @@ public class ListeAttenteService implements AlerteCreneau {
     @Transactional
     public InscriptionAttente inscrire(UUID patientId, UUID medecinId) {
         if (repository.parPatientEtMedecin(patientId, medecinId).isPresent()) {
-            throw new TransitionInvalideException("Vous etes deja inscrit sur la liste d'attente de ce medecin.");
+            throw new TransitionInvalideException("Vous etes deja inscrit sur la liste d'attente de ce medecin.",
+                    Cles.INSCRIPTION_DEJA);
         }
         return repository.enregistrer(InscriptionAttente.inscrire(patientId, medecinId, Instant.now()));
     }
@@ -60,7 +62,7 @@ public class ListeAttenteService implements AlerteCreneau {
         InscriptionAttente inscription = repository.parId(inscriptionId)
                 .orElseThrow(() -> new InscriptionIntrouvableException(inscriptionId));
         if (!inscription.estDe(patientId)) {
-            throw new AccesRefuseException("Cette inscription ne vous appartient pas.");
+            throw new AccesRefuseException("Cette inscription ne vous appartient pas.", Cles.INSCRIPTION_AUTRE);
         }
         repository.supprimer(inscription.id());
     }
@@ -73,9 +75,8 @@ public class ListeAttenteService implements AlerteCreneau {
     /** Un creneau se libere chez ce medecin : chaque patient inscrit sur sa liste est prevenu. */
     @Override
     public void creneauLibere(UUID medecinId, Instant debut) {
-        String message = "Un creneau vient de se liberer chez votre medecin le "
-                + FormatDate.lisible(debut) + ". Reservez vite.";
-        repository.parMedecin(medecinId)
-                .forEach(inscription -> notifieur.notifier(inscription.patientId(), "Creneau disponible", message));
+        String date = FormatDate.lisible(debut);
+        repository.parMedecin(medecinId).forEach(inscription -> notifieur.notifier(
+                inscription.patientId(), Cles.NOTIF_CRENEAU_LIBERE_SUJET, Cles.NOTIF_CRENEAU_LIBERE_MESSAGE, date));
     }
 }

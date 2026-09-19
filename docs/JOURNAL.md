@@ -581,3 +581,44 @@
 - Rafale de POST /api/conversations vers un medecin jamais consulte (403 metier, mais comptes) : 429 avec Retry-After et
   corps { "erreur": "Trop de requetes, reessayez dans un instant." } avant la 25e requete.
 - README (section Tester : trois niveaux de tests), pom.xml 0.24.1.
+
+## v0.25.0 — Messages d'erreur et notifications en francais, arabe et anglais
+- commun/domain/Langue (FR, AR, EN, PAR_DEFAUT = FR) : depuisEntete(Accept-Language) tolerant (qualites q, la
+  meilleure l'emporte, q=0 ou illisible ecarte, sous-etiquette de region ignoree, `*` et langues inconnues ignorees)
+  et depuisCode(code de profil, `ar_DZ`, ` EN `, `kab` -> FR). Tout ce qui n'est pas servi retombe sur le francais.
+- src/main/resources/messages/{fr,ar,en}.properties : catalogue unique (46 messages d'erreur + 28 sujets/messages de
+  notification), lu en UTF-8 par commun/adapter/Messages (@Component, plus une instance partagee pour le conseil
+  d'erreurs et les filtres, que les slices web ne cablent pas). Substitution simple des reperes {0}, {1}... : pas de
+  MessageFormat, donc aucune apostrophe a echapper dans les textes francais. Cle absente d'une langue -> repli sur le
+  francais ; cle inconnue partout -> la cle elle-meme.
+- commun/domain/Cles : toutes les cles nommees (verification a la compilation) et toutes() pour le test du catalogue.
+- commun/adapter/ContexteLangue (ThreadLocal) + FiltreLangue (OncePerRequestFilter, pose la langue de
+  Accept-Language, l'efface dans un finally) + LangueConfig (FilterRegistrationBean, ordre
+  SecurityProperties.DEFAULT_FILTER_ORDER - 2 : avant la limitation de debit et avant la securite) ; configuration a
+  part, non chargee par les slices web, qui voient donc le francais.
+- commun/domain/ErreurMetier : racine des exceptions metier, avec une cle de traduction facultative et ses parametres
+  (l'ancien constructeur message reste, cle nulle). Toutes les exceptions metier en derivent ; les exceptions
+  « introuvable » portent leur cle d'office (l'identifiant devient le parametre {0}), les autres la recoivent au point
+  de levee : acces refuse (rendez-vous, teleconsultation, conversation, besoin, inscription, rattachement, cabinet),
+  creneau deja reserve, transitions (besoin cloture, pharmacie ayant deja repondu, deja inscrit en liste d'attente,
+  secretaire deja rattachee, teleconsultation sans consentement), validations (profil : nom, telephone, naissance,
+  wilaya, langue ; avis : note et commentaire ; message : contenu et longueur ; ordonnance sans ligne ; wilaya Dawini).
+- GestionErreursApi traduit quand la cle est presente (langue du ContexteLangue), sinon renvoie le message brut :
+  aucune erreur non encore traduite ne change de comportement. FiltreLimiteDebit rend son 429 dans la meme langue.
+- notifications/domain/Notifieur : notifier(destinataire, cleSujet, cleMessage, params...) — une seule forme,
+  volontairement sans surcharge « texte deja redige » : une surcharge (UUID, String, String) l'aurait emporte
+  silencieusement sur la forme a cles pour toute notification sans parametre, qui serait alors partie non traduite.
+  NotifieurInterne rend le texte dans la langue du profil du destinataire, via le nouveau port
+  notifications/domain/LanguePreferee, realise par profil/adapter/LanguePrefereeDuProfil (aucun cycle entre modules).
+- Les huit appelants (rendez-vous, teleconsultation, administration, messagerie, dawini, liste d'attente, rappels,
+  cabinet) passent aux cles ; les valeurs fr sont exactement les textes francais d'avant.
+- README (section Langues, Notifications, structure) ; pom.xml 0.25.0.
+- Tests : LangueTest (en-tetes simples, qualites, regions, vides/inconnus, q=0, codes de profil), MessagesTest (les
+  trois fichiers portent exactement les memes cles, toutes les cles de Cles existent partout, aucune cle du fichier
+  francais oubliee dans Cles, parametres, apostrophes, replis), GestionErreursApiTest (403 traduit en arabe et en
+  anglais, parametres, erreur sans cle inchangee, et invariant : le rendu francais est toujours le message brut de
+  l'exception), FiltreLangueTest (langue posee pendant le traitement, effacee a la sortie meme sur exception),
+  ErreursTraduitesWebTest (@WebMvcTest + LangueConfig : 403 en arabe / anglais / francais, 404 traduit, `kab` -> fr),
+  NotifieurInterneTest (langue du profil, parametres, sans profil ou langue non servie -> francais) ; les faux
+  notifieurs des tests de service rendent les cles avec le vrai catalogue, ce qui verifie au passage que les textes
+  francais servis sont bien ceux qu'attendaient les tests existants.

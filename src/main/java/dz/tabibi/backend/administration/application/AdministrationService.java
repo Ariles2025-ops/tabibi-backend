@@ -9,6 +9,7 @@ import dz.tabibi.backend.administration.domain.StatistiquesAdministration;
 import dz.tabibi.backend.administration.domain.StatutCandidature;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import org.springframework.stereotype.Service;
@@ -77,8 +78,8 @@ public class AdministrationService {
     public CandidatureMedecin valider(UUID candidatureId) {
         CandidatureMedecin validee = candidatures.enregistrer(charger(candidatureId).valider(Instant.now()));
         medecins.enregistrer(fichePublique(validee));
-        notifieur.notifier(validee.medecinId(), "Candidature validee",
-                "Votre candidature a ete validee : vous figurez desormais dans l'annuaire Tabibi.");
+        notifieur.notifier(validee.medecinId(), Cles.NOTIF_CANDIDATURE_VALIDEE_SUJET,
+                Cles.NOTIF_CANDIDATURE_VALIDEE_MESSAGE);
         return validee;
     }
 
@@ -91,8 +92,8 @@ public class AdministrationService {
     @Transactional
     public CandidatureMedecin refuser(UUID candidatureId, String motif) {
         CandidatureMedecin refusee = candidatures.enregistrer(charger(candidatureId).refuser(motif, Instant.now()));
-        notifieur.notifier(refusee.medecinId(), "Candidature refusee",
-                "Votre candidature a ete refusee. Motif : " + refusee.motifRefus());
+        notifieur.notifier(refusee.medecinId(), Cles.NOTIF_CANDIDATURE_REFUSEE_SUJET,
+                Cles.NOTIF_CANDIDATURE_REFUSEE_MESSAGE, refusee.motifRefus());
         return refusee;
     }
 

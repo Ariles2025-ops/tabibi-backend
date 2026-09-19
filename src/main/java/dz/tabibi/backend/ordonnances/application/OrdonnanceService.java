@@ -3,6 +3,7 @@ package dz.tabibi.backend.ordonnances.application;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.ordonnances.domain.CodeVerification;
 import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
@@ -67,7 +68,7 @@ public class OrdonnanceService {
             throw new OrdonnanceInvalideException("Le patient est obligatoire.");
         }
         if (lignes == null || lignes.isEmpty()) {
-            throw new OrdonnanceInvalideException("Une ordonnance doit contenir au moins une ligne.");
+            throw new OrdonnanceInvalideException("Une ordonnance doit contenir au moins une ligne.", Cles.ORDONNANCE_SANS_LIGNE);
         }
         boolean ligneIncomplete = lignes.stream()
                 .anyMatch(l -> l == null || l.medicament() == null || l.medicament().isBlank());

@@ -1,5 +1,6 @@
 package dz.tabibi.backend.profil.domain;
 
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.FormatDate;
 
 import java.time.Instant;
@@ -67,12 +68,13 @@ public record Profil(
 
     private static String nomComplet(String valeur) {
         if (valeur == null || valeur.isBlank()) {
-            throw new ProfilInvalideException("Le nom complet est obligatoire.");
+            throw new ProfilInvalideException("Le nom complet est obligatoire.", Cles.PROFIL_NOM_OBLIGATOIRE);
         }
         String nom = valeur.strip();
         if (nom.length() < LONGUEUR_MIN_NOM || nom.length() > LONGUEUR_MAX_NOM) {
             throw new ProfilInvalideException("Le nom complet doit compter de " + LONGUEUR_MIN_NOM
-                    + " a " + LONGUEUR_MAX_NOM + " caracteres.");
+                    + " a " + LONGUEUR_MAX_NOM + " caracteres.",
+                    Cles.PROFIL_NOM_LONGUEUR, LONGUEUR_MIN_NOM, LONGUEUR_MAX_NOM);
         }
         return nom;
     }
@@ -84,7 +86,8 @@ public record Profil(
         String chiffres = valeur.replaceAll("\\s+", "");
         if (!TELEPHONE.matcher(chiffres).matches()) {
             throw new ProfilInvalideException(
-                    "Le telephone doit etre un numero algerien de 9 a 10 chiffres commencant par 0 (ex. 0550123456).");
+                    "Le telephone doit etre un numero algerien de 9 a 10 chiffres commencant par 0 (ex. 0550123456).",
+                    Cles.PROFIL_TELEPHONE_INVALIDE);
         }
         return chiffres;
     }
@@ -94,10 +97,11 @@ public record Profil(
             return null;
         }
         if (!valeur.isBefore(aujourdHui)) {
-            throw new ProfilInvalideException("La date de naissance doit etre dans le passe.");
+            throw new ProfilInvalideException("La date de naissance doit etre dans le passe.", Cles.PROFIL_NAISSANCE_PASSE);
         }
         if (valeur.getYear() <= ANNEE_NAISSANCE_MIN) {
-            throw new ProfilInvalideException("La date de naissance doit etre posterieure a " + ANNEE_NAISSANCE_MIN + ".");
+            throw new ProfilInvalideException("La date de naissance doit etre posterieure a " + ANNEE_NAISSANCE_MIN + ".",
+                    Cles.PROFIL_NAISSANCE_ANNEE, ANNEE_NAISSANCE_MIN);
         }
         return valeur;
     }
@@ -108,7 +112,8 @@ public record Profil(
         }
         String code = valeur.strip();
         if (code.length() > LONGUEUR_MAX_WILAYA) {
-            throw new ProfilInvalideException("Le code de wilaya ne peut pas depasser " + LONGUEUR_MAX_WILAYA + " caracteres.");
+            throw new ProfilInvalideException("Le code de wilaya ne peut pas depasser " + LONGUEUR_MAX_WILAYA + " caracteres.",
+                    Cles.PROFIL_WILAYA_LONGUEUR, LONGUEUR_MAX_WILAYA);
         }
         return code;
     }
@@ -119,7 +124,8 @@ public record Profil(
         }
         String langue = valeur.strip().toLowerCase(Locale.ROOT);
         if (!LANGUES.contains(langue)) {
-            throw new ProfilInvalideException("La langue doit etre l'une de : " + String.join(", ", LANGUES) + ".");
+            throw new ProfilInvalideException("La langue doit etre l'une de : " + String.join(", ", LANGUES) + ".",
+                    Cles.PROFIL_LANGUE_INVALIDE, String.join(", ", LANGUES));
         }
         return langue;
     }

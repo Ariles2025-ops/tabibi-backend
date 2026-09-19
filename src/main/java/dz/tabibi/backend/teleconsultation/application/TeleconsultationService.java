@@ -1,6 +1,7 @@
 package dz.tabibi.backend.teleconsultation.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
@@ -58,7 +59,7 @@ public class TeleconsultationService {
         RendezVous rdv = rendezVous.parId(rendezVousId)
                 .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
         if (!rdv.estAvec(medecinId)) {
-            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.", Cles.RENDEZVOUS_AUTRE_AGENDA);
         }
         if (rdv.statut() != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
@@ -70,9 +71,8 @@ public class TeleconsultationService {
         }
         Teleconsultation teleconsultation = repository.enregistrer(
                 Teleconsultation.planifier(rendezVousId, rdv.patientId(), medecinId, generateurSalle.generer()));
-        notifieur.notifier(rdv.patientId(), "Teleconsultation proposee",
-                "Votre medecin vous propose une teleconsultation pour votre rendez-vous du "
-                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est necessaire pour y acceder.");
+        notifieur.notifier(rdv.patientId(), Cles.NOTIF_TELECONSULTATION_PROPOSEE_SUJET,
+                Cles.NOTIF_TELECONSULTATION_PROPOSEE_MESSAGE, FormatDate.lisible(rdv.debut()));
         return teleconsultation;
     }
 
@@ -94,7 +94,7 @@ public class TeleconsultationService {
     public Teleconsultation detail(UUID sujet, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(sujet) && !teleconsultation.estAvec(sujet)) {
-            throw new AccesRefuseException("Cette teleconsultation ne vous concerne pas.");
+            throw new AccesRefuseException("Cette teleconsultation ne vous concerne pas.", Cles.TELECONSULTATION_AUTRE);
         }
         return teleconsultation;
     }
@@ -108,7 +108,7 @@ public class TeleconsultationService {
     public Teleconsultation consentir(UUID patientId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(patientId)) {
-            throw new AccesRefuseException("Cette teleconsultation ne vous est pas destinee.");
+            throw new AccesRefuseException("Cette teleconsultation ne vous est pas destinee.", Cles.TELECONSULTATION_NON_DESTINEE);
         }
         teleconsultation.consentir(Instant.now());
         return repository.enregistrer(teleconsultation);
@@ -124,8 +124,8 @@ public class TeleconsultationService {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
-        notifieur.notifier(demarree.patientId(), "Teleconsultation demarree",
-                "Votre medecin a demarre la teleconsultation : rejoignez la salle depuis votre espace Tabibi.");
+        notifieur.notifier(demarree.patientId(), Cles.NOTIF_TELECONSULTATION_DEMARREE_SUJET,
+                Cles.NOTIF_TELECONSULTATION_DEMARREE_MESSAGE);
         return demarree;
     }
 
@@ -172,7 +172,7 @@ public class TeleconsultationService {
     private Teleconsultation chargerPourLeMedecin(UUID medecinId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.estAvec(medecinId)) {
-            throw new AccesRefuseException("Cette teleconsultation n'est pas dans votre agenda.");
+            throw new AccesRefuseException("Cette teleconsultation n'est pas dans votre agenda.", Cles.TELECONSULTATION_AUTRE_AGENDA);
         }
         return teleconsultation;
     }

@@ -1,6 +1,7 @@
 package dz.tabibi.backend.rendezvous.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -46,7 +47,7 @@ public class RendezVousService {
      */
     public RendezVous reserver(UUID patientId, UUID medecinId, Instant debut) {
         if (!repository.creneauEstLibre(medecinId, debut)) {
-            throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
+            throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.", Cles.CRENEAU_DEJA_RESERVE);
         }
         RendezVous rdv = repository.enregistrer(RendezVous.confirmer(patientId, medecinId, debut));
         notifierReservation(rdv);
@@ -64,7 +65,7 @@ public class RendezVousService {
         Creneau creneau = creneaux.parId(creneauId)
                 .orElseThrow(() -> new CreneauIntrouvableException(creneauId));
         if (!creneau.disponible()) {
-            throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
+            throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.", Cles.CRENEAU_DEJA_RESERVE);
         }
         creneaux.enregistrer(creneau.reserver());
         RendezVous rdv = repository.enregistrer(
@@ -90,7 +91,7 @@ public class RendezVousService {
         RendezVous rdv = repository.parId(rendezVousId)
                 .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
         if (!rdv.appartientA(patientId)) {
-            throw new AccesRefuseException("Ce rendez-vous ne vous appartient pas.");
+            throw new AccesRefuseException("Ce rendez-vous ne vous appartient pas.", Cles.RENDEZVOUS_AUTRE_PATIENT);
         }
         if (rdv.estAnnule()) {
             return rdv;
@@ -98,8 +99,8 @@ public class RendezVousService {
         rdv.annuler();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
-        notifieur.notifier(annule.medecinId(), "Rendez-vous annule",
-                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a ete annule par le patient.");
+        notifieur.notifier(annule.medecinId(), Cles.NOTIF_RDV_ANNULE_SUJET, Cles.NOTIF_RDV_ANNULE_MESSAGE,
+                FormatDate.lisible(annule.debut()));
         return annule;
     }
 
@@ -119,7 +120,7 @@ public class RendezVousService {
         RendezVous rdv = repository.parId(rendezVousId)
                 .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
         if (!rdv.estAvec(medecinId)) {
-            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.", Cles.RENDEZVOUS_AUTRE_AGENDA);
         }
         rdv.honorer();
         return repository.enregistrer(rdv);
@@ -147,14 +148,13 @@ public class RendezVousService {
     public RendezVous annulerParCabinet(UUID medecinId, UUID rendezVousId) {
         RendezVous rdv = parId(rendezVousId);
         if (!rdv.estAvec(medecinId)) {
-            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.", Cles.RENDEZVOUS_AUTRE_AGENDA);
         }
         rdv.annulerParCabinet();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
-        notifieur.notifier(annule.patientId(), "Rendez-vous annule par le cabinet",
-                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                        + " a ete annule par le cabinet. Vous pouvez reserver un autre creneau.");
+        notifieur.notifier(annule.patientId(), Cles.NOTIF_RDV_ANNULE_CABINET_SUJET,
+                Cles.NOTIF_RDV_ANNULE_CABINET_MESSAGE, FormatDate.lisible(annule.debut()));
         return annule;
     }
 
@@ -175,9 +175,7 @@ public class RendezVousService {
     /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */
     private void notifierReservation(RendezVous rdv) {
         String date = FormatDate.lisible(rdv.debut());
-        notifieur.notifier(rdv.patientId(), "Rendez-vous confirme",
-                "Votre rendez-vous du " + date + " est confirme.");
-        notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous",
-                "Un patient a reserve un rendez-vous le " + date + ".");
+        notifieur.notifier(rdv.patientId(), Cles.NOTIF_RDV_CONFIRME_SUJET, Cles.NOTIF_RDV_CONFIRME_MESSAGE, date);
+        notifieur.notifier(rdv.medecinId(), Cles.NOTIF_RDV_NOUVEAU_SUJET, Cles.NOTIF_RDV_NOUVEAU_MESSAGE, date);
     }
 }

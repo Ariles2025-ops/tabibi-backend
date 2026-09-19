@@ -1,6 +1,8 @@
 package dz.tabibi.backend.teleconsultation;
 
+import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository;
 import dz.tabibi.backend.notifications.application.NotifieurInterne;
@@ -37,7 +39,7 @@ class TeleconsultationServiceTest {
     private final RendezVousRepository rendezVous = new EnMemoireRendezVousRepository();
     private final NotificationRepository notifications = new EnMemoireNotificationRepository();
     private final TeleconsultationService service = new TeleconsultationService(
-            teleconsultations, rendezVous, new NotifieurInterne(notifications), new GenerateurSalle(), BASE_URL);
+            teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR), new GenerateurSalle(), BASE_URL);
 
     private RendezVous rendezVousConfirme() {
         return rendezVous.enregistrer(RendezVous.confirmer(PATIENT, MEDECIN, DEBUT));
@@ -157,7 +159,7 @@ class TeleconsultationServiceTest {
     @Test
     void le_lien_ignore_la_barre_oblique_finale_de_la_base() {
         TeleconsultationService avecBarre = new TeleconsultationService(
-                teleconsultations, rendezVous, new NotifieurInterne(notifications), new GenerateurSalle(), BASE_URL + "/");
+                teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR), new GenerateurSalle(), BASE_URL + "/");
         Teleconsultation t = avecBarre.planifier(MEDECIN, rendezVousConfirme().id());
 
         assertThat(avecBarre.lienSalle(t, MEDECIN)).isEqualTo(BASE_URL + "/" + t.salleId());

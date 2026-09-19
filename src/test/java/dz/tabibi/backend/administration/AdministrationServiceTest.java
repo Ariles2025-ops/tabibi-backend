@@ -13,6 +13,8 @@ import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
 import dz.tabibi.backend.annuaire.domain.CritereRecherche;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
+import dz.tabibi.backend.commun.adapter.Messages;
+import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository;
 import dz.tabibi.backend.notifications.application.NotifieurInterne;
@@ -38,7 +40,7 @@ class AdministrationServiceTest {
     private final MedecinRepository medecins = new EnMemoireMedecinRepository();
     private final NotificationRepository notifications = new EnMemoireNotificationRepository();
     private final AdministrationService service =
-            new AdministrationService(candidatures, medecins, new NotifieurInterne(notifications));
+            new AdministrationService(candidatures, medecins, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR));
 
     /** Candidature deposee a une date choisie, enregistree directement (sans passer par le service). */
     private CandidatureMedecin deposeeLe(UUID medecin, String date) {

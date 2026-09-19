@@ -7,6 +7,8 @@ import dz.tabibi.backend.avis.domain.AvisInvalideException;
 import dz.tabibi.backend.cabinet.domain.CabinetInvalideException;
 import dz.tabibi.backend.cabinet.domain.RattachementIntrouvableException;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.ErreurMetier;
+import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
@@ -33,9 +35,28 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * Traduit les erreurs metier en reponses HTTP pour tous les controleurs,
  * avec un corps uniforme : { "erreur": "..." }.
  * Les refus de Spring Security (401/403 par role) ne passent pas ici.
+ * <p>
+ * Le message est rendu dans la langue de la requete (en-tete {@code Accept-Language}, voir
+ * {@link FiltreLangue}) des que l'erreur porte une cle de traduction ({@link ErreurMetier#cle()}) ;
+ * sinon le message brut de l'exception est renvoye tel quel, comme avant.
  */
 @RestControllerAdvice
 public class GestionErreursApi {
+
+    private final Messages messages;
+
+    /**
+     * Constructeur utilise par Spring : le conseil est charge par les slices web (@WebMvcTest),
+     * qui ne chargent pas les @Component ; il s'appuie donc sur le catalogue partage.
+     */
+    public GestionErreursApi() {
+        this(Messages.partagees());
+    }
+
+    /** Constructeur explicite (tests, cablage a la main). */
+    public GestionErreursApi(Messages messages) {
+        this.messages = messages;
+    }
 
     /** Corps de toute reponse d'erreur metier. */
     public record ErreurApi(String erreur) {}
@@ -83,7 +104,15 @@ public class GestionErreursApi {
         return reponse(HttpStatus.FORBIDDEN, ex);
     }
 
-    private static ResponseEntity<ErreurApi> reponse(HttpStatus statut, RuntimeException ex) {
-        return ResponseEntity.status(statut).body(new ErreurApi(ex.getMessage()));
+    private ResponseEntity<ErreurApi> reponse(HttpStatus statut, RuntimeException ex) {
+        return ResponseEntity.status(statut).body(new ErreurApi(texte(ex, ContexteLangue.courante())));
+    }
+
+    /** Le message rendu dans cette langue si l'erreur porte une cle, sinon son message brut. */
+    public String texte(RuntimeException ex, Langue langue) {
+        if (ex instanceof ErreurMetier erreur && erreur.estTraduisible()) {
+            return messages.message(langue, erreur.cle(), erreur.params());
+        }
+        return ex.getMessage();
     }
 }

@@ -1,5 +1,7 @@
 package dz.tabibi.backend.commun.adapter;
 
+import dz.tabibi.backend.commun.domain.Cles;
+import dz.tabibi.backend.commun.domain.Langue;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,7 +20,8 @@ import java.util.List;
  * verification d'ordonnance) et les routes de publication sensibles aux abus (besoins Dawini,
  * conversations, avis). Place avant la chaine de Spring Security : une rafale est refusee sans
  * meme decoder un jeton. Une requete de trop recoit 429 { "erreur": "..." } avec l'en-tete
- * Retry-After (secondes) ; les autres routes ne sont jamais concernees.
+ * Retry-After (secondes), le message etant rendu dans la langue demandee par la requete
+ * (Accept-Language, voir FiltreLangue) ; les autres routes ne sont jamais concernees.
  * L'adresse du client est le premier element de X-Forwarded-For quand l'application est derriere
  * un reverse proxy qui le renseigne (server.forward-headers-strategy actif), sinon l'adresse
  * distante de la connexion : hors proxy, l'en-tete est ignore car n'importe qui peut l'ecrire.
@@ -27,9 +30,9 @@ import java.util.List;
  */
 public class FiltreLimiteDebit extends OncePerRequestFilter {
 
-    /** Corps de la reponse 429, au format des erreurs de l'API. */
-    public static final String MESSAGE_REFUS = "Trop de requetes, reessayez dans un instant.";
-    static final String CORPS_REFUS = "{\"erreur\":\"" + MESSAGE_REFUS + "\"}";
+    /** Corps de la reponse 429, au format des erreurs de l'API ; texte francais, langue par defaut. */
+    public static final String MESSAGE_REFUS = Messages.partagees().message(Langue.FR, Cles.LIMITE_DEBIT);
+    static final String CORPS_REFUS = corps(MESSAGE_REFUS);
     static final String EN_TETE_TRANSFERT = "X-Forwarded-For";
     /** Cle des requetes dont l'adresse est inconnue : elles partagent un seul seau. */
     static final String CLE_INCONNUE = "inconnue";
@@ -60,14 +63,21 @@ public class FiltreLimiteDebit extends OncePerRequestFilter {
 
     private final List<Regle> regles;
     private final boolean enTetesTransferesActifs;
+    private final Messages messages;
 
     /**
      * @param regles                  routes limitees, dans l'ordre d'evaluation (la premiere qui correspond s'applique)
      * @param enTetesTransferesActifs vrai derriere un reverse proxy de confiance (X-Forwarded-For pris en compte)
      */
     public FiltreLimiteDebit(List<Regle> regles, boolean enTetesTransferesActifs) {
+        this(regles, enTetesTransferesActifs, Messages.partagees());
+    }
+
+    /** Meme filtre avec un catalogue de messages explicite (tests, cablage a la main). */
+    public FiltreLimiteDebit(List<Regle> regles, boolean enTetesTransferesActifs, Messages messages) {
         this.regles = List.copyOf(regles);
         this.enTetesTransferesActifs = enTetesTransferesActifs;
+        this.messages = messages;
     }
 
     @Override
@@ -82,7 +92,8 @@ public class FiltreLimiteDebit extends OncePerRequestFilter {
         if (regle != null) {
             LimiteurDebit.Decision decision = regle.limiteur().tenter(cleDe(requete));
             if (!decision.autorise()) {
-                refuser(reponse, decision.attenteSecondes());
+                refuser(reponse, decision.attenteSecondes(),
+                        messages.message(ContexteLangue.courante(), Cles.LIMITE_DEBIT));
                 return;
             }
         }
@@ -118,12 +129,17 @@ public class FiltreLimiteDebit extends OncePerRequestFilter {
         return distante == null || distante.isBlank() ? CLE_INCONNUE : distante;
     }
 
-    private static void refuser(HttpServletResponse reponse, long attenteSecondes) throws IOException {
+    private static void refuser(HttpServletResponse reponse, long attenteSecondes, String message) throws IOException {
         reponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         reponse.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(attenteSecondes));
         reponse.setContentType(MediaType.APPLICATION_JSON_VALUE);
         reponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        reponse.getWriter().write(CORPS_REFUS);
+        reponse.getWriter().write(corps(message));
         reponse.getWriter().flush();
+    }
+
+    /** Le corps JSON d'un refus, au format des erreurs de l'API : { "erreur": "..." }. */
+    static String corps(String message) {
+        return "{\"erreur\":\"" + message + "\"}";
     }
 }

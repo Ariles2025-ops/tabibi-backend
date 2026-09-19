@@ -5,6 +5,7 @@ import dz.tabibi.backend.cabinet.domain.Rattachement;
 import dz.tabibi.backend.cabinet.domain.RattachementIntrouvableException;
 import dz.tabibi.backend.cabinet.domain.RattachementRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.application.CreneauService;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -52,11 +53,11 @@ public class CabinetService {
     public Rattachement rattacher(UUID medecinId, UUID secretaireId) {
         Rattachement rattachement = Rattachement.rattacher(medecinId, secretaireId, Instant.now());
         if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isPresent()) {
-            throw new TransitionInvalideException("Cette secretaire est deja rattachee a votre cabinet.");
+            throw new TransitionInvalideException("Cette secretaire est deja rattachee a votre cabinet.", Cles.RATTACHEMENT_DEJA);
         }
         Rattachement enregistre = rattachements.enregistrer(rattachement);
-        notifieur.notifier(secretaireId, "Rattachement a un cabinet",
-                "Un medecin vous a rattachee a son cabinet : vous pouvez desormais gerer son agenda.");
+        notifieur.notifier(secretaireId, Cles.NOTIF_CABINET_RATTACHEMENT_SUJET,
+                Cles.NOTIF_CABINET_RATTACHEMENT_MESSAGE);
         return enregistre;
     }
 
@@ -75,11 +76,11 @@ public class CabinetService {
         Rattachement rattachement = rattachements.parId(rattachementId)
                 .orElseThrow(() -> new RattachementIntrouvableException(rattachementId));
         if (!rattachement.concerneMedecin(medecinId)) {
-            throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.");
+            throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.", Cles.RATTACHEMENT_AUTRE);
         }
         rattachements.supprimer(rattachement.id());
-        notifieur.notifier(rattachement.secretaireId(), "Rattachement retire",
-                "Un medecin a retire votre rattachement a son cabinet.");
+        notifieur.notifier(rattachement.secretaireId(), Cles.NOTIF_CABINET_RETRAIT_SUJET,
+                Cles.NOTIF_CABINET_RETRAIT_MESSAGE);
     }
 
     /** Cabinets auxquels la secretaire est rattachee, les plus anciens rattachements d'abord. */
@@ -93,7 +94,7 @@ public class CabinetService {
      */
     public void verifierAcces(UUID secretaireId, UUID medecinId) {
         if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isEmpty()) {
-            throw new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin.");
+            throw new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin.", Cles.CABINET_NON_RATTACHEE);
         }
     }
 

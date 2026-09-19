@@ -1,5 +1,6 @@
 package dz.tabibi.backend.avis.domain;
 
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 
 import java.time.Instant;
@@ -34,12 +35,14 @@ public record Avis(
     public static Avis deposer(UUID rendezVousId, UUID patientId, UUID medecinId, int note, String commentaire,
                                Instant deposeLe) {
         if (note < NOTE_MIN || note > NOTE_MAX) {
-            throw new AvisInvalideException("La note doit etre comprise entre " + NOTE_MIN + " et " + NOTE_MAX + ".");
+            throw new AvisInvalideException("La note doit etre comprise entre " + NOTE_MIN + " et " + NOTE_MAX + ".",
+                    Cles.AVIS_NOTE_HORS_BORNES, NOTE_MIN, NOTE_MAX);
         }
         String texte = (commentaire == null || commentaire.isBlank()) ? null : commentaire.strip();
         if (texte != null && texte.length() > LONGUEUR_MAX_COMMENTAIRE) {
             throw new AvisInvalideException(
-                    "Le commentaire ne peut pas depasser " + LONGUEUR_MAX_COMMENTAIRE + " caracteres.");
+                    "Le commentaire ne peut pas depasser " + LONGUEUR_MAX_COMMENTAIRE + " caracteres.",
+                    Cles.AVIS_COMMENTAIRE_TROP_LONG, LONGUEUR_MAX_COMMENTAIRE);
         }
         return new Avis(UUID.randomUUID(), rendezVousId, patientId, medecinId, note, texte, StatutAvis.PUBLIE, deposeLe);
     }

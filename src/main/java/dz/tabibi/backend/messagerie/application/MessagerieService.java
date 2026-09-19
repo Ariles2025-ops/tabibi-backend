@@ -1,6 +1,7 @@
 package dz.tabibi.backend.messagerie.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.messagerie.domain.Conversation;
 import dz.tabibi.backend.messagerie.domain.ConversationAvecNonLus;
 import dz.tabibi.backend.messagerie.domain.ConversationIntrouvableException;
@@ -53,7 +54,8 @@ public class MessagerieService {
         }
         boolean rendezVousCommun = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
         if (!rendezVousCommun) {
-            throw new AccesRefuseException("Vous ne pouvez ecrire qu'a un medecin avec qui vous avez un rendez-vous.");
+            throw new AccesRefuseException("Vous ne pouvez ecrire qu'a un medecin avec qui vous avez un rendez-vous.",
+                    Cles.CONVERSATION_SANS_RENDEZVOUS);
         }
         Optional<Conversation> existante = conversations.parParticipants(patientId, medecinId);
         if (existante.isPresent()) {
@@ -103,8 +105,8 @@ public class MessagerieService {
         Conversation conversation = chargerPour(sujet, conversationId);
         Message message = messages.enregistrer(Message.envoyer(conversation.id(), sujet, contenu, Instant.now()));
         conversations.enregistrer(conversation.avecDernierMessageLe(message.envoyeLe()));
-        notifieur.notifier(conversation.autreParticipant(sujet), "Nouveau message",
-                "Vous avez recu un nouveau message.");
+        notifieur.notifier(conversation.autreParticipant(sujet), Cles.NOTIF_MESSAGE_NOUVEAU_SUJET,
+                Cles.NOTIF_MESSAGE_NOUVEAU_MESSAGE);
         return message;
     }
 
@@ -112,7 +114,7 @@ public class MessagerieService {
         Conversation conversation = conversations.parId(conversationId)
                 .orElseThrow(() -> new ConversationIntrouvableException(conversationId));
         if (!conversation.participe(sujet)) {
-            throw new AccesRefuseException("Cette conversation ne vous concerne pas.");
+            throw new AccesRefuseException("Cette conversation ne vous concerne pas.", Cles.CONVERSATION_AUTRE);
         }
         return conversation;
     }

@@ -1,6 +1,8 @@
 package dz.tabibi.backend.messagerie;
 
+import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.messagerie.adapter.EnMemoireConversationRepository;
 import dz.tabibi.backend.messagerie.adapter.EnMemoireMessageRepository;
 import dz.tabibi.backend.messagerie.application.MessagerieService;
@@ -37,10 +39,13 @@ class MessagerieServiceTest {
         record Appel(UUID destinataireId, String sujet, String message) {}
 
         final List<Appel> appels = new ArrayList<>();
+        private final Messages messages = Messages.partagees();
 
+        /** Rend les cles avec le vrai catalogue, en francais : les textes verifies ici sont ceux servis. */
         @Override
-        public void notifier(UUID destinataireId, String sujet, String message) {
-            appels.add(new Appel(destinataireId, sujet, message));
+        public void notifier(UUID destinataireId, String cleSujet, String cleMessage, Object... params) {
+            appels.add(new Appel(destinataireId,
+                    messages.message(Langue.FR, cleSujet), messages.message(Langue.FR, cleMessage, params)));
         }
 
         List<Appel> pour(UUID destinataireId) {

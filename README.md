@@ -248,6 +248,40 @@ pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete
   active la prise en compte des en-tetes `X-Forwarded-*` (`server.forward-headers-strategy=native`, en
   provenance des proxys internes seulement ; `SERVER_FORWARD_HEADERS_STRATEGY=none` en acces direct).
 
+## Langues
+
+Le web et le mobile passent leur interface en francais, arabe ou anglais, mais les textes qui
+viennent du backend (messages d'erreur `{ "erreur": "..." }` et notifications) sont traduits ici.
+
+- **Catalogue** : `src/main/resources/messages/{fr,ar,en}.properties`, lus en UTF-8 au demarrage par
+  `commun/adapter/Messages` (@Component). Les trois fichiers portent exactement les memes cles, et
+  toutes les cles nommees dans `commun/domain/Cles` y figurent : `MessagesTest` le verifie. Les
+  reperes `{0}`, `{1}`... sont remplaces par les parametres, dans l'ordre (substitution simple, pas
+  `MessageFormat` : les apostrophes du francais n'ont rien a echapper).
+- **Langue d'une reponse** : l'en-tete HTTP `Accept-Language`, lu avec tolerance par
+  `commun/domain/Langue.depuisEntete` (qualites `q`, sous-etiquettes de region, langues inconnues
+  ignorees) et pose pour la duree de la requete par le filtre `FiltreLangue` (`LangueConfig`, en tete
+  de la chaine servlet) dans `ContexteLangue`. Tout ce qui n'est ni `fr`, ni `ar`, ni `en` (le kabyle
+  de l'interface par exemple) retombe sur le **francais**.
+- **Erreurs** : chaque exception metier derive de `commun/domain/ErreurMetier` et peut porter, en plus
+  de son message francais, une **cle de traduction** facultative et ses parametres
+  (`new AccesRefuseException("Ce rendez-vous ne vous appartient pas.", Cles.RENDEZVOUS_AUTRE_PATIENT)`).
+  `GestionErreursApi` traduit quand la cle est presente, sinon il renvoie le message brut : les
+  erreurs non encore traduites continuent de fonctionner. `GestionErreursApiTest` verifie que le
+  rendu francais est toujours exactement le message brut, pour que les deux ne divergent pas.
+- **Notifications** : le port `Notifieur` prend deux cles (sujet, message) et des parametres ; le texte
+  est rendu dans la langue du **profil du destinataire** (champ `langue`, francais par defaut), lue par
+  le port `LanguePreferee` du module `notifications`, realise par `profil/adapter/LanguePrefereeDuProfil`
+  (le port evite que les notifications dependent du profil). Chacun lit donc ses notifications dans sa
+  langue, quelle que soit celle de l'utilisateur dont l'action a declenche l'envoi.
+- **Limitation de debit** : le corps du 429 est traduit lui aussi (`erreur.limite.debit`).
+- **Non traduit** : les dates restent au format algerien `jj/mm/aaaa a hh:mm` (`FormatDate`) dans
+  toutes les langues, et les donnees saisies par les utilisateurs (commentaires d'avis, motifs de
+  refus, contenus de messages) sont evidemment rendues telles quelles.
+
+Ajouter une langue : un fichier `messages/<code>.properties` complet, une valeur dans l'enum `Langue`,
+et la langue devient disponible pour `Accept-Language` comme pour les profils.
+
 ## Notifications
 
 Les cas d'usage previennent les utilisateurs par le port `Notifieur` (module `notifications`) :
@@ -262,7 +296,9 @@ cabinet ») ; au rattachement d'une secretaire et a son retrait, la secretaire ;
 patient (« Rappel de rendez-vous », une seule fois). Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
-au domaine. Les messages ne sont jamais journalises.
+au domaine. Les sujets et messages cites ici sont les textes **francais** : ce sont des cles du
+catalogue (voir « Langues »), rendues dans la langue du profil du destinataire. Les messages ne sont
+jamais journalises (seule la cle du sujet l'est).
 
 ## Persistance
 
@@ -444,19 +480,19 @@ annuaire/        praticiens, recherche publique
 creneaux/        disponibilites et ouverture de creneaux
 rendezvous/      reservation, annulation, agenda, rendez-vous honores
 ordonnances/     redaction, consultation, verification publique par code, version imprimable (port GenerateurPdfOrdonnance, adaptateur OpenPDF + ZXing)
-notifications/   boite de reception, port Notifieur et notifieur interne
+notifications/   boite de reception, port Notifieur (a cles traduites) et notifieur interne, port LanguePreferee
 teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 administration/  candidatures des medecins, validation par l'administrateur, statistiques
 messagerie/      conversations patient-medecin (apres un rendez-vous) et messages
 avis/            avis verifies des patients (rendez-vous honore), synthese publique, moderation
 dawini/          besoins de medicaments des patients et reponses des pharmacies (role PHARMACIE)
-profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue)
+profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue), realisation du port LanguePreferee
 listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
 cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-vous honores ou annules pour lui
 rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
 audit/           journal des acces : EntreeAudit, AdresseIp (troncature), port AuditRepository, FiltreAudit (servlet, apres la securite), AuditConfig, consultation ADMIN
 identite/        MoiController
-commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date, limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig)
+commun/          erreurs API (GestionErreursApi), exceptions partagees (ErreurMetier), format de date, langues (Langue, Cles, Messages, ContexteLangue, FiltreLangue, LangueConfig), limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig)
 config/          securite (JWT + roles Keycloak, CORS : CorsProprietes), horloge (Clock) et planification (@EnableScheduling)
 ```
 
