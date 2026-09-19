@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Journalisation applicative.
+
+  En developpement (profil par defaut) : le format lisible de Spring Boot, inchange.
+
+  En production (profil « postgres », celui de docker-compose.prod.yml) : une ligne JSON par
+  evenement, directement exploitable par un collecteur (Loki, Elastic, CloudWatch...) sans
+  expression reguliere. L'encodeur est celui de Logback lui-meme
+  (ch.qos.logback.classic.encoder.JsonEncoder, present depuis Logback 1.5, apporte par Spring Boot
+  3.4) : aucune dependance supplementaire. Le MDC est inclus : il porte l'identifiant de requete
+  pose par FiltreAudit (cle requeteId), ce qui permet de recoller toutes les lignes d'une meme
+  requete ; il ne porte jamais d'identifiant d'utilisateur.
+
+  Rappel : ni corps de requete, ni contenu de message, ni donnee de sante dans les journaux.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProfile name="!postgres">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="postgres">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
+                <withSequenceNumber>false</withSequenceNumber>
+                <withMDC>true</withMDC>
+                <withArguments>false</withArguments>
+                <withKeyValuePairs>false</withKeyValuePairs>
+                <withContext>false</withContext>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+        <!-- Requetes SQL et parametres : jamais en production (donnees de sante). -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
+    </springProfile>
+
+</configuration>

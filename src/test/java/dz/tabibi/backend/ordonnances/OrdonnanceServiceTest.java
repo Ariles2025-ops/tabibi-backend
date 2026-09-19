@@ -3,7 +3,9 @@ package dz.tabibi.backend.ordonnances;
 import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
+import dz.tabibi.backend.commun.CompteursEnregistres;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.ordonnances.adapter.EnMemoireOrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
 import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
@@ -63,8 +65,9 @@ class OrdonnanceServiceTest {
     private final FauxGenerateur generateur = new FauxGenerateur();
     private final ProfilRepository profils = new EnMemoireProfilRepository();
     private final MedecinRepository medecins = new EnMemoireMedecinRepository();
+    private final CompteursEnregistres compteurs = new CompteursEnregistres();
     private final OrdonnanceService service =
-            new OrdonnanceService(repository, generateur, profils, medecins, "https://tabibi.example/");
+            new OrdonnanceService(repository, generateur, profils, medecins, compteurs, "https://tabibi.example/");
 
     /** Ordonnance emise a une date choisie, enregistree directement (sans passer par le service). */
     private Ordonnance emiseLe(UUID patient, String date, StatutOrdonnance statut, String code) {
@@ -251,5 +254,21 @@ class OrdonnanceServiceTest {
         assertThatThrownBy(() -> service.pdf(PATIENT, UUID.randomUUID()))
                 .isInstanceOf(OrdonnanceIntrouvableException.class);
         assertThat(generateur.appels).isZero();
+    }
+
+    @Test
+    void compte_les_ordonnances_emises_pour_la_supervision() {
+        service.emettre(MEDECIN, PATIENT, null, LIGNES);
+        service.emettre(MEDECIN, PATIENT, null, LIGNES);
+
+        assertThat(compteurs.compte(Compteurs.ORDONNANCES_EMISES)).isEqualTo(2);
+    }
+
+    @Test
+    void ne_compte_pas_une_ordonnance_refusee() {
+        assertThatThrownBy(() -> service.emettre(MEDECIN, PATIENT, null, List.of()))
+                .isInstanceOf(OrdonnanceInvalideException.class);
+
+        assertThat(compteurs.compte(Compteurs.ORDONNANCES_EMISES)).isZero();
     }
 }

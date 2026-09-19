@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
@@ -242,5 +243,48 @@ class FiltreAuditTest {
 
         assertThat(repository.entrees.get(0).chemin()).hasSize(512);
         assertThat(repository.entrees.get(0).chemin()).startsWith("/api/medecins/x");
+    }
+
+    @Test
+    void pose_un_identifiant_de_requete_dans_le_mdc_et_le_renvoie_en_en_tete() throws Exception {
+        MockHttpServletRequest requete = requete("GET", "/api/moi");
+        MockHttpServletResponse reponse = new MockHttpServletResponse();
+        List<String> vusDansLeMdc = new ArrayList<>();
+
+        filtre.doFilter(requete, reponse, (req, res) -> vusDansLeMdc.add(MDC.get(FiltreAudit.CLE_MDC)));
+
+        assertThat(vusDansLeMdc).hasSize(1);
+        assertThat(vusDansLeMdc.get(0)).isNotBlank();
+        assertThat(reponse.getHeader(FiltreAudit.EN_TETE_REQUETE)).isEqualTo(vusDansLeMdc.get(0));
+        assertThat(MDC.get(FiltreAudit.CLE_MDC)).isNull(); // efface a la sortie
+    }
+
+    @Test
+    void reprend_l_identifiant_de_requete_du_proxy_s_il_est_raisonnable() throws Exception {
+        MockHttpServletRequest requete = requete("GET", "/api/moi");
+        requete.addHeader(FiltreAudit.EN_TETE_REQUETE, "abc-123");
+
+        assertThat(FiltreAudit.identifiantDe(requete)).isEqualTo("abc-123");
+    }
+
+    @Test
+    void ignore_un_identifiant_de_requete_absent_vide_trop_long_ou_avec_des_espaces() {
+        assertThat(FiltreAudit.identifiantDe(requete("GET", "/api/moi"))).isNotBlank();
+        for (String suspect : List.of(" ", "a".repeat(65), "abc def", "abc\ndef")) {
+            MockHttpServletRequest requete = requete("GET", "/api/moi");
+            requete.addHeader(FiltreAudit.EN_TETE_REQUETE, suspect);
+            assertThat(FiltreAudit.identifiantDe(requete)).isNotEqualTo(suspect);
+        }
+    }
+
+    @Test
+    void efface_l_identifiant_du_mdc_meme_si_la_requete_echoue() {
+        FilterChain quiEchoue = (req, res) -> {
+            throw new IllegalStateException("panne");
+        };
+
+        assertThatThrownBy(() -> filtre.doFilter(requete("GET", "/api/moi"), new MockHttpServletResponse(), quiEchoue))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(MDC.get(FiltreAudit.CLE_MDC)).isNull();
     }
 }

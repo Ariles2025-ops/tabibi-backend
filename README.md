@@ -11,8 +11,9 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 ## Securite
 
 - Chaque requete porte un **JWT** signe par **Keycloak** (realm `tabibi`) ; l'autorisation se fait par
-  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`, `PHARMACIE`) dans `SecurityConfig` (dont le verrou
-  `/api/admin/**` reserve au role ADMIN) puis par `@PreAuthorize` sur chaque endpoint ; `KeycloakRoleConverter`
+  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`, `PHARMACIE`) dans `SecurityConfig` (dont les verrous
+  `/api/admin/**` et `/actuator/prometheus` + `/actuator/metrics/**` reserves au role ADMIN ; seule la
+  sante reste publique) puis par `@PreAuthorize` sur chaque endpoint ; `KeycloakRoleConverter`
   traduit tout role du realm en autorite `ROLE_*`.
 - Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient, medecin, secretaire ou pharmacie selon le role.
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
@@ -227,6 +228,74 @@ tabibi:
     actifs: ${TABIBI_RAPPELS_ACTIFS:true}   # false coupe le planificateur (tests, instances multiples) ; l'appel manuel reste possible
 ```
 
+## Supervision
+
+Ce que l'on surveille, et comment y acceder.
+
+**Points d'entree** (`management.endpoints.web.exposure.include: health,info,metrics,prometheus`) :
+
+| Chemin | Acces | Contenu |
+|---|---|---|
+| `/actuator/health`, `/actuator/health/**` | **public** | vivant / pret (sondes `liveness` et `readiness` sous le profil `postgres`) ; le detail des sondes n'apparait que pour un appelant authentifie (`show-details: when-authorized`) |
+| `/actuator/info` | authentifie | informations de build |
+| `/actuator/metrics`, `/actuator/metrics/**` | **role ADMIN** | catalogue des metriques et valeur de chacune |
+| `/actuator/prometheus` | **role ADMIN** | toutes les metriques au format texte de Prometheus |
+
+Les metriques ne portent aucune donnee personnelle : elles comptent des evenements, elles ne
+racontent pas qui a fait quoi (c'est le role du journal des acces). Elles restent neanmoins
+reservees a l'administrateur : elles decrivent la charge et l'activite de la plateforme.
+Toutes portent l'etiquette `application="tabibi-backend"`.
+
+**Metriques metier** — les cas d'usage comptent par le port de domaine `Compteurs`
+(`commun/domain`), realise par `CompteursMetier` (Micrometer, `commun/adapter`) ; `CompteursNeutres`
+ne compte rien, pour les tests et les cablages a la main.
+
+| Compteur | Incremente par |
+|---|---|
+| `tabibi.rendezvous.reserves` | `RendezVousService.reserver` et `reserverCreneau` |
+| `tabibi.rendezvous.annules` | `RendezVousService.annuler` et `annulerParCabinet` (pas une seconde annulation, sans effet) |
+| `tabibi.ordonnances.emises` | `OrdonnanceService.emettre` |
+| `tabibi.teleconsultations.demarrees` | `TeleconsultationService.demarrer` |
+| `tabibi.avis.deposes` | `AvisService.deposer` |
+| `tabibi.limite.depassements` | `FiltreLimiteDebit`, a chaque 429 |
+
+S'y ajoutent, gratuitement, les metriques de Spring Boot : `http.server.requests` (compte et
+duree par route, methode et statut), `jvm.memory.used`, `jvm.gc.pause`, `process.cpu.usage`,
+`hikaricp.connections.*` sous le profil `postgres`.
+
+**Brancher Prometheus et Grafana plus tard** — rien a changer dans l'application : il suffit de
+donner a Prometheus un jeton de service porteur du role `ADMIN` (client Keycloak dedie, flux
+`client_credentials`) et de le faire collecter `/actuator/prometheus` :
+
+```yaml
+scrape_configs:
+  - job_name: tabibi-backend
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    authorization:                     # jeton de service Keycloak, role ADMIN
+      type: Bearer
+      credentials_file: /etc/prometheus/tabibi-token
+    static_configs:
+      - targets: ["backend:8080"]
+```
+
+Grafana se branche ensuite sur Prometheus ; un tableau de bord utile part de
+`rate(tabibi_rendezvous_reserves_total[5m])` (Prometheus remplace les points par des tires bas et
+suffixe les compteurs par `_total`), du taux d'erreurs de `http_server_requests_seconds_count` par
+`status`, et de `tabibi_limite_depassements_total` pour reperer un abus.
+
+**Journalisation** — `logback-spring.xml` : le format lisible de Spring Boot en developpement, et
+**une ligne JSON par evenement sous le profil `postgres`** (production), avec l'encodeur integre a
+Logback 1.5 (`ch.qos.logback.classic.encoder.JsonEncoder`, apporte par Spring Boot 3.4 : aucune
+dependance supplementaire), directement exploitable par un collecteur (Loki, Elastic...).
+Le MDC est inclus : `FiltreAudit` y pose un **identifiant de requete** (cle `requeteId`) pour toute
+la duree de l'appel et le renvoie dans l'en-tete `X-Request-Id` ; un identifiant fourni par le
+reverse proxy dans cet en-tete est repris s'il est raisonnable (au plus 64 caracteres, sans espace,
+pour qu'un client ne puisse pas forger une ligne de journal). Toutes les lignes d'une meme requete
+se recollent ainsi, et un utilisateur qui signale une erreur peut citer cet identifiant.
+Le sujet du jeton, lui, n'entre jamais dans le MDC : les journaux applicatifs ne designent pas
+d'utilisateur. Ni corps de requete, ni contenu de message, ni donnee de sante n'y figurent.
+
 ## Donnees personnelles
 
 Exigence de la **loi algerienne 18-07** sur la protection des donnees a caractere personnel (et bonne
@@ -287,6 +356,8 @@ pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete
   octet, `192.168.1.37` devient `192.168.1.0` ; IPv6 aux 64 premiers bits) ; le chemin est coupe a 512 caracteres.
 - **Jamais bloquant** : si le journal est indisponible, l'entree est perdue et un avertissement est
   journalise, la requete aboutit normalement.
+- **Identifiant de requete** : le meme filtre pose un `requeteId` dans le MDC pour la duree de l'appel et
+  le renvoie dans l'en-tete `X-Request-Id` (voir la section « Supervision ») ; il ne designe aucun utilisateur.
 - **Perimetre** : le filtre tourne apres la securite ; les requetes refusees par Spring Security
   lui-meme (401 sans jeton ou jeton invalide, 403 du verrou `/api/admin/**`) ne sont pas des acces et
   n'y figurent pas ; un refus de `@PreAuthorize` est trace avec le statut 403, une erreur imprevue avec 500.
@@ -542,7 +613,7 @@ rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injec
 donneespersonnelles/ export de tout ce que la plateforme detient sur l'utilisateur et effacement de son compte (anonymisation)
 audit/           journal des acces : EntreeAudit, AdresseIp (troncature), port AuditRepository, FiltreAudit (servlet, apres la securite), AuditConfig, consultation ADMIN
 identite/        MoiController
-commun/          erreurs API (GestionErreursApi), exceptions partagees (ErreurMetier), format de date, langues (Langue, Cles, Messages, ContexteLangue, FiltreLangue, LangueConfig), limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig)
+commun/          erreurs API (GestionErreursApi), exceptions partagees (ErreurMetier), format de date, langues (Langue, Cles, Messages, ContexteLangue, FiltreLangue, LangueConfig), limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig), supervision (port Compteurs, CompteursMetier)
 config/          securite (JWT + roles Keycloak, CORS : CorsProprietes), horloge (Clock) et planification (@EnableScheduling)
 ```
 

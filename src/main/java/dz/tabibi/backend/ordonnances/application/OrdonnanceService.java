@@ -4,6 +4,7 @@ import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.Cles;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.ordonnances.domain.CodeVerification;
 import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
@@ -44,17 +45,20 @@ public class OrdonnanceService {
     private final GenerateurPdfOrdonnance generateurPdf;
     private final ProfilRepository profils;
     private final MedecinRepository medecins;
+    private final Compteurs compteurs;
     private final String baseUrlWeb;
 
     public OrdonnanceService(OrdonnanceRepository repository,
                              GenerateurPdfOrdonnance generateurPdf,
                              ProfilRepository profils,
                              MedecinRepository medecins,
+                             Compteurs compteurs,
                              @Value("${tabibi.web.base-url:http://localhost:4200}") String baseUrlWeb) {
         this.repository = repository;
         this.generateurPdf = generateurPdf;
         this.profils = profils;
         this.medecins = medecins;
+        this.compteurs = compteurs;
         this.baseUrlWeb = baseUrlWeb.endsWith("/") ? baseUrlWeb.substring(0, baseUrlWeb.length() - 1) : baseUrlWeb;
     }
 
@@ -75,9 +79,10 @@ public class OrdonnanceService {
         if (ligneIncomplete) {
             throw new OrdonnanceInvalideException("Chaque ligne doit indiquer un medicament.");
         }
-        Ordonnance ordonnance = Ordonnance.emettre(
-                medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now());
-        return repository.enregistrer(ordonnance);
+        Ordonnance ordonnance = repository.enregistrer(Ordonnance.emettre(
+                medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now()));
+        compteurs.incrementer(Compteurs.ORDONNANCES_EMISES);
+        return ordonnance;
     }
 
     /** Ordonnances d'un patient, de la plus recente a la plus ancienne. */

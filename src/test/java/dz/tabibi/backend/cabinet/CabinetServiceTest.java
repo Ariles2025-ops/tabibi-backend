@@ -9,6 +9,7 @@ import dz.tabibi.backend.cabinet.domain.RattachementIntrouvableException;
 import dz.tabibi.backend.cabinet.domain.RattachementRepository;
 import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.CompteursNeutres;
 import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
@@ -76,7 +77,7 @@ class CabinetServiceTest {
     private final FauxNotifieur notifieur = new FauxNotifieur();
     private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
     private final RendezVousService rendezVous =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte);
+            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte, CompteursNeutres.INSTANCE);
     private final CreneauService creneauService = new CreneauService(creneaux, alerte);
     private final CabinetService service = new CabinetService(rattachements, rendezVous, creneauService, notifieur);
 

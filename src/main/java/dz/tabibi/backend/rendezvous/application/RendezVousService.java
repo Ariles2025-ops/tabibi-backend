@@ -2,6 +2,7 @@ package dz.tabibi.backend.rendezvous.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.Cles;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -32,13 +33,15 @@ public class RendezVousService {
     private final CreneauRepository creneaux;
     private final Notifieur notifieur;
     private final AlerteCreneau alerteCreneau;
+    private final Compteurs compteurs;
 
     public RendezVousService(RendezVousRepository repository, CreneauRepository creneaux, Notifieur notifieur,
-                             AlerteCreneau alerteCreneau) {
+                             AlerteCreneau alerteCreneau, Compteurs compteurs) {
         this.repository = repository;
         this.creneaux = creneaux;
         this.notifieur = notifieur;
         this.alerteCreneau = alerteCreneau;
+        this.compteurs = compteurs;
     }
 
     /**
@@ -50,6 +53,7 @@ public class RendezVousService {
             throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.", Cles.CRENEAU_DEJA_RESERVE);
         }
         RendezVous rdv = repository.enregistrer(RendezVous.confirmer(patientId, medecinId, debut));
+        compteurs.incrementer(Compteurs.RENDEZVOUS_RESERVES);
         notifierReservation(rdv);
         return rdv;
     }
@@ -70,6 +74,7 @@ public class RendezVousService {
         creneaux.enregistrer(creneau.reserver());
         RendezVous rdv = repository.enregistrer(
                 RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id()));
+        compteurs.incrementer(Compteurs.RENDEZVOUS_RESERVES);
         notifierReservation(rdv);
         return rdv;
     }
@@ -99,6 +104,7 @@ public class RendezVousService {
         rdv.annuler();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
+        compteurs.incrementer(Compteurs.RENDEZVOUS_ANNULES);
         notifieur.notifier(annule.medecinId(), Cles.NOTIF_RDV_ANNULE_SUJET, Cles.NOTIF_RDV_ANNULE_MESSAGE,
                 FormatDate.lisible(annule.debut()));
         return annule;
@@ -153,6 +159,7 @@ public class RendezVousService {
         rdv.annulerParCabinet();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
+        compteurs.incrementer(Compteurs.RENDEZVOUS_ANNULES);
         notifieur.notifier(annule.patientId(), Cles.NOTIF_RDV_ANNULE_CABINET_SUJET,
                 Cles.NOTIF_RDV_ANNULE_CABINET_MESSAGE, FormatDate.lisible(annule.debut()));
         return annule;

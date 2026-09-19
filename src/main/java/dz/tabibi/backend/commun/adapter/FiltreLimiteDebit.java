@@ -1,6 +1,8 @@
 package dz.tabibi.backend.commun.adapter;
 
 import dz.tabibi.backend.commun.domain.Cles;
+import dz.tabibi.backend.commun.domain.Compteurs;
+import dz.tabibi.backend.commun.domain.CompteursNeutres;
 import dz.tabibi.backend.commun.domain.Langue;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -64,20 +66,23 @@ public class FiltreLimiteDebit extends OncePerRequestFilter {
     private final List<Regle> regles;
     private final boolean enTetesTransferesActifs;
     private final Messages messages;
+    private final Compteurs compteurs;
 
     /**
      * @param regles                  routes limitees, dans l'ordre d'evaluation (la premiere qui correspond s'applique)
      * @param enTetesTransferesActifs vrai derriere un reverse proxy de confiance (X-Forwarded-For pris en compte)
      */
     public FiltreLimiteDebit(List<Regle> regles, boolean enTetesTransferesActifs) {
-        this(regles, enTetesTransferesActifs, Messages.partagees());
+        this(regles, enTetesTransferesActifs, Messages.partagees(), CompteursNeutres.INSTANCE);
     }
 
-    /** Meme filtre avec un catalogue de messages explicite (tests, cablage a la main). */
-    public FiltreLimiteDebit(List<Regle> regles, boolean enTetesTransferesActifs, Messages messages) {
+    /** Meme filtre avec un catalogue de messages et des compteurs explicites (production, tests). */
+    public FiltreLimiteDebit(List<Regle> regles, boolean enTetesTransferesActifs, Messages messages,
+                             Compteurs compteurs) {
         this.regles = List.copyOf(regles);
         this.enTetesTransferesActifs = enTetesTransferesActifs;
         this.messages = messages;
+        this.compteurs = compteurs;
     }
 
     @Override
@@ -92,6 +97,7 @@ public class FiltreLimiteDebit extends OncePerRequestFilter {
         if (regle != null) {
             LimiteurDebit.Decision decision = regle.limiteur().tenter(cleDe(requete));
             if (!decision.autorise()) {
+                compteurs.incrementer(Compteurs.LIMITE_DEPASSEMENTS);
                 refuser(reponse, decision.attenteSecondes(),
                         messages.message(ContexteLangue.courante(), Cles.LIMITE_DEBIT));
                 return;

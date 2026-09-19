@@ -1,7 +1,9 @@
 package dz.tabibi.backend.teleconsultation;
 
+import dz.tabibi.backend.commun.CompteursEnregistres;
 import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository;
@@ -38,8 +40,10 @@ class TeleconsultationServiceTest {
     private final TeleconsultationRepository teleconsultations = new EnMemoireTeleconsultationRepository();
     private final RendezVousRepository rendezVous = new EnMemoireRendezVousRepository();
     private final NotificationRepository notifications = new EnMemoireNotificationRepository();
+    private final CompteursEnregistres compteurs = new CompteursEnregistres();
     private final TeleconsultationService service = new TeleconsultationService(
-            teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR), new GenerateurSalle(), BASE_URL);
+            teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR),
+            new GenerateurSalle(), compteurs, BASE_URL);
 
     private RendezVous rendezVousConfirme() {
         return rendezVous.enregistrer(RendezVous.confirmer(PATIENT, MEDECIN, DEBUT));
@@ -159,7 +163,8 @@ class TeleconsultationServiceTest {
     @Test
     void le_lien_ignore_la_barre_oblique_finale_de_la_base() {
         TeleconsultationService avecBarre = new TeleconsultationService(
-                teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR), new GenerateurSalle(), BASE_URL + "/");
+                teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR),
+                new GenerateurSalle(), compteurs, BASE_URL + "/");
         Teleconsultation t = avecBarre.planifier(MEDECIN, rendezVousConfirme().id());
 
         assertThat(avecBarre.lienSalle(t, MEDECIN)).isEqualTo(BASE_URL + "/" + t.salleId());
@@ -260,5 +265,27 @@ class TeleconsultationServiceTest {
         assertThat(service.teleconsultationsDuMedecin(MEDECIN).get(0).id()).isEqualTo(recente.id());
         assertThat(service.teleconsultationsDuMedecin(MEDECIN).get(1).id()).isEqualTo(autrePatient.id());
         assertThat(service.teleconsultationsDuMedecin(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void compte_les_teleconsultations_demarrees_pour_la_supervision() {
+        Teleconsultation t = planifiee();
+
+        assertThat(compteurs.compte(Compteurs.TELECONSULTATIONS_DEMARREES)).isZero();
+
+        service.consentir(PATIENT, t.id());
+        service.demarrer(MEDECIN, t.id());
+
+        assertThat(compteurs.compte(Compteurs.TELECONSULTATIONS_DEMARREES)).isEqualTo(1);
+    }
+
+    @Test
+    void ne_compte_pas_une_teleconsultation_qui_n_a_pas_pu_demarrer() {
+        Teleconsultation t = planifiee(); // sans consentement du patient
+
+        assertThatThrownBy(() -> service.demarrer(MEDECIN, t.id()))
+                .isInstanceOf(TransitionInvalideException.class);
+
+        assertThat(compteurs.compte(Compteurs.TELECONSULTATIONS_DEMARREES)).isZero();
     }
 }

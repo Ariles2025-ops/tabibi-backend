@@ -2,6 +2,7 @@ package dz.tabibi.backend.teleconsultation.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.Cles;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
@@ -34,17 +35,20 @@ public class TeleconsultationService {
     private final RendezVousRepository rendezVous;
     private final Notifieur notifieur;
     private final GenerateurSalle generateurSalle;
+    private final Compteurs compteurs;
     private final String baseUrl;
 
     public TeleconsultationService(TeleconsultationRepository repository,
                                    RendezVousRepository rendezVous,
                                    Notifieur notifieur,
                                    GenerateurSalle generateurSalle,
+                                   Compteurs compteurs,
                                    @Value("${tabibi.teleconsultation.base-url}") String baseUrl) {
         this.repository = repository;
         this.rendezVous = rendezVous;
         this.notifieur = notifieur;
         this.generateurSalle = generateurSalle;
+        this.compteurs = compteurs;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
@@ -124,6 +128,7 @@ public class TeleconsultationService {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
+        compteurs.incrementer(Compteurs.TELECONSULTATIONS_DEMARREES);
         notifieur.notifier(demarree.patientId(), Cles.NOTIF_TELECONSULTATION_DEMARREE_SUJET,
                 Cles.NOTIF_TELECONSULTATION_DEMARREE_MESSAGE);
         return demarree;

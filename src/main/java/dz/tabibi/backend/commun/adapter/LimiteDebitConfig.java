@@ -1,6 +1,7 @@
 package dz.tabibi.backend.commun.adapter;
 
 import dz.tabibi.backend.commun.adapter.FiltreLimiteDebit.Regle;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
@@ -38,13 +39,16 @@ public class LimiteDebitConfig {
     @Bean
     public FilterRegistrationBean<FiltreLimiteDebit> filtreLimiteDebit(
             Clock horloge,
+            Messages messages,
+            Compteurs compteurs,
             @Value("${tabibi.limite-debit.annuaire-par-minute:120}") int annuaireParMinute,
             @Value("${tabibi.limite-debit.verification-par-minute:30}") int verificationParMinute,
             @Value("${tabibi.limite-debit.publication-par-minute:20}") int publicationParMinute,
             @Value("${server.forward-headers-strategy:none}") String strategieEnTetesTransferes) {
         boolean derriereProxy = !"none".equalsIgnoreCase(strategieEnTetesTransferes.strip());
         FiltreLimiteDebit filtre = new FiltreLimiteDebit(
-                regles(annuaireParMinute, verificationParMinute, publicationParMinute, horloge), derriereProxy);
+                regles(annuaireParMinute, verificationParMinute, publicationParMinute, horloge), derriereProxy,
+                messages, compteurs);
         FilterRegistrationBean<FiltreLimiteDebit> enregistrement = new FilterRegistrationBean<>(filtre);
         enregistrement.setName("filtreLimiteDebit");
         enregistrement.setOrder(ORDRE_FILTRE);

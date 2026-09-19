@@ -13,7 +13,7 @@
 
   <groupId>dz.tabibi</groupId>
   <artifactId>tabibi-backend</artifactId>
-  <version>0.26.0</version>
+  <version>0.27.0</version>
   <name>tabibi-backend</name>
   <description>API Tabibi — plateforme de rendez-vous medical (socle securite)</description>
 
@@ -44,6 +44,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!-- Supervision : exposition des metriques au format Prometheus (/actuator/prometheus). -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>

@@ -1,8 +1,10 @@
 package dz.tabibi.backend.rendezvous;
 
 import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
+import dz.tabibi.backend.commun.CompteursEnregistres;
 import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
@@ -65,9 +67,10 @@ class RendezVousServiceTest {
 
     private final CreneauRepository creneaux = new EnMemoireCreneauRepository();
     private final FauxNotifieur notifieur = new FauxNotifieur();
+    private final CompteursEnregistres compteurs = new CompteursEnregistres();
     private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
     private final RendezVousService service =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte);
+            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte, compteurs);
 
     private Creneau premierCreneauDisponible() {
         return creneaux.disponiblesPour(MEDECIN_DEMO).get(0);
@@ -356,5 +359,33 @@ class RendezVousServiceTest {
     @Test
     void agenda_d_un_medecin_sans_rendezvous_est_vide() {
         assertThat(service.agendaDuMedecin(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void compte_les_reservations_et_les_annulations_pour_la_supervision() {
+        UUID patient = UUID.randomUUID();
+        Creneau creneau = premierCreneauDisponible();
+        RendezVous rdv = service.reserverCreneau(patient, creneau.id());
+        service.reserver(patient, UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z"));
+
+        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_RESERVES)).isEqualTo(2);
+        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_ANNULES)).isZero();
+
+        service.annuler(patient, rdv.id());
+        service.annuler(patient, rdv.id()); // deja annule : rien de neuf a compter
+
+        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_ANNULES)).isEqualTo(1);
+    }
+
+    @Test
+    void ne_compte_rien_quand_la_reservation_echoue() {
+        UUID medecin = UUID.randomUUID();
+        Instant debut = Instant.parse("2026-12-04T09:00:00Z");
+        service.reserver(UUID.randomUUID(), medecin, debut);
+
+        assertThatThrownBy(() -> service.reserver(UUID.randomUUID(), medecin, debut))
+                .isInstanceOf(CreneauDejaReserveException.class);
+
+        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_RESERVES)).isEqualTo(1);
     }
 }

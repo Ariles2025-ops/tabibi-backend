@@ -657,3 +657,36 @@
   avis sans profil derriere, trace d'audit, idempotence, donnees des autres intactes), DonneesPersonnellesWebTest
   (401 sans jeton sur les deux routes, 200 export avec l'en-tete de piece jointe, 400 sans confirmation exacte et
   sans corps, 200 effacement avec le resume).
+
+## v0.27.0 — Metriques et journalisation structuree
+- pom.xml : io.micrometer:micrometer-registry-prometheus (runtime), version 0.27.0.
+- application.yml : management.endpoints.web.exposure.include health,info,metrics,prometheus ;
+  management.endpoint.health.show-details when-authorized ; management.metrics.tags.application tabibi-backend.
+- SecurityConfig : /actuator/prometheus, /actuator/metrics et /actuator/metrics/** reserves au role ADMIN
+  (elles decrivent la charge et l'activite de la plateforme) ; /actuator/health et /actuator/health/** restent publics.
+- Port de domaine commun/domain/Compteurs (noms des six compteurs metier + incrementer), realise par
+  commun/adapter/CompteursMetier (@Component, MeterRegistry Micrometer, compteurs crees a la demande et mis en cache)
+  et par commun/domain/CompteursNeutres (objet nul, pour les tests et les cablages a la main). Aucune etiquette ne
+  porte d'identifiant d'utilisateur : ce serait une fuite de donnees personnelles et une explosion des series.
+- Compteurs branches : tabibi.rendezvous.reserves (reserver, reserverCreneau), tabibi.rendezvous.annules (annuler,
+  annulerParCabinet ; pas une seconde annulation, sans effet), tabibi.ordonnances.emises, tabibi.avis.deposes,
+  tabibi.teleconsultations.demarrees, tabibi.limite.depassements (FiltreLimiteDebit, a chaque 429).
+- logback-spring.xml : format lisible de Spring Boot hors production ; sous le profil postgres, une ligne JSON par
+  evenement avec ch.qos.logback.classic.encoder.JsonEncoder, integre a Logback 1.5 (apporte par Boot 3.4.1) : aucune
+  dependance supplementaire. MDC inclus, requetes SQL et parametres coupes en production (donnees de sante).
+- FiltreAudit pose un identifiant de requete dans le MDC (cle requeteId) pour la duree de l'appel et le renvoie dans
+  l'en-tete X-Request-Id ; l'identifiant fourni par un reverse proxy est repris s'il est raisonnable (au plus 64
+  caracteres, sans espace : un client ne peut pas forger une ligne de journal). Le sujet du jeton n'entre jamais dans
+  le MDC.
+- README (section Supervision : ce qu'on surveille, les six compteurs et leurs points d'increment, exemple de
+  scrape_config Prometheus avec un jeton de service ADMIN, pistes Grafana, journalisation et identifiant de requete ;
+  Securite et Journal des acces completes ; structure).
+- Tests : CompteursMetierTest (faux registre SimpleMeterRegistry : chaque increment se retrouve dans le registre,
+  compteur jamais incremente a zero, les six noms prefixes tabibi., un seul compteur par nom, implementation neutre),
+  SupervisionWebTest (@SpringBootTest port aleatoire, decodeur de jetons simule : sante publique, 401 sans jeton et
+  403 sans role ADMIN sur /actuator/prometheus et /actuator/metrics, 200 pour l'administrateur avec
+  tabibi_rendezvous_reserves et application="tabibi-backend", compteurs branches sur le registre de l'application),
+  tests de service completes avec un faux Compteurs (rendez-vous reserves et annules, avis, ordonnances,
+  teleconsultations, et rien n'est compte quand l'operation echoue), FiltreLimiteDebitTest (depassements comptes),
+  FiltreAuditTest (identifiant de requete pose dans le MDC et renvoye en en-tete, efface a la sortie meme sur
+  exception, identifiant du proxy repris ou ignore s'il est suspect).

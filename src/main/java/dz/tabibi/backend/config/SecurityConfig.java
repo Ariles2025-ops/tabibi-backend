@@ -41,6 +41,12 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html").permitAll()
+                // Metriques : elles decrivent la charge et l'activite de la plateforme, jamais des
+                // donnees personnelles, mais elles n'ont rien a faire en acces libre.
+                .requestMatchers(
+                        "/actuator/prometheus",
+                        "/actuator/metrics",
+                        "/actuator/metrics/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/medecins", "/api/medecins/**").permitAll()
                 // Verification d'une ordonnance par son code (pharmacien) : sans jeton, sans donnee personnelle.
                 .requestMatchers(HttpMethod.GET, "/api/ordonnances/verifier/**").permitAll()

@@ -7,6 +7,7 @@ import dz.tabibi.backend.avis.domain.AvisRepository;
 import dz.tabibi.backend.avis.domain.StatutAvis;
 import dz.tabibi.backend.avis.domain.SyntheseAvis;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
@@ -30,10 +31,12 @@ public class AvisService {
 
     private final AvisRepository avis;
     private final RendezVousRepository rendezVous;
+    private final Compteurs compteurs;
 
-    public AvisService(AvisRepository avis, RendezVousRepository rendezVous) {
+    public AvisService(AvisRepository avis, RendezVousRepository rendezVous, Compteurs compteurs) {
         this.avis = avis;
         this.rendezVous = rendezVous;
+        this.compteurs = compteurs;
     }
 
     /**
@@ -60,7 +63,10 @@ public class AvisService {
         if (avis.parRendezVous(rendezVousId).isPresent()) {
             throw new TransitionInvalideException("Un avis a deja ete depose pour ce rendez-vous.");
         }
-        return avis.enregistrer(Avis.deposer(rendezVousId, patientId, rdv.medecinId(), note, commentaire, Instant.now()));
+        Avis depose = avis.enregistrer(
+                Avis.deposer(rendezVousId, patientId, rdv.medecinId(), note, commentaire, Instant.now()));
+        compteurs.incrementer(Compteurs.AVIS_DEPOSES);
+        return depose;
     }
 
     /** Avis deposes par le patient, tous statuts, les plus recents d'abord. */

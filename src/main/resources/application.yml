@@ -51,4 +51,14 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # /actuator/health et /actuator/info sont publics ; /actuator/metrics et /actuator/prometheus
+        # sont reserves au role ADMIN par SecurityConfig (ils decrivent la charge et l'activite).
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      # Le detail des sondes (base, disque...) n'est montre qu'a un appelant authentifie.
+      show-details: when-authorized
+  metrics:
+    tags:
+      # Etiquette portee par toutes les metriques : distingue les instances dans Prometheus.
+      application: tabibi-backend

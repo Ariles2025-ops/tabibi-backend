@@ -1,9 +1,11 @@
 package dz.tabibi.backend.commun;
 
-import dz.tabibi.backend.commun.adapter.FiltreLimiteDebit;
 import dz.tabibi.backend.commun.adapter.FiltreLimiteDebit.Regle;
+import dz.tabibi.backend.commun.adapter.FiltreLimiteDebit;
 import dz.tabibi.backend.commun.adapter.LimiteDebitConfig;
 import dz.tabibi.backend.commun.adapter.LimiteurDebit;
+import dz.tabibi.backend.commun.adapter.Messages;
+import dz.tabibi.backend.commun.domain.Compteurs;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
@@ -181,5 +183,18 @@ class FiltreLimiteDebitTest {
         assertThatThrownBy(() -> new Regle("", "/api/medecins", limiteur)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Regle("GET", "api/medecins", limiteur)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Regle("GET", "/api/medecins", null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void compte_les_depassements_pour_la_supervision() throws Exception {
+        CompteursEnregistres compteurs = new CompteursEnregistres();
+        FiltreLimiteDebit filtre = new FiltreLimiteDebit(
+                LimiteDebitConfig.regles(3, 2, 2, horloge), false, Messages.partagees(), compteurs);
+
+        for (int i = 0; i < 5; i++) {
+            filtre.doFilter(requete("GET", "/api/medecins", "10.0.0.1"), new MockHttpServletResponse(), chaine);
+        }
+
+        assertThat(compteurs.compte(Compteurs.LIMITE_DEPASSEMENTS)).isEqualTo(2); // 3 passent, 2 sont refusees
     }
 }
