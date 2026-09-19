@@ -195,5 +195,6 @@
   "registrationEmailAsUsername": true,
   "resetPasswordAllowed": true,
   "verifyEmail": false,
-  "duplicateEmailsAllowed": false
+  "duplicateEmailsAllowed": false,
+  "loginTheme": "tabibi"
 }
