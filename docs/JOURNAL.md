@@ -405,3 +405,34 @@
   refusee), CorsProprietesTest (nettoyage des blancs et entrees vides, liste vide sans origine, configuration CORS
   construite par SecurityConfig : chemin /api/** seul, origines, methodes, en-tetes, credentials false, max-age).
 
+## v0.19.0 — Journal des acces
+- Exigence de sante : tracer qui accede a quoi. Module audit : EntreeAudit (record : id, sujet nullable si anonyme,
+  methode, chemin, statut, adresseIp, horodatage, dureeMs ; nouvelle(...), anonyme()), AdresseIp.tronquer (IPv4 au
+  dernier octet, IPv6 aux 64 premiers bits, IPv4 projetee traitee comme une IPv4, null pour toute valeur qui n'est
+  pas une adresse, sans resolution DNS), port AuditRepository (enregistrer, recents(limite), parSujet(sujet, limite),
+  les plus recentes d'abord), AuditService (enregistrer, recents, parSujet ; limite ramenee entre 1 et 1000 par
+  borner()).
+- FiltreAudit (adapter, OncePerRequestFilter) : journalise chaque requete /api/** (jamais /actuator/**) apres la
+  chaine de Spring Security ; sujet lu dans le SecurityContext (null si anonyme ou si le nom n'est pas un UUID),
+  chemin sans chaine de requete abrege a 512 caracteres, statut de la reponse (ou celui que produira une erreur
+  remontee : 403 pour AccessDeniedException, 401 pour AuthenticationException, 500 sinon, en remontant les causes),
+  IP tronquee ; le corps et les parametres ne sont jamais lus ; un echec d'ecriture est avale (warn sans donnee de
+  la requete) et ne fait jamais echouer la requete. Enregistre par AuditConfig (@Configuration a part, non importee
+  par les @WebMvcTest) via FilterRegistrationBean a l'ordre SecurityProperties.DEFAULT_FILTER_ORDER + 1 ; le filtre
+  n'est pas un @Component, les slices web existantes ne le chargent pas. Les requetes refusees par la securite
+  elle-meme (401, 403 du verrou /api/admin/**) ne sont pas journalisees comme acces (documente).
+- GET /api/admin/audit?limite=100 et GET /api/admin/audit/sujet/{id}?limite=100 (ADMIN) : vue EntreeAuditVue
+  { id, sujet, methode, chemin, statut, adresseIp, horodatage, dureeMs }.
+- Persistance : EnMemoireAuditRepository borne (10 000 entrees par defaut, capacite parametrable pour les tests ; a
+  date egale la derniere enregistree vient en premier) et JpaAuditRepository (Pageable, findAllByOrderByHorodatageDesc,
+  findBySujetOrderByHorodatageDesc) ; Liquibase 016 (table journal_acces, index horodatage et (sujet, horodatage)).
+- README (Securite, endpoints ADMIN, section Journal des acces, structure).
+- Tests : AdresseIpTest (IPv4, IPv6, zone, IPv4 projetee, valeurs absentes ou invalides sans exception),
+  AuditServiceTest (entree nouvelle et anonyme, validations, ordre le plus recent d'abord et a date egale, limites,
+  par sujet, bornes 1..1000, journal en memoire borne et capacite), FiltreAuditTest (MockHttpServletRequest/Response
+  et faux repository : entree complete avec sujet et IP tronquee, sans jeton, anonyme Spring, sujet non UUID, corps
+  et parametres jamais lus grace a un wrapper qui echoue a la lecture et requete transmise telle quelle, supervision
+  et hors API ignores, journal en panne avale, refus @PreAuthorize journalise 403 et remonte, 401 et 500, chemin
+  abrege), AuditWebTest (401 ; PATIENT et MEDECIN 403 ; ADMIN 200 avec la vue complete, limite par defaut 100 et
+  transmise, sujet nul pour un acces anonyme, acces d'un utilisateur).
+

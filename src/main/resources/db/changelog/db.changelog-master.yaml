@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/014-cabinet.yaml
   - include:
       file: db/changelog/015-rappels.yaml
+  - include:
+      file: db/changelog/016-audit.yaml

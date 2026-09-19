@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-journal-acces
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: journal_acces
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: sujet, type: uuid }
+              - column: { name: methode, type: varchar(10), constraints: { nullable: false } }
+              - column: { name: chemin, type: varchar(512), constraints: { nullable: false } }
+              - column: { name: statut, type: integer, constraints: { nullable: false } }
+              - column: { name: adresse_ip, type: varchar(45) }
+              - column: { name: horodatage, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: duree_ms, type: bigint, constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_journal_acces_horodatage
+            tableName: journal_acces
+            columns:
+              - column: { name: horodatage }
+        - createIndex:
+            indexName: idx_journal_acces_sujet_horodatage
+            tableName: journal_acces
+            columns:
+              - column: { name: sujet }
+              - column: { name: horodatage }

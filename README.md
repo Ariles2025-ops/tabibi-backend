@@ -15,6 +15,9 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
   400 (contenu invalide), 403 (acces refuse a une ressource d'un autre utilisateur),
   404 (introuvable), 409 (conflit avec l'etat courant).
+- **Journal des acces** : chaque requete `/api/**` est tracee (qui, quoi, quand, resultat, IP tronquee, duree ;
+  jamais le corps ni les parametres) par le filtre `FiltreAudit`, consultable par l'administrateur
+  (`GET /api/admin/audit`) ; voir la section « Journal des acces ».
 - **CORS** : le front web appelle l'API depuis une autre origine ; seules les origines listees dans
   `tabibi.cors.origines` (`CorsProprietes`, variable `TABIBI_CORS_ORIGINES`) sont acceptees, sur `/api/**`,
   methodes GET/POST/PUT/DELETE/OPTIONS, en-tetes `Authorization` et `Content-Type`, sans cookies
@@ -145,6 +148,8 @@ Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig
 | POST | `/api/admin/avis/{id}/masquer` | retire un avis de la vue publique (404, 409 si deja masque) |
 | POST | `/api/admin/avis/{id}/retablir` | remet un avis en ligne (404, 409 si deja publie) |
 | POST | `/api/admin/rappels/executer` | declenche manuellement les rappels de rendez-vous des 24 prochaines heures : `{ "nombre": n }` |
+| GET | `/api/admin/audit?limite=100` | journal des acces, les plus recents d'abord `[{ id, sujet, methode, chemin, statut, adresseIp, horodatage, dureeMs }]` (`limite` entre 1 et 1000, 100 par defaut) |
+| GET | `/api/admin/audit/sujet/{id}?limite=100` | les acces d'un utilisateur (sujet de son jeton), les plus recents d'abord |
 
 Documentation d'API : `/swagger-ui.html`.
 
@@ -180,6 +185,28 @@ tabibi:
   rappels:
     actifs: ${TABIBI_RAPPELS_ACTIFS:true}   # false coupe le planificateur (tests, instances multiples) ; l'appel manuel reste possible
 ```
+
+## Journal des acces
+
+Exigence de sante : savoir qui a accede a quoi. Le filtre servlet `FiltreAudit` (module `audit`,
+enregistre par `AuditConfig` juste apres la chaine de Spring Security) trace chaque requete `/api/**`
+(jamais `/actuator/**`) dans une entree `EntreeAudit` : `sujet` (identifiant porte par le jeton, `null`
+pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete), `statut` HTTP,
+`adresseIp`, `horodatage` (reception de la requete) et `dureeMs`.
+
+- **Minimisation** : le corps et les parametres de requete ne sont jamais lus ni journalises (ils
+  peuvent porter des donnees de sante) ; l'adresse IP est tronquee (`AdresseIp` : IPv4 au dernier
+  octet, `192.168.1.37` devient `192.168.1.0` ; IPv6 aux 64 premiers bits) ; le chemin est coupe a 512 caracteres.
+- **Jamais bloquant** : si le journal est indisponible, l'entree est perdue et un avertissement est
+  journalise, la requete aboutit normalement.
+- **Perimetre** : le filtre tourne apres la securite ; les requetes refusees par Spring Security
+  lui-meme (401 sans jeton ou jeton invalide, 403 du verrou `/api/admin/**`) ne sont pas des acces et
+  n'y figurent pas ; un refus de `@PreAuthorize` est trace avec le statut 403, une erreur imprevue avec 500.
+- **Stockage** : en memoire, journal borne aux 10 000 dernieres entrees (dev/tests) ; sous PostgreSQL,
+  table `journal_acces` (Liquibase 016, index sur `horodatage` et `(sujet, horodatage)`), sans purge
+  automatique : prevoir une retention (par exemple une suppression periodique des entrees de plus d'un an).
+- **Derriere un reverse proxy**, l'adresse vue par le serveur est celle du proxy : activer la prise en
+  compte des en-tetes `X-Forwarded-*` (`server.forward-headers-strategy=native`, proxys internes seulement).
 
 ## Notifications
 
@@ -265,6 +292,7 @@ profil/          profil de l'utilisateur connecte (nom, telephone, date de naiss
 listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
 cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-vous honores ou annules pour lui
 rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
+audit/           journal des acces : EntreeAudit, AdresseIp (troncature), port AuditRepository, FiltreAudit (servlet, apres la securite), AuditConfig, consultation ADMIN
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak, CORS : CorsProprietes), horloge (Clock) et planification (@EnableScheduling)
