@@ -3,7 +3,7 @@
 # Etape 2 : execution sur un JRE minimal, avec un utilisateur sans privilege.
 # Construire : docker build -t tabibi-backend .   Lancer : voir docker-compose.prod.yml
 
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3-eclipse-temurin-24 AS build
 WORKDIR /build
 # Les dependances d'abord : cette couche est reutilisee tant que le pom.xml ne change pas.
 COPY pom.xml .
