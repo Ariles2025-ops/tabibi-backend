@@ -469,3 +469,14 @@
 - Tests : SecuriteWebTest (la sante et ses sondes liveness / readiness ne repondent jamais 401 ni 403 sans jeton,
   le reste de la supervision reste protege).
 
+## v0.21.0 — Publication de l'image sur GHCR
+- .github/workflows/ci.yml : job verify (checkout, Temurin 21 avec cache Maven, mvn -B verify) sur pull request et
+  push main ; job image (uniquement sur push main, needs verify, permissions contents: read + packages: write) :
+  docker/setup-buildx-action@v3, docker/login-action@v3 sur ghcr.io avec GITHUB_TOKEN, nom d'image force en
+  minuscules (exigence GHCR), docker/metadata-action@v5 (tags latest + sha-<commit>, labels OCI),
+  docker/build-push-action@v6 (push, cache de couches GitHub Actions). permissions: contents: read au niveau du
+  workflow.
+- .github/dependabot.yml : mises a jour hebdomadaires Maven, GitHub Actions et images Docker (Dockerfile).
+- README : badge CI (organisation a remplacer), ou trouver l'image (tags latest et sha-<commit>, visibilite du
+  paquet GHCR, tag fige pour un deploiement reproductible), Dependabot.
+

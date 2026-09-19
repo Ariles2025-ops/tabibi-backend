@@ -1,5 +1,8 @@
 # tabibi-backend
 
+[![ci](https://github.com/<org>/tabibi-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/<org>/tabibi-backend/actions/workflows/ci.yml)
+(remplacer `<org>` par l'organisation GitHub qui heberge le depot)
+
 API de la plateforme Tabibi (prise de rendez-vous medicaux en Algerie). Architecture hexagonale,
 Spring Boot 3.4 / Java 21, securite JWT / Keycloak. Les donnees manipulees sont des donnees de
 patients : la securite prime (autorisation par role cote serveur, regles de proprietaire dans les
@@ -288,6 +291,13 @@ memoire du conteneur (`-XX:MaxRAMPercentage=75.0`). Le contexte de construction 
 docker build -t tabibi-backend .
 docker run --rm -p 8080:8080 tabibi-backend        # profil en memoire, Keycloak attendu sur localhost:8081
 ```
+
+L'image officielle est publiee sur GitHub Container Registry par la CI (`.github/workflows/ci.yml`, job
+`image`) a chaque push sur `main`, une fois le job `verify` (`mvn -B verify`) vert : `ghcr.io/<org>/tabibi-backend:latest`
+et `ghcr.io/<org>/tabibi-backend:sha-<commit>` (tag fige, a preferer pour un deploiement reproductible :
+`BACKEND_TAG=sha-xxxxxxx` dans `.env`). Un paquet GHCR est prive par defaut : le rendre public dans les reglages
+du paquet, ou `docker login ghcr.io` sur le serveur avec un jeton `read:packages`. Dependabot
+(`.github/dependabot.yml`) propose chaque semaine les mises a jour Maven, GitHub Actions et images Docker.
 
 ### Orchestration (`docker-compose.prod.yml`)
 
