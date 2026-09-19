@@ -62,6 +62,13 @@ management:
       # pas seulement sous le profil postgres : la supervision doit fonctionner des le profil par defaut.
       probes:
         enabled: true
+  # Export Prometheus explicitement active : selon l'environnement, l'export de metriques par
+  # defaut peut etre considere desactive (seul un SimpleMeterRegistry est alors cree et
+  # /actuator/prometheus renvoie 404). Ce reglage par registre force l'enregistrement de l'endpoint.
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   metrics:
     tags:
       # Etiquette portee par toutes les metriques : distingue les instances dans Prometheus.

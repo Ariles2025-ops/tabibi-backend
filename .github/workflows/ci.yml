@@ -17,16 +17,6 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Diag deps prometheus (temporaire)
-        if: always()
-        run: |
-          mvn -B dependency:tree > /tmp/tree.txt 2>&1 || true
-          {
-            echo '## Deps micrometer / prometheus'
-            echo '```'
-            grep -iE 'micrometer|prometheus' /tmp/tree.txt || echo '(aucune ligne micrometer/prometheus)'
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
       - name: Build & tests
         run: mvn -B verify
       - name: Resume des tests en echec
