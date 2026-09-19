@@ -48,8 +48,7 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
         return parId.values().stream()
                 .filter(m -> c.specialite() == null || m.specialiteSlug().equalsIgnoreCase(c.specialite()))
                 .filter(m -> c.wilaya() == null || m.wilayaCode().equals(c.wilaya()))
-                .filter(m -> c.texte() == null
-                        || m.nomComplet().toLowerCase(Locale.ROOT).contains(c.texte().toLowerCase(Locale.ROOT)))
+                .filter(m -> c.texte() == null || correspond(m, c.texte()))
                 .sorted(PAR_NOM)
                 .toList();
     }
@@ -63,5 +62,12 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     public Medecin enregistrer(Medecin medecin) {
         parId.put(medecin.id(), medecin);
         return medecin;
+    }
+/** Recherche libre : le texte correspond au nom, a la specialite, a la ville ou a la wilaya. */
+    private static boolean correspond(Medecin m, String texte) {
+        String t = texte.toLowerCase(Locale.ROOT);
+        return java.util.stream.Stream.of(m.nomComplet(), m.specialiteFr(), m.specialiteSlug(), m.ville(), m.wilayaFr())
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(v -> v.toLowerCase(Locale.ROOT).contains(t));
     }
 }
