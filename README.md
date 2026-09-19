@@ -76,6 +76,8 @@ Tout utilisateur authentifie :
 | GET | `/api/notifications/non-lues/nombre` | `{ "nombre": n }` |
 | POST | `/api/notifications/{id}/lue` | marque une notification lue (403 si elle n'est pas a moi, 404 si inconnue) |
 | POST | `/api/notifications/toutes-lues` | `{ "nombre": n }` notifications passees a lues |
+| GET | `/api/moi/donnees` | tout ce que la plateforme detient sur moi, en JSON telecharge (`Content-Disposition: attachment; filename="mes-donnees-tabibi.json"`) |
+| DELETE | `/api/moi/compte` | efface mon compte ; corps `{ "confirmation": "SUPPRIMER" }` obligatoire (400 sinon), renvoie `{ elementsEffaces, elementsConserves }` |
 
 Role PATIENT :
 
@@ -224,6 +226,53 @@ tabibi:
   rappels:
     actifs: ${TABIBI_RAPPELS_ACTIFS:true}   # false coupe le planificateur (tests, instances multiples) ; l'appel manuel reste possible
 ```
+
+## Donnees personnelles
+
+Exigence de la **loi algerienne 18-07** sur la protection des donnees a caractere personnel (et bonne
+pratique RGPD) : l'utilisateur peut recuperer ses donnees et faire effacer son compte, sans passer par
+le support. Module `donneespersonnelles`, deux points d'entree, chacun n'agissant que sur les donnees
+de l'appelant (le sujet de son jeton).
+
+**Export** — `GET /api/moi/donnees` renvoie un seul document JSON telecharge
+(`Content-Disposition: attachment; filename="mes-donnees-tabibi.json"`) qui rassemble **tout** ce que
+la plateforme detient : profil, rendez-vous (comme patient et comme medecin), ordonnances recues et
+redigees, avis deposes, notifications, conversations avec tous leurs messages, besoins Dawini,
+teleconsultations, inscriptions en liste d'attente et candidature de medecin. Les objets du domaine
+sont repris tels quels : c'est justement ce qui est stocke.
+
+**Effacement** — `DELETE /api/moi/compte`, avec le corps `{ "confirmation": "SUPPRIMER" }` (400 sans le
+mot exact : une suppression ne se rattrape pas). C'est une **anonymisation**, pas une suppression totale :
+
+| Efface | Conserve |
+|---|---|
+| le profil (nom, telephone, date de naissance, wilaya, langue) | les rendez-vous : obligation de tracabilite medicale, le medecin doit garder trace de ses consultations |
+| les notifications | les ordonnances et les teleconsultations, pour la meme raison |
+| les inscriptions en liste d'attente (elles n'existent que pour prevenir un compte qui n'existe plus) | les avis, devenus de fait anonymes : l'identifiant reste, mais plus aucun profil ne se trouve derriere |
+| le contenu des messages, remplace par « Message supprime » | les conversations et les messages de l'autre participant, qui a droit a son fil |
+| | les besoins Dawini et la candidature de medecin |
+
+La reponse (200) detaille ce qui s'est passe : `{ "elementsEffaces": { "profil": 1, "notifications": 12,
+"messages": 5, "inscriptionsListeAttente": 2 }, "elementsConserves": { "rendezVous": 3, ... } }`.
+L'operation est **idempotente** (la rejouer ne change plus rien) et elle est tracee dans le journal des
+acces sous le chemin `/api/moi/compte/effacement`, distinct de la trace de la requete elle-meme.
+
+**Le compte d'identite Keycloak n'est pas touche.** Le backend ne supprime rien dans Keycloak : il n'en
+est pas proprietaire, et un backend qui peut effacer des identites est une cible. Apres un effacement,
+l'utilisateur garde donc un compte capable de se connecter, mais sans aucune donnee : l'administrateur
+doit supprimer l'identite cote Keycloak, dans le realm `tabibi` :
+
+```bash
+# console d'administration : Users -> chercher l'utilisateur -> Delete
+# ou en ligne de commande, depuis le conteneur Keycloak :
+kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin
+kcadm.sh get users -r tabibi -q username=<identifiant>   # releve l'id
+kcadm.sh delete users/<id> -r tabibi
+```
+
+L'identifiant a supprimer est exactement le `sujet` renvoye par `GET /api/moi` (et present dans le
+journal des acces de l'effacement). Tant que Keycloak n'a pas ete purge, desactiver l'utilisateur
+(`Enabled = Off`) empeche deja toute connexion.
 
 ## Journal des acces
 
@@ -490,6 +539,7 @@ profil/          profil de l'utilisateur connecte (nom, telephone, date de naiss
 listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
 cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-vous honores ou annules pour lui
 rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
+donneespersonnelles/ export de tout ce que la plateforme detient sur l'utilisateur et effacement de son compte (anonymisation)
 audit/           journal des acces : EntreeAudit, AdresseIp (troncature), port AuditRepository, FiltreAudit (servlet, apres la securite), AuditConfig, consultation ADMIN
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees (ErreurMetier), format de date, langues (Langue, Cles, Messages, ContexteLangue, FiltreLangue, LangueConfig), limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig)

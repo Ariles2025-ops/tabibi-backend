@@ -41,6 +41,11 @@ public class JpaMessageRepository implements MessageRepository {
     }
 
     @Override
+    public long anonymiserAuteur(UUID auteurId, String remplacement) {
+        return jpa.anonymiserAuteur(auteurId, remplacement);
+    }
+
+    @Override
     public List<Message> marquerLus(UUID conversationId, UUID lecteurId, Instant quand) {
         List<Message> lus = jpa.findByConversationIdAndAuteurIdNotAndLuLeIsNullOrderByEnvoyeLeAsc(conversationId, lecteurId)
                 .stream()

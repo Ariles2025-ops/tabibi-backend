@@ -27,4 +27,9 @@ public class EnMemoireProfilRepository implements ProfilRepository {
         parUtilisateur.put(profil.utilisateurId(), profil);
         return profil;
     }
+
+    @Override
+    public boolean supprimer(UUID utilisateurId) {
+        return parUtilisateur.remove(utilisateurId) != null;
+    }
 }

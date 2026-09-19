@@ -52,6 +52,14 @@ public class EnMemoireMessageRepository implements MessageRepository {
         return lus;
     }
 
+    @Override
+    public long anonymiserAuteur(UUID auteurId, String remplacement) {
+        List<Message> siens = tous().stream().filter(m -> m.estDe(auteurId)).toList();
+        siens.forEach(m -> enregistrer(
+                new Message(m.id(), m.conversationId(), m.auteurId(), remplacement, m.envoyeLe(), m.luLe())));
+        return siens.size();
+    }
+
     /** Messages de la conversation ecrits par un autre que le lecteur et non encore lus, du plus ancien au plus recent. */
     private List<Message> recusNonLus(UUID conversationId, UUID lecteurId) {
         return parConversation(conversationId).stream()

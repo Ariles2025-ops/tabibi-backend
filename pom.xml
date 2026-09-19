@@ -13,7 +13,7 @@
 
   <groupId>dz.tabibi</groupId>
   <artifactId>tabibi-backend</artifactId>
-  <version>0.25.0</version>
+  <version>0.26.0</version>
   <name>tabibi-backend</name>
   <description>API Tabibi — plateforme de rendez-vous medical (socle securite)</description>
 

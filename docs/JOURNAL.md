@@ -622,3 +622,38 @@
   NotifieurInterneTest (langue du profil, parametres, sans profil ou langue non servie -> francais) ; les faux
   notifieurs des tests de service rendent les cles avec le vrai catalogue, ce qui verifie au passage que les textes
   francais servis sont bien ceux qu'attendaient les tests existants.
+
+## v0.26.0 — Export et effacement du compte
+- Module donneespersonnelles (domain / application / adapter), deux droits de l'utilisateur sur ses propres donnees
+  (loi algerienne 18-07 sur la protection des donnees a caractere personnel, bonnes pratiques RGPD).
+- domain/ExportPersonnel : tout ce que la plateforme detient sur un utilisateur — profil, rendez-vous comme patient
+  et comme medecin, ordonnances recues et redigees, avis deposes, notifications, conversations avec tous leurs
+  messages (ConversationExportee), besoins Dawini, teleconsultations des deux cotes, inscriptions en liste d'attente,
+  candidature de medecin. Les objets du domaine sont repris tels quels : c'est justement ce qui est stocke.
+- domain/ResumeSuppression { elementsEffaces, elementsConserves } (compteurs par element, Constructeur accumulateur)
+  et domain/ConfirmationInvalideException (traduite, cle erreur.donnees.confirmation.attendue).
+- application/DonneesPersonnellesService : exporter(sujet) ; supprimer(sujet) = anonymisation, pas suppression totale.
+  Partent : le profil, les notifications, les inscriptions en liste d'attente (elles n'existent que pour prevenir un
+  compte disparu), et le contenu des messages de l'utilisateur, remplace par « Message supprime ». Restent : les
+  rendez-vous (tracabilite medicale), ordonnances, teleconsultations, besoins Dawini, candidature, les conversations
+  et les messages de l'autre participant, et les avis — de fait anonymes, l'identifiant technique n'ayant plus aucun
+  profil derriere lui. L'operation est idempotente et tracee dans le journal des acces sous un chemin qui lui est
+  propre (/api/moi/compte/effacement), distinct de la trace de la requete ; un journal indisponible ne la fait pas
+  echouer.
+- Ports enrichis du strict necessaire, en memoire ET en JPA : ProfilRepository.supprimer (boolean),
+  NotificationRepository.supprimerPourDestinataire (deleteByDestinataireId derive, @Modifying),
+  MessageRepository.anonymiserAuteur (une requete @Modifying @Query cote JPA). Aucune migration Liquibase : aucune
+  colonne nouvelle.
+- REST : GET /api/moi/donnees (authentifie) -> JSON complet avec Content-Disposition attachment et le nom
+  mes-donnees-tabibi.json ; DELETE /api/moi/compte (authentifie), corps { "confirmation": "SUPPRIMER" } obligatoire
+  (400 sinon, corps absent compris) -> 200 { elementsEffaces, elementsConserves }.
+- Keycloak n'est PAS touche : le backend n'est pas proprietaire des identites, et un backend capable d'effacer des
+  comptes d'identite est une cible. La procedure de suppression cote administrateur (console ou kcadm.sh, l'identifiant
+  etant le sujet du jeton) est documentee dans le README.
+- README (section Donnees personnelles avec le tableau efface / conserve et la procedure Keycloak, endpoints,
+  structure) ; pom.xml 0.26.0.
+- Tests : DonneesPersonnellesServiceTest (export complet d'un patient garni, export du meme compte vu cote medecin
+  avec sa candidature, export d'un compte vide, effacement : ce qui part, ce qui reste, messages de l'autre intacts,
+  avis sans profil derriere, trace d'audit, idempotence, donnees des autres intactes), DonneesPersonnellesWebTest
+  (401 sans jeton sur les deux routes, 200 export avec l'en-tete de piece jointe, 400 sans confirmation exacte et
+  sans corps, 200 effacement avec le resume).

@@ -14,4 +14,10 @@ public interface ProfilRepository {
 
     /** Enregistre le profil : creation s'il n'existait pas, remplacement sinon. */
     Profil enregistrer(Profil profil);
+
+    /**
+     * Efface le profil d'un utilisateur (droit a l'effacement) ; vrai s'il en avait un.
+     * Sans effet, et faux, s'il n'en avait pas : l'operation est idempotente.
+     */
+    boolean supprimer(UUID utilisateurId);
 }

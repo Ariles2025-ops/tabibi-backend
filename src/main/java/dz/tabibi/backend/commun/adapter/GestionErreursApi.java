@@ -15,6 +15,7 @@ import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.dawini.domain.BesoinIntrouvableException;
 import dz.tabibi.backend.dawini.domain.BesoinInvalideException;
 import dz.tabibi.backend.dawini.domain.ReponseInvalideException;
+import dz.tabibi.backend.donneespersonnelles.domain.ConfirmationInvalideException;
 import dz.tabibi.backend.listeattente.domain.InscriptionIntrouvableException;
 import dz.tabibi.backend.messagerie.domain.ConversationIntrouvableException;
 import dz.tabibi.backend.messagerie.domain.MessageInvalideException;
@@ -78,7 +79,7 @@ public class GestionErreursApi {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }
 
-    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete, message vide, note hors bornes, besoin sans medicament, profil sans nom, medecin qui se rattache lui-meme...). */
+    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete, message vide, note hors bornes, besoin sans medicament, profil sans nom, medecin qui se rattache lui-meme, effacement de compte non confirme...). */
     @ExceptionHandler({
             OrdonnanceInvalideException.class,
             CreneauInvalideException.class,
@@ -88,7 +89,8 @@ public class GestionErreursApi {
             BesoinInvalideException.class,
             ReponseInvalideException.class,
             ProfilInvalideException.class,
-            CabinetInvalideException.class})
+            CabinetInvalideException.class,
+            ConfirmationInvalideException.class})
     public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
         return reponse(HttpStatus.BAD_REQUEST, ex);
     }

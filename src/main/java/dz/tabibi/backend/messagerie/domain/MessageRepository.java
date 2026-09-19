@@ -23,4 +23,11 @@ public interface MessageRepository {
      * et non encore lus ; renvoie les messages ainsi marques (vide s'il n'y en avait aucun).
      */
     List<Message> marquerLus(UUID conversationId, UUID lecteurId, Instant quand);
+
+    /**
+     * Remplace le contenu de tous les messages ecrits par cet auteur (effacement de compte) et
+     * renvoie combien ont ete remplaces. Les messages ne sont pas effaces : ils resteraient
+     * autrement des trous dans le fil de l'autre participant, qui a droit a sa conversation.
+     */
+    long anonymiserAuteur(UUID auteurId, String remplacement);
 }

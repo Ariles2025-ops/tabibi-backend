@@ -33,4 +33,13 @@ public class JpaProfilRepository implements ProfilRepository {
         jpa.save(ProfilEntity.de(profil));
         return profil;
     }
+
+    @Override
+    public boolean supprimer(UUID utilisateurId) {
+        if (!jpa.existsById(utilisateurId)) {
+            return false;
+        }
+        jpa.deleteById(utilisateurId);
+        return true;
+    }
 }

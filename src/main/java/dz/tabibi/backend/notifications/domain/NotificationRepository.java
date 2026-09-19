@@ -19,4 +19,10 @@ public interface NotificationRepository {
 
     /** Nombre de notifications non lues d'un destinataire. */
     long nombreNonLues(UUID destinataireId);
+
+    /**
+     * Efface toutes les notifications d'un destinataire (effacement de compte) et renvoie
+     * combien ont ete effacees ; 0 s'il n'en avait aucune.
+     */
+    long supprimerPourDestinataire(UUID destinataireId);
 }

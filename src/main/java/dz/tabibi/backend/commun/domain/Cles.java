@@ -63,6 +63,9 @@ public final class Cles {
     public static final String PROFIL_WILAYA_LONGUEUR = "erreur.profil.wilaya.longueur";
     public static final String PROFIL_LANGUE_INVALIDE = "erreur.profil.langue.invalide";
 
+    /** Effacement de compte : la confirmation exacte est exigee. */
+    public static final String DONNEES_CONFIRMATION_ATTENDUE = "erreur.donnees.confirmation.attendue";
+
     /** Limitation de debit : rendue par le filtre, hors chaine des exceptions. */
     public static final String LIMITE_DEBIT = "erreur.limite.debit";
 
@@ -112,7 +115,7 @@ public final class Cles {
                 MESSAGE_CONTENU_OBLIGATOIRE, MESSAGE_TROP_LONG, AVIS_NOTE_HORS_BORNES, AVIS_COMMENTAIRE_TROP_LONG,
                 ORDONNANCE_SANS_LIGNE, BESOIN_WILAYA_OBLIGATOIRE, PROFIL_NOM_OBLIGATOIRE, PROFIL_NOM_LONGUEUR,
                 PROFIL_TELEPHONE_INVALIDE, PROFIL_NAISSANCE_PASSE, PROFIL_NAISSANCE_ANNEE, PROFIL_WILAYA_LONGUEUR,
-                PROFIL_LANGUE_INVALIDE, LIMITE_DEBIT,
+                PROFIL_LANGUE_INVALIDE, DONNEES_CONFIRMATION_ATTENDUE, LIMITE_DEBIT,
                 NOTIF_RDV_CONFIRME_SUJET, NOTIF_RDV_CONFIRME_MESSAGE, NOTIF_RDV_NOUVEAU_SUJET, NOTIF_RDV_NOUVEAU_MESSAGE,
                 NOTIF_RDV_ANNULE_SUJET, NOTIF_RDV_ANNULE_MESSAGE, NOTIF_RDV_ANNULE_CABINET_SUJET,
                 NOTIF_RDV_ANNULE_CABINET_MESSAGE, NOTIF_RAPPEL_SUJET, NOTIF_RAPPEL_MESSAGE,
