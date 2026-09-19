@@ -6,6 +6,7 @@ import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 /**
  * Une session video entre un patient et son medecin, adossee a un rendez-vous confirme.
@@ -13,6 +14,9 @@ import java.util.UUID;
  * d'y acceder et avant que le medecin puisse demarrer la session (donnees de sante).
  * Le comportement metier (consentir, demarrer, terminer, annuler) vit dans l'entite.
  */
+// Export RGPD : Jackson serialise les champs de l'entite (ses accesseurs "fluent" id()/statut()
+// ne suivent pas la convention getX et ne sont donc pas detectes comme proprietes).
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Teleconsultation {
 
     private final UUID id;

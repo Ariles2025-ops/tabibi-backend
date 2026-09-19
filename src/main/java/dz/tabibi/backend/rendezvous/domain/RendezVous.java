@@ -4,11 +4,15 @@ import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 
 import java.time.Instant;
 import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 /**
  * Un rendez-vous entre un patient et un medecin, sur un creneau donne.
  * Le comportement metier (confirmer, annuler, honorer, rappeler) vit dans l'entite.
  */
+// Export RGPD : Jackson serialise les champs de l'entite (ses accesseurs "fluent" id()/statut()
+// ne suivent pas la convention getX et ne sont donc pas detectes comme proprietes).
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class RendezVous {
 
     private final UUID id;
