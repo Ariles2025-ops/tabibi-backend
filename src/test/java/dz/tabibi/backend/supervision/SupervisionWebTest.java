@@ -104,9 +104,12 @@ class SupervisionWebTest {
 
     @Test
     void les_compteurs_metier_sont_bien_branches_sur_le_registre_de_l_application() {
+        // Le contexte Spring est partage entre classes de test : on mesure l'ecart, pas la valeur
+        // absolue du compteur (d'autres scenarios ont pu deposer des avis sur le meme registre).
+        double avant = registre.counter(Compteurs.AVIS_DEPOSES).count();
         compteurs.incrementer(Compteurs.AVIS_DEPOSES);
         compteurs.incrementer(Compteurs.AVIS_DEPOSES);
 
-        assertThat((long) registre.counter(Compteurs.AVIS_DEPOSES).count()).isEqualTo(2);
+        assertThat((long) (registre.counter(Compteurs.AVIS_DEPOSES).count() - avant)).isEqualTo(2);
     }
 }

@@ -58,6 +58,10 @@ management:
     health:
       # Le detail des sondes (base, disque...) n'est montre qu'a un appelant authentifie.
       show-details: when-authorized
+      # Sondes /actuator/health/liveness et /readiness (conteneurs, orchestrateurs) actives partout,
+      # pas seulement sous le profil postgres : la supervision doit fonctionner des le profil par defaut.
+      probes:
+        enabled: true
   metrics:
     tags:
       # Etiquette portee par toutes les metriques : distingue les instances dans Prometheus.
