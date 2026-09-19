@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-rattachement-secretaire
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: rattachement_secretaire
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: secretaire_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: cree_le, type: timestamptz, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            constraintName: uk_rattachement_medecin_secretaire
+            tableName: rattachement_secretaire
+            columnNames: medecin_id, secretaire_id
+        - createIndex:
+            indexName: idx_rattachement_secretaire
+            tableName: rattachement_secretaire
+            columns:
+              - column: { name: secretaire_id }

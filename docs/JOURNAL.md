@@ -322,3 +322,41 @@
   hors agenda, pour une annulation refusee ou une seconde annulation) avec une fausse AlerteCreneau ; web 401 sans
   jeton sur le POST d'inscription malgre le GET public, 403 par role, 201 / 409, 200 liste, 204 sans corps, 403 / 404
   au retrait, 200 / 403 / 401 pour la liste du medecin.
+
+## v0.16.0 — Cabinet
+- POST /api/medecin/secretaires (MEDECIN, 201, body { secretaireId }) : rattache une secretaire au cabinet du medecin
+  connecte (une seule fois par couple, 409 sinon ; 400 si la secretaire manque ou si le medecin se designe lui-meme) ;
+  la secretaire est prevenue (« Rattachement a un cabinet »). GET /api/medecin/secretaires : ses secretaires, les plus
+  anciens rattachements d'abord. POST /api/medecin/secretaires/{id}/retirer (204 sans corps ; 404, 403 si le
+  rattachement est a un autre medecin) ; la secretaire est prevenue (« Rattachement retire »).
+- POST /api/medecin/rendezvous/{id}/annuler (MEDECIN, 200) : le medecin annule lui-meme un rendez-vous confirme de son
+  agenda (RendezVousService.annulerParCabinet) : creneau remis a disposition (liste d'attente alertee), patient prevenu
+  (« Rendez-vous annule par le cabinet ») ; 403 si autre medecin, 409 si deja annule ou honore, 404 si inconnu.
+- SECRETAIRE : GET /api/secretaire/medecins (ses cabinets) ; GET /api/secretaire/medecins/{medecinId}/rendezvous (agenda,
+  vue RendezVousVue du module rendezvous, rendue publique) ; POST /api/secretaire/medecins/{medecinId}/creneaux (201,
+  body { debut, dureeMinutes }, vue Creneau du module creneaux, 400 si invalide) ; POST /api/secretaire/rendezvous/{id}/honorer
+  (200, 409 si non confirme) ; POST /api/secretaire/rendezvous/{id}/annuler (200, 409). Chaque action exige que la
+  secretaire soit rattachee au medecin vise ou au medecin du rendez-vous (AccesRefuse, 403) ; 404 si le rendez-vous
+  n'existe pas.
+- Vue RattachementVue { id, medecinId, secretaireId, creeLe }.
+- Domaine rendezvous : RendezVous.annulerParCabinet() (uniquement depuis CONFIRME, a la difference de l'annulation par
+  le patient qui reste idempotente) ; RendezVousService.parId(id) (404) et annulerParCabinet(medecinId, id).
+- Module cabinet : Rattachement (record immuable : rattacher avec validation, concerneMedecin, concerneSecretaire), port
+  RattachementRepository (enregistrer, parId, parMedecinEtSecretaire, parMedecin, parSecretaire, supprimer),
+  CabinetService (RattachementRepository, RendezVousService, CreneauService, Notifieur : rattacher, secretairesDuMedecin,
+  retirer, medecinsDeLaSecretaire, verifierAcces, agendaPour, ouvrirCreneauPour, honorerPour, annulerPour) ; exceptions
+  RattachementIntrouvable (404) et CabinetInvalide (400) dans GestionErreursApi ; le doublon est un conflit (409).
+- Persistance : adaptateur en memoire (ordre de rattachement conserve a date egale) et JPA (findByMedecinIdAndSecretaireId,
+  findByMedecinIdOrderByCreeLeAsc, findBySecretaireIdOrderByCreeLeAsc, deleteById) ; Liquibase 014 (table
+  rattachement_secretaire : unique (medecin_id, secretaire_id), index secretaire_id).
+- Keycloak : compte de demonstration secretaire.demo / secretaire (55555555-5555-5555-5555-555555555555, role SECRETAIRE)
+  dans infra/keycloak/tabibi-realm.json ; README (endpoints MEDECIN et SECRETAIRE, comptes de demo, notifications, structure).
+- Tests : CabinetServiceTest (rattachement et notification, doublon 409, soi-meme et sans secretaire 400, plusieurs
+  cabinets tries, retrait et notification puis acces refuse, retrait 403 / 404, acces refuse 403 pour une secretaire non
+  rattachee, agenda, ouverture de creneau avec alerte et refus 403 / 400, honorer 200 / 409 / 403 / 404, annulation par
+  le cabinet qui libere le creneau, alerte la liste et previent le patient, refus 403 / 409 / 404),
+  RendezVousServiceTest (parId, annulerParCabinet : creneau libere, alerte, patient prevenu ; refus si annule, honore,
+  autre medecin, inconnu), CabinetWebTest (401 sur toutes les routes, PATIENT 403, MEDECIN et SECRETAIRE croises 403,
+  201 / 400 / 409 au rattachement, 200 liste, 204 sans corps au retrait, 404 / 403, SECRETAIRE 200 cabinets, agenda
+  200 / 403, creneau 201 / 400 / 403, honorer 200 / 409, annuler 200 / 409 / 403 / 404), RendezVousWebTest
+  (POST /api/medecin/rendezvous/{id}/annuler : 200, 401, PATIENT 403, 409 / 403 / 404).

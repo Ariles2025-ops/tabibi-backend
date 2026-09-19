@@ -11,7 +11,7 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
   role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`, `PHARMACIE`) dans `SecurityConfig` (dont le verrou
   `/api/admin/**` reserve au role ADMIN) puis par `@PreAuthorize` sur chaque endpoint ; `KeycloakRoleConverter`
   traduit tout role du realm en autorite `ROLE_*`.
-- Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient, medecin ou pharmacie selon le role.
+- Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient, medecin, secretaire ou pharmacie selon le role.
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
   400 (contenu invalide), 403 (acces refuse a une ressource d'un autre utilisateur),
   404 (introuvable), 409 (conflit avec l'etat courant).
@@ -79,6 +79,20 @@ Role MEDECIN :
 | GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
 | POST | `/api/avis/{id}/signaler` | signale a l'administrateur un avis publie qui me concerne (403 sinon, 409 s'il n'est pas publie) |
 | GET | `/api/medecin/liste-attente` | ma liste d'attente : patients inscrits, les plus anciens d'abord |
+| POST | `/api/medecin/rendezvous/{id}/annuler` | annule un rendez-vous confirme de mon agenda : creneau remis a disposition, patient prevenu (403 si autre medecin, 409 si annule ou honore) |
+| POST | `/api/medecin/secretaires` | rattache une secretaire a mon cabinet `{ secretaireId }` (201, 400 si moi-meme, 409 si deja rattachee) ; elle est prevenue |
+| GET | `/api/medecin/secretaires` | secretaires rattachees a mon cabinet `[{ id, medecinId, secretaireId, creeLe }]` |
+| POST | `/api/medecin/secretaires/{id}/retirer` | retire une secretaire de mon cabinet (204 sans corps, 404, 403 si le rattachement est a un autre medecin) |
+
+Role SECRETAIRE (rattachee au cabinet du medecin par celui-ci, 403 sinon) :
+
+| Methode | Chemin | Description |
+|---|---|---|
+| GET | `/api/secretaire/medecins` | cabinets auxquels je suis rattachee `[{ id, medecinId, secretaireId, creeLe }]` |
+| GET | `/api/secretaire/medecins/{medecinId}/rendezvous` | agenda du medecin, tous statuts (vue des rendez-vous) |
+| POST | `/api/secretaire/medecins/{medecinId}/creneaux` | ouvre un creneau `{ debut, dureeMinutes }` dans son agenda (201, 400) |
+| POST | `/api/secretaire/rendezvous/{id}/honorer` | le patient est venu (404, 409 si non confirme) |
+| POST | `/api/secretaire/rendezvous/{id}/annuler` | annule pour le cabinet : creneau remis a disposition, patient prevenu (404, 409) |
 
 Role PHARMACIE (Dawini) :
 
@@ -142,7 +156,8 @@ messagerie, l'autre participant (« Nouveau message », sans le contenu) ; a cha
 pharmacie sur Dawini, le patient (« Reponse d'une pharmacie », sans detail) ; a chaque creneau libere chez un
 medecin (ouverture d'un creneau, annulation d'un rendez-vous qui remet son creneau a disposition), chaque patient
 inscrit sur sa liste d'attente (« Creneau disponible », port `AlerteCreneau` du module `listeattente`, realise par
-`ListeAttenteService`). Aujourd'hui l'adaptateur
+`ListeAttenteService`) ; a l'annulation par le cabinet (medecin ou secretaire), le patient (« Rendez-vous annule par le
+cabinet ») ; au rattachement d'une secretaire et a son retrait, la secretaire. Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
 au domaine. Les messages ne sont jamais journalises.
@@ -166,7 +181,7 @@ mvn spring-boot:run           # API sur http://localhost:8080 (en memoire)
 
 ### Comptes de demonstration Keycloak (dev local uniquement)
 
-Le realm importe (`infra/keycloak/tabibi-realm.json`) contient quatre utilisateurs aux mots de passe
+Le realm importe (`infra/keycloak/tabibi-realm.json`) contient cinq utilisateurs aux mots de passe
 simples, a ne jamais reutiliser ailleurs qu'en local :
 
 | Utilisateur | Mot de passe | Role | Identifiant (`sub`) |
@@ -175,6 +190,7 @@ simples, a ne jamais reutiliser ailleurs qu'en local :
 | `medecin.demo` | `medecin` | MEDECIN | `00000000-0000-0000-0000-000000000001` (Dr Amina Belkacem, premier praticien de demonstration de l'annuaire en memoire) |
 | `admin.demo` | `admin` | ADMIN | `33333333-3333-3333-3333-333333333333` |
 | `pharmacie.demo` | `pharmacie` | PHARMACIE | `44444444-4444-4444-4444-444444444444` |
+| `secretaire.demo` | `secretaire` | SECRETAIRE | `55555555-5555-5555-5555-555555555555` (a rattacher par `medecin.demo` via `POST /api/medecin/secretaires`) |
 
 Obtenir un jeton en ligne de commande (le client public `tabibi-web` accepte le flux
 « direct access grants » pour le dev local) :
@@ -212,6 +228,7 @@ avis/            avis verifies des patients (rendez-vous honore), synthese publi
 dawini/          besoins de medicaments des patients et reponses des pharmacies (role PHARMACIE)
 profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue)
 listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
+cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-vous honores ou annules pour lui
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

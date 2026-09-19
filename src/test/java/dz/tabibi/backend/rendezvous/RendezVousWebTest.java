@@ -8,6 +8,7 @@ import dz.tabibi.backend.rendezvous.adapter.RendezVousController;
 import dz.tabibi.backend.rendezvous.application.RendezVousService;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -183,5 +184,47 @@ class RendezVousWebTest {
         mvc.perform(post("/api/rendezvous/{id}/honorer", UUID.randomUUID()).with(medecin()))
            .andExpect(status().isConflict())
            .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirme peut etre honore (statut actuel : ANNULE)."));
+    }
+
+    @Test
+    void annuler_par_le_medecin_repond_200() throws Exception {
+        RendezVous rdv = RendezVous.confirmer(PATIENT, MEDECIN, Instant.parse("2026-12-07T09:00:00Z"), UUID.randomUUID());
+        rdv.annulerParCabinet();
+        when(service.annulerParCabinet(MEDECIN, rdv.id())).thenReturn(rdv);
+
+        mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", rdv.id()).with(medecin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.id").value(rdv.id().toString()))
+           .andExpect(jsonPath("$.medecinId").value(MEDECIN.toString()))
+           .andExpect(jsonPath("$.statut").value("ANNULE"));
+    }
+
+    @Test
+    void annuler_par_le_medecin_refuse_sans_jeton_et_interdit_a_un_patient() throws Exception {
+        mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", UUID.randomUUID())).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", UUID.randomUUID()).with(patient()))
+           .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void annuler_par_le_medecin_un_rendezvous_non_confirme_repond_409_d_un_autre_medecin_403_inconnu_404() throws Exception {
+        UUID honore = UUID.randomUUID();
+        UUID dUnAutre = UUID.randomUUID();
+        UUID inconnu = UUID.randomUUID();
+        when(service.annulerParCabinet(MEDECIN, honore))
+                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : HONORE)."));
+        when(service.annulerParCabinet(MEDECIN, dUnAutre))
+                .thenThrow(new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda."));
+        when(service.annulerParCabinet(MEDECIN, inconnu)).thenThrow(new RendezVousIntrouvableException(inconnu));
+
+        mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", honore).with(medecin()))
+           .andExpect(status().isConflict())
+           .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : HONORE)."));
+        mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", dUnAutre).with(medecin()))
+           .andExpect(status().isForbidden())
+           .andExpect(jsonPath("$.erreur").value("Ce rendez-vous n'est pas dans votre agenda."));
+        mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", inconnu).with(medecin()))
+           .andExpect(status().isNotFound())
+           .andExpect(jsonPath("$.erreur").exists());
     }
 }

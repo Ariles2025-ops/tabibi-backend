@@ -280,6 +280,58 @@ class RendezVousServiceTest {
     }
 
     @Test
+    void retrouve_un_rendezvous_par_son_identifiant() {
+        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+
+        assertThat(service.parId(rdv.id()).id()).isEqualTo(rdv.id());
+        assertThatThrownBy(() -> service.parId(UUID.randomUUID())).isInstanceOf(RendezVousIntrouvableException.class);
+    }
+
+    @Test
+    void le_cabinet_annule_un_rendezvous_confirme_libere_le_creneau_alerte_la_liste_et_previent_le_patient() {
+        UUID patient = UUID.randomUUID();
+        Creneau creneau = premierCreneauDisponible();
+        RendezVous rdv = service.reserverCreneau(patient, creneau.id());
+
+        RendezVous annule = service.annulerParCabinet(MEDECIN_DEMO, rdv.id());
+
+        assertThat(annule.id()).isEqualTo(rdv.id());
+        assertThat(annule.statut()).isEqualTo(StatutRdv.ANNULE);
+        assertThat(estDisponible(creneau.id())).isTrue();
+        assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(MEDECIN_DEMO, creneau.debut()));
+        assertThat(notifieur.pour(patient)).hasSize(2);
+        assertThat(notifieur.pour(patient).get(1).sujet()).isEqualTo("Rendez-vous annule par le cabinet");
+        assertThat(notifieur.pour(patient).get(1).message()).contains("07/12/2026");
+        assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1); // le cabinet n'est pas prevenu de sa propre annulation
+    }
+
+    @Test
+    void le_cabinet_ne_peut_annuler_qu_un_rendezvous_confirme_de_son_agenda() {
+        UUID patient = UUID.randomUUID();
+        List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
+        RendezVous annuleParLePatient = service.reserverCreneau(patient, disponibles.get(0).id());
+        service.annuler(patient, annuleParLePatient.id());
+        RendezVous honore = service.reserverCreneau(UUID.randomUUID(), disponibles.get(1).id());
+        service.honorer(MEDECIN_DEMO, honore.id());
+        RendezVous confirme = service.reserverCreneau(UUID.randomUUID(), disponibles.get(2).id());
+        int notificationsAvant = notifieur.appels.size();
+        int alertesAvant = alerte.alertes.size();
+
+        assertThatThrownBy(() -> service.annulerParCabinet(MEDECIN_DEMO, annuleParLePatient.id()))
+                .isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.annulerParCabinet(MEDECIN_DEMO, honore.id()))
+                .isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.annulerParCabinet(UUID.randomUUID(), confirme.id()))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.annulerParCabinet(MEDECIN_DEMO, UUID.randomUUID()))
+                .isInstanceOf(RendezVousIntrouvableException.class);
+        assertThat(confirme.statut()).isEqualTo(StatutRdv.CONFIRME);
+        assertThat(estDisponible(confirme.creneauId())).isFalse();
+        assertThat(notifieur.appels).hasSize(notificationsAvant);
+        assertThat(alerte.alertes).hasSize(alertesAvant);
+    }
+
+    @Test
     void agenda_du_medecin_liste_ses_rendezvous_par_date_tous_statuts() {
         UUID patient = UUID.randomUUID();
         List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);

@@ -25,3 +25,5 @@ databaseChangeLog:
       file: db/changelog/012-profil.yaml
   - include:
       file: db/changelog/013-liste-attente.yaml
+  - include:
+      file: db/changelog/014-cabinet.yaml

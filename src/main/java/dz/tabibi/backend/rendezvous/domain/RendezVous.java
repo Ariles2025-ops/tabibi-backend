@@ -47,6 +47,19 @@ public class RendezVous {
     }
 
     /**
+     * Le cabinet (le medecin ou une secretaire rattachee) annule le rendez-vous : uniquement depuis CONFIRME,
+     * a la difference de l'annulation par le patient, idempotente.
+     * @throws TransitionInvalideException s'il est deja annule ou honore.
+     */
+    public void annulerParCabinet() {
+        if (statut != StatutRdv.CONFIRME) {
+            throw new TransitionInvalideException(
+                    "Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : " + statut + ").");
+        }
+        this.statut = StatutRdv.ANNULE;
+    }
+
+    /**
      * Le patient est venu : le rendez-vous passe a HONORE.
      * @throws TransitionInvalideException s'il n'est pas confirme (annule ou deja honore).
      */

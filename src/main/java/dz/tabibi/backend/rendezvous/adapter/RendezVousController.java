@@ -34,9 +34,9 @@ public class RendezVousController {
 
     public record DemandeReservation(@NotNull UUID medecinId, @NotNull Instant debut) {}
 
-    /** Vue d'un rendez-vous telle que renvoyee par l'API (au patient comme au medecin). */
+    /** Vue d'un rendez-vous telle que renvoyee par l'API (au patient, au medecin comme a sa secretaire). */
     public record RendezVousVue(UUID id, UUID patientId, UUID medecinId, UUID creneauId, Instant debut, String statut) {
-        static RendezVousVue de(RendezVous r) {
+        public static RendezVousVue de(RendezVous r) {
             return new RendezVousVue(r.id(), r.patientId(), r.medecinId(), r.creneauId(), r.debut(), r.statut().name());
         }
     }
@@ -83,6 +83,16 @@ public class RendezVousController {
     @PreAuthorize("hasRole('MEDECIN')")
     public RendezVousVue honorer(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         return RendezVousVue.de(service.honorer(identifiant(jwt), id));
+    }
+
+    /**
+     * Le medecin annule lui-meme un rendez-vous confirme de son agenda : le creneau est remis a disposition
+     * et le patient est prevenu (403 si le rendez-vous est a un autre medecin, 409 s'il n'est pas confirme).
+     */
+    @PostMapping("/api/medecin/rendezvous/{id}/annuler")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public RendezVousVue annulerParCabinet(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return RendezVousVue.de(service.annulerParCabinet(identifiant(jwt), id));
     }
 
     /** Le sujet du jeton Keycloak est l'identifiant de l'utilisateur, patient ou medecin. */

@@ -64,6 +64,17 @@
       "email": "pharmacie.demo@tabibi.local",
       "credentials": [{ "type": "password", "value": "pharmacie", "temporary": false }],
       "realmRoles": ["PHARMACIE"]
+    },
+    {
+      "id": "55555555-5555-5555-5555-555555555555",
+      "username": "secretaire.demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Secretaire",
+      "lastName": "Demo",
+      "email": "secretaire.demo@tabibi.local",
+      "credentials": [{ "type": "password", "value": "secretaire", "temporary": false }],
+      "realmRoles": ["SECRETAIRE"]
     }
   ]
 }

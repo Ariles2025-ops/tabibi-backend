@@ -126,6 +126,39 @@ public class RendezVousService {
     }
 
     /**
+     * Un rendez-vous par son identifiant, pour les cas d'usage d'autres modules (cabinet) qui
+     * appliquent ensuite leur propre regle d'acces.
+     * @throws RendezVousIntrouvableException si le rendez-vous n'existe pas.
+     */
+    public RendezVous parId(UUID rendezVousId) {
+        return repository.parId(rendezVousId)
+                .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
+    }
+
+    /**
+     * Le cabinet (le medecin, ou une secretaire rattachee agissant pour lui) annule un rendez-vous
+     * confirme de l'agenda du medecin : son creneau est remis a disposition (la liste d'attente est
+     * alertee) et le patient est prevenu.
+     * @throws RendezVousIntrouvableException si le rendez-vous n'existe pas.
+     * @throws AccesRefuseException s'il est dans l'agenda d'un autre medecin.
+     * @throws TransitionInvalideException s'il est deja annule ou honore.
+     */
+    @Transactional
+    public RendezVous annulerParCabinet(UUID medecinId, UUID rendezVousId) {
+        RendezVous rdv = parId(rendezVousId);
+        if (!rdv.estAvec(medecinId)) {
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+        }
+        rdv.annulerParCabinet();
+        libererCreneau(rdv);
+        RendezVous annule = repository.enregistrer(rdv);
+        notifieur.notifier(annule.patientId(), "Rendez-vous annule par le cabinet",
+                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
+                        + " a ete annule par le cabinet. Vous pouvez reserver un autre creneau.");
+        return annule;
+    }
+
+    /**
      * Remet a disposition le creneau de l'agenda reserve par ce rendez-vous, s'il y en a un, et
      * alerte la liste d'attente du medecin ; sans effet pour un rendez-vous pris hors agenda.
      */

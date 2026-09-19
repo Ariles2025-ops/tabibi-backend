@@ -4,6 +4,8 @@ import dz.tabibi.backend.administration.domain.CandidatureIntrouvableException;
 import dz.tabibi.backend.administration.domain.CandidatureInvalideException;
 import dz.tabibi.backend.avis.domain.AvisIntrouvableException;
 import dz.tabibi.backend.avis.domain.AvisInvalideException;
+import dz.tabibi.backend.cabinet.domain.CabinetInvalideException;
+import dz.tabibi.backend.cabinet.domain.RattachementIntrouvableException;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
@@ -49,12 +51,13 @@ public class GestionErreursApi {
             AvisIntrouvableException.class,
             BesoinIntrouvableException.class,
             ProfilIntrouvableException.class,
-            InscriptionIntrouvableException.class})
+            InscriptionIntrouvableException.class,
+            RattachementIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }
 
-    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete, message vide, note hors bornes, besoin sans medicament, profil sans nom...). */
+    /** Contenu refuse par une regle metier (ordonnance sans ligne, creneau passe, candidature incomplete, message vide, note hors bornes, besoin sans medicament, profil sans nom, medecin qui se rattache lui-meme...). */
     @ExceptionHandler({
             OrdonnanceInvalideException.class,
             CreneauInvalideException.class,
@@ -63,7 +66,8 @@ public class GestionErreursApi {
             AvisInvalideException.class,
             BesoinInvalideException.class,
             ReponseInvalideException.class,
-            ProfilInvalideException.class})
+            ProfilInvalideException.class,
+            CabinetInvalideException.class})
     public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
         return reponse(HttpStatus.BAD_REQUEST, ex);
     }
