@@ -169,3 +169,34 @@
   liste triee et filtree, statistiques) ; web 401 sans jeton, 403 PATIENT et MEDECIN sur /api/admin/**, 200 ADMIN,
   MEDECIN 201 / 200 / 404, 409 doublon, 400 candidature incomplete et refus sans motif ; SecuriteWebTest complete
   (/api/admin/** refuse a un MEDECIN et a un PATIENT, 401 sans jeton).
+
+## v0.11.0 — Messagerie
+- POST /api/conversations (PATIENT, body { medecinId }) : ouvre la conversation du patient avec un medecin qu'il a deja
+  consulte (au moins un rendez-vous, quel qu'en soit le statut) : 201 si elle est creee, 200 si elle existait deja
+  (une seule par couple patient / medecin) ; 403 sans rendez-vous commun, 400 sans medecin.
+- GET /api/conversations (PATIENT ou MEDECIN) : mes conversations, la plus recente activite d'abord, chacune avec le
+  nombre de messages que je n'ai pas encore lus (nonLus).
+- GET /api/conversations/{id}/messages (participant) : messages du plus ancien au plus recent ; les messages de l'autre
+  participant sont marques lus par cette lecture (luLe) ; 404 si inconnue, 403 pour un tiers.
+- POST /api/conversations/{id}/messages (participant, 201, body { contenu }) : contenu obligatoire, non blanc, au plus
+  2000 caracteres (400 sinon) ; la conversation est reactivee (dernierMessageLe) et l'autre participant est prevenu
+  (« Nouveau message », « Vous avez recu un nouveau message. » : jamais le contenu, qui peut porter des donnees de sante).
+- Vues : ConversationVue { id, patientId, medecinId, creeLe, dernierMessageLe, nonLus } et
+  MessageVue { id, conversationId, auteurId, contenu, envoyeLe, luLe }.
+- Module messagerie : Conversation (record immuable : ouvrir, avecDernierMessageLe, participe, autreParticipant ;
+  dernierMessageLe vaut la date d'ouverture tant qu'aucun message n'est envoye, pour un tri sans valeur absente),
+  Message (record immuable : envoyer avec validation, marquerLu en copie idempotente, estLu, estDe), ResultatOuverture,
+  ConversationAvecNonLus, ports ConversationRepository (enregistrer, parId, parParticipants, parParticipant) et
+  MessageRepository (enregistrer, parConversation, nonLus, marquerLus), MessagerieService (depend du port
+  RendezVousRepository du module rendezvous et du Notifieur) ; exceptions ConversationIntrouvable (404) et
+  MessageInvalide (400) dans GestionErreursApi.
+- Persistance : adaptateurs en memoire (messages tries du plus ancien au plus recent, ordre d'envoi conserve a date
+  egale) et JPA (findByPatientIdOrMedecinIdOrderByDernierMessageLeDesc, countByConversationIdAndAuteurIdNotAndLuLeIsNull) ;
+  Liquibase 009 (table conversation : unique (patient_id, medecin_id), index patient et medecin ; table message :
+  index (conversation_id, envoye_le)).
+- Tests : domaine (contenu strippe, blanc refuse, borne 2000, marquage lu en copie et idempotent, participants),
+  service (ouverture refusee sans rendez-vous ou avec un autre medecin, medecin absent 400, creation malgre un rendez-vous
+  annule puis reutilisation, liste triee par activite avec non lus par lecteur, lecture qui marque lus les messages de
+  l'autre seulement, envoi qui reactive la conversation et previent l'autre sans le contenu, tiers 403, inconnue 404,
+  vide / trop long 400 sans rien enregistrer) ; web 401 sans jeton, 403 MEDECIN a l'ouverture et ADMIN sur les routes
+  participant, 201 / 200 / 403 / 400 a l'ouverture, 200 liste et messages, 201 envoi, 404 / 403 / 400.

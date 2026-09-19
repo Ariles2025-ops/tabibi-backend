@@ -47,6 +47,7 @@ Role PATIENT :
 | GET | `/api/ordonnances/mes` | mes ordonnances, les plus recentes d'abord |
 | GET | `/api/teleconsultations/mes` | mes teleconsultations, les plus recentes d'abord |
 | POST | `/api/teleconsultations/{id}/consentir` | consentement explicite : le lien de salle m'est remis a partir de la |
+| POST | `/api/conversations` | ouvre une conversation `{ medecinId }` avec un medecin deja consulte (201, 200 si elle existe, 403 sans rendez-vous commun) |
 
 Role MEDECIN :
 
@@ -71,6 +72,9 @@ PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 |---|---|---|
 | GET | `/api/ordonnances/{id}` | une ordonnance, pour son patient ou son medecin auteur |
 | GET | `/api/teleconsultations/{id}` | une teleconsultation, pour son patient ou son medecin |
+| GET | `/api/conversations` | mes conversations, la plus recente activite d'abord, avec `nonLus` |
+| GET | `/api/conversations/{id}/messages` | messages du plus ancien au plus recent ; les messages recus sont marques lus |
+| POST | `/api/conversations/{id}/messages` | envoie `{ contenu }` (201, 400 si vide ou > 2000 caracteres) ; l'autre participant est prevenu |
 
 Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig`) :
 
@@ -103,7 +107,8 @@ tabibi:
 
 Les cas d'usage previennent les utilisateurs par le port `Notifieur` (module `notifications`) :
 a la reservation d'un rendez-vous, le patient (« Rendez-vous confirme ») et le medecin (« Nouveau
-rendez-vous ») ; a l'annulation, le medecin (« Rendez-vous annule »). Aujourd'hui l'adaptateur
+rendez-vous ») ; a l'annulation, le medecin (« Rendez-vous annule ») ; a chaque message de la
+messagerie, l'autre participant (« Nouveau message », sans le contenu). Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
 au domaine. Les messages ne sont jamais journalises.
@@ -167,6 +172,7 @@ ordonnances/     redaction, consultation, verification publique par code
 notifications/   boite de reception, port Notifieur et notifieur interne
 teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 administration/  candidatures des medecins, validation par l'administrateur, statistiques
+messagerie/      conversations patient-medecin (apres un rendez-vous) et messages
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

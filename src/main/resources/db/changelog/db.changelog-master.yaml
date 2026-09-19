@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/007-notifications.yaml
   - include:
       file: db/changelog/008-administration.yaml
+  - include:
+      file: db/changelog/009-messagerie.yaml
