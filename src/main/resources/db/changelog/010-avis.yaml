@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-avis
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: avis
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: rendez_vous_id, type: uuid, constraints: { nullable: false, unique: true } }
+              - column: { name: patient_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: note, type: int, constraints: { nullable: false } }
+              - column: { name: commentaire, type: varchar(500) }
+              - column: { name: statut, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: depose_le, type: timestamptz, constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_avis_medecin_statut
+            tableName: avis
+            columns:
+              - column: { name: medecin_id }
+              - column: { name: statut }
+        - createIndex:
+            indexName: idx_avis_patient
+            tableName: avis
+            columns:
+              - column: { name: patient_id }

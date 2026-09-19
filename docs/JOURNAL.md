@@ -200,3 +200,35 @@
   l'autre seulement, envoi qui reactive la conversation et previent l'autre sans le contenu, tiers 403, inconnue 404,
   vide / trop long 400 sans rien enregistrer) ; web 401 sans jeton, 403 MEDECIN a l'ouverture et ADMIN sur les routes
   participant, 201 / 200 / 403 / 400 a l'ouverture, 200 liste et messages, 201 envoi, 404 / 403 / 400.
+
+## v0.12.0 — Avis
+- POST /api/avis (PATIENT, 201, body { rendezVousId, note, commentaire }) : avis verifie, depose par le patient sur le
+  medecin d'un de ses rendez-vous honores ; 400 si le rendez-vous manque, si la note sort de 1..5 ou si le commentaire
+  depasse 500 caracteres (facultatif, espaces autour retires) ; 404 rendez-vous inconnu, 403 rendez-vous d'un autre
+  patient, 409 rendez-vous non honore ou deja note (un seul avis par rendez-vous).
+- GET /api/avis/mes (PATIENT) : mes avis, tous statuts, les plus recents d'abord.
+- GET /api/medecins/{id}/avis (public, sans jeton : couvert par le permitAll GET /api/medecins/** de SecurityConfig) :
+  { moyenne, nombre, avis: [{ id, note, commentaire, deposeLe }] } ; seuls les avis publies comptent (ni signales, ni
+  masques), moyenne arrondie a une decimale et nulle sans avis ; anonymise : ni patientId, ni rendezVousId.
+- POST /api/avis/{id}/signaler (MEDECIN, 200) : le medecin concerne signale un avis publie a l'administrateur (403 pour
+  un autre medecin, 404, 409 s'il n'est pas publie) ; l'avis sort de la vue publique.
+- GET /api/admin/avis?statut= (ADMIN, statut optionnel) : les plus anciens d'abord, vue complete AvisAdminVue
+  { id, rendezVousId, patientId, medecinId, note, commentaire, statut, deposeLe } ; POST /api/admin/avis/{id}/masquer
+  (409 si deja masque) et POST /api/admin/avis/{id}/retablir (409 si deja publie), 404 si inconnu.
+- Vues : AvisVue { id, rendezVousId, medecinId, note, commentaire, statut, deposeLe } pour le patient et le medecin
+  (sans patientId), AvisPublicVue anonyme, AvisAdminVue complete.
+- Module avis : Avis (record immuable : deposer avec validation, signaler PUBLIE -> SIGNALE, masquer PUBLIE / SIGNALE
+  -> MASQUE, retablir -> PUBLIE, estPublie, estDe, concerne), StatutAvis, SyntheseAvis (moyenne, nombre, avis), port
+  AvisRepository (enregistrer, parId, parRendezVous, parPatient, publiesPourMedecin, parStatut, tous), AvisService
+  (depend du port RendezVousRepository du module rendezvous) ; exceptions AvisIntrouvable (404) et AvisInvalide (400)
+  dans GestionErreursApi ; les transitions interdites et le doublon sont des conflits (TransitionInvalide, 409).
+- Persistance : adaptateur en memoire (ordre de depot conserve a date egale) et JPA (findByMedecinIdAndStatutOrderByDeposeLeDesc,
+  findByStatutOrderByDeposeLeAsc, findAllByOrderByDeposeLeAsc) ; Liquibase 010 (table avis : rendez_vous_id unique,
+  index (medecin_id, statut) et patient_id, commentaire varchar(500)).
+- Tests : domaine (depot et nettoyage du commentaire, commentaire facultatif, note 1..5, borne 500, transitions signaler /
+  masquer / retablir en copie, synthese arrondie et synthese vide), service (depot ok, note hors bornes, commentaire trop
+  long, rendez-vous absent / inconnu / d'un autre / non honore, doublon, mes avis tries, synthese excluant signales et
+  masques, retablissement, signalement par le bon medecin / par un autre / inconnu, masquer / retablir, liste admin
+  triee et filtree) ; web 401 sans jeton, PATIENT 201 / 400 / 409 / 404 / 403, public 200 sans jeton et anonymise,
+  moyenne nulle sans avis, MEDECIN signaler 200 / 403 / 404, ADMIN liste / masquer / retablir 200 / 409 / 404,
+  PATIENT et MEDECIN 403 sur /api/admin/avis.

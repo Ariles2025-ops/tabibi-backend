@@ -25,6 +25,7 @@ Sans jeton :
 | GET | `/api/medecins/{id}` | fiche d'un praticien (404 si inconnu) |
 | GET | `/api/medecins/{id}/creneaux` | creneaux encore disponibles |
 | GET | `/api/ordonnances/verifier/{code}` | verification d'une ordonnance par un pharmacien, sans donnee personnelle |
+| GET | `/api/medecins/{id}/avis` | avis publies sur un praticien `{ moyenne, nombre, avis: [{ id, note, commentaire, deposeLe }] }`, anonymises |
 
 Tout utilisateur authentifie :
 
@@ -48,6 +49,8 @@ Role PATIENT :
 | GET | `/api/teleconsultations/mes` | mes teleconsultations, les plus recentes d'abord |
 | POST | `/api/teleconsultations/{id}/consentir` | consentement explicite : le lien de salle m'est remis a partir de la |
 | POST | `/api/conversations` | ouvre une conversation `{ medecinId }` avec un medecin deja consulte (201, 200 si elle existe, 403 sans rendez-vous commun) |
+| POST | `/api/avis` | depose un avis `{ rendezVousId, note, commentaire }` sur un rendez-vous honore (201, 400, 404, 403, 409 si non honore ou deja note) |
+| GET | `/api/avis/mes` | mes avis, tous statuts, les plus recents d'abord |
 
 Role MEDECIN :
 
@@ -65,6 +68,7 @@ Role MEDECIN :
 | POST | `/api/teleconsultations/{id}/annuler` | annule une teleconsultation planifiee (409 sinon) |
 | POST | `/api/medecin/candidature` | depose ma candidature a l'annuaire `{ nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone }` (201, 400, 409) |
 | GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
+| POST | `/api/avis/{id}/signaler` | signale a l'administrateur un avis publie qui me concerne (403 sinon, 409 s'il n'est pas publie) |
 
 PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 
@@ -84,6 +88,9 @@ Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig
 | POST | `/api/admin/candidatures/{id}/valider` | valide : le medecin est publie dans l'annuaire et prevenu (404, 409) |
 | POST | `/api/admin/candidatures/{id}/refuser` | refuse avec `{ motif }` : le medecin est prevenu du motif (400, 404, 409) |
 | GET | `/api/admin/statistiques` | `{ candidaturesEnAttente, candidaturesValidees, candidaturesRefusees }` |
+| GET | `/api/admin/avis?statut=SIGNALE` | avis, statut optionnel (PUBLIE, SIGNALE, MASQUE), les plus anciens d'abord, avec patientId et rendezVousId |
+| POST | `/api/admin/avis/{id}/masquer` | retire un avis de la vue publique (404, 409 si deja masque) |
+| POST | `/api/admin/avis/{id}/retablir` | remet un avis en ligne (404, 409 si deja publie) |
 
 Documentation d'API : `/swagger-ui.html`.
 
@@ -173,6 +180,7 @@ notifications/   boite de reception, port Notifieur et notifieur interne
 teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 administration/  candidatures des medecins, validation par l'administrateur, statistiques
 messagerie/      conversations patient-medecin (apres un rendez-vous) et messages
+avis/            avis verifies des patients (rendez-vous honore), synthese publique, moderation
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

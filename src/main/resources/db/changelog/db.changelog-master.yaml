@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/008-administration.yaml
   - include:
       file: db/changelog/009-messagerie.yaml
+  - include:
+      file: db/changelog/010-avis.yaml
