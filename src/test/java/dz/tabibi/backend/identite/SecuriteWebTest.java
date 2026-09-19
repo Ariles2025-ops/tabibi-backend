@@ -11,6 +11,9 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -54,5 +57,18 @@ class SecuriteWebTest {
     @Test
     void les_chemins_admin_sont_refuses_sans_jeton() throws Exception {
         mvc.perform(get("/api/admin/candidatures")).andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * La sante et ses sondes (liveness / readiness, utilisees par Docker et les orchestrateurs) sont
+     * publiques : jamais 401 ni 403 (aucun endpoint actuator n'est charge dans ce test : 404 attendu).
+     */
+    @Test
+    void la_sante_et_ses_sondes_sont_accessibles_sans_jeton() throws Exception {
+        for (String chemin : List.of("/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness")) {
+            mvc.perform(get(chemin))
+               .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
+        }
+        mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized()); // le reste de la supervision reste protege
     }
 }

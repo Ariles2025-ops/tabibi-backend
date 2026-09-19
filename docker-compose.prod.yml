@@ -1,0 +1,104 @@
+# Tabibi en production, sur un serveur Docker : PostgreSQL, Keycloak, l'API (image GHCR de ce depot),
+# le front web (image GHCR du depot tabibi-web) et Caddy (reverse proxy, certificats TLS automatiques).
+# Seuls les ports 80/443 de Caddy sont exposes ; les autres services ne se parlent que sur le reseau interne.
+# Preparer : cp .env.example .env (et renseigner chaque valeur), puis :
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tabibi
+      POSTGRES_USER: tabibi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
+      # Lu par infra/postgres/init/01-keycloak.sh a la premiere initialisation du volume.
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD manquant dans .env}
+    volumes:
+      - tabibi-pg:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [interne]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tabibi -d tabibi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    restart: unless-stopped
+    # Mode production (start) : base PostgreSQL dediee, realm tabibi importe au premier demarrage.
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      # Derriere Caddy qui termine TLS : HTTP en interne, en-tetes X-Forwarded-* pris en compte.
+      KC_HOSTNAME: https://auth.${DOMAINE:?DOMAINE manquant dans .env}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      # Sondes /health/* sur le port de gestion 9000 (interne, non route par Caddy).
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD manquant dans .env}
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [interne]
+
+  backend:
+    image: ghcr.io/${ORG_GITHUB:?ORG_GITHUB manquant dans .env}/tabibi-backend:${BACKEND_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tabibi
+      SPRING_DATASOURCE_USERNAME: tabibi
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Emetteur attendu dans les jetons (URL publique de Keycloak) ; les cles de signature sont lues
+      # directement sur le reseau interne, sans passer par le proxy.
+      TABIBI_KEYCLOAK_ISSUER: https://auth.${DOMAINE}/realms/tabibi
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tabibi/protocol/openid-connect/certs
+      TABIBI_CORS_ORIGINES: https://${DOMAINE}
+      TABIBI_TELECONSULTATION_BASE_URL: ${TABIBI_TELECONSULTATION_BASE_URL:-https://meet.jit.si}
+      # Adresse et schema du client lus dans les en-tetes X-Forwarded-* poses par Caddy.
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks: [interne]
+
+  web:
+    image: ghcr.io/${ORG_GITHUB}/tabibi-web:${WEB_TAG:-latest}
+    restart: unless-stopped
+    networks: [interne]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAINE: ${DOMAINE}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL manquant dans .env}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [backend, keycloak, web]
+    networks: [interne]
+
+volumes:
+  tabibi-pg:
+  caddy-data:
+  caddy-config:
+
+networks:
+  interne:

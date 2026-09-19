@@ -436,3 +436,36 @@
   abrege), AuditWebTest (401 ; PATIENT et MEDECIN 403 ; ADMIN 200 avec la vue complete, limite par defaut 100 et
   transmise, sujet nul pour un acces anonyme, acces d'un utilisateur).
 
+## v0.20.0 — Image de production et orchestration
+- Dockerfile multi-etapes : construction du jar avec maven:3.9-eclipse-temurin-21 (couche dependency:go-offline
+  reutilisee tant que le pom ne change pas, puis mvn -B -q -DskipTests package), execution sur
+  eclipse-temurin:21-jre-alpine avec un utilisateur sans privilege (tabibi), EXPOSE 8080, HEALTHCHECK wget sur
+  /actuator/health, JAVA_TOOL_OPTIONS -XX:MaxRAMPercentage=75.0, ENTRYPOINT ["java","-jar","/app/app.jar"] ;
+  .dockerignore (target, .git, .github, docs, infra, compose, .env, *.md).
+- docker-compose.prod.yml : postgres (16-alpine, volume tabibi-pg, healthcheck pg_isready, script
+  infra/postgres/init/01-keycloak.sh qui cree le role et la base keycloak a la premiere initialisation), keycloak
+  (26.0, start --import-realm, KC_DB=postgres vers la base keycloak dediee, KC_HOSTNAME=https://auth.<domaine>,
+  KC_HTTP_ENABLED=true, KC_PROXY_HEADERS=xforwarded, KC_HEALTH_ENABLED, administrateur par variables, realm monte
+  depuis infra/keycloak), backend (ghcr.io/<org>/tabibi-backend:<tag>, SPRING_PROFILES_ACTIVE=postgres,
+  SPRING_DATASOURCE_*, TABIBI_KEYCLOAK_ISSUER public + cles lues en interne par
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI, TABIBI_CORS_ORIGINES, TABIBI_TELECONSULTATION_BASE_URL,
+  SERVER_FORWARD_HEADERS_STRATEGY=native ; depends_on postgres sain), web (ghcr.io/<org>/tabibi-web:<tag>, depot
+  tabibi-web), caddy (2-alpine, seuls ports exposes 80/443 + 443/udp, volumes caddy-data et caddy-config,
+  infra/caddy/Caddyfile : <domaine> -> web:80, api.<domaine> -> backend:8080, auth.<domaine> -> keycloak:8080, HSTS,
+  nosniff, Referrer-Policy, en-tete Server retire) ; reseau interne ; .env.example documente (DOMAINE, ACME_EMAIL,
+  ORG_GITHUB, BACKEND_TAG, WEB_TAG, POSTGRES_PASSWORD, KEYCLOAK_DB_PASSWORD, KEYCLOAK_ADMIN_USERNAME/PASSWORD,
+  TABIBI_TELECONSULTATION_BASE_URL) ; .env ignore par git.
+- infra/sauvegarde/pg_dump.sh : sauvegarde des bases tabibi et keycloak (pg_dump format custom compresse, fichier
+  horodate par base, repertoire /var/backups/tabibi en chmod 700), rotation 14 jours, ligne cron et commande de
+  restauration en en-tete.
+- application-postgres.yml : datasource depuis SPRING_DATASOURCE_URL / USERNAME / PASSWORD avec les defauts locaux
+  (remplace TABIBI_DB_*), server.forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:native},
+  management.endpoint.health.probes.enabled: true ; SecurityConfig ouvre /actuator/health/** (sondes liveness et
+  readiness, sans detail) en plus de /actuator/health.
+- docker-compose.yml de dev : service backend en option commentee (image locale, cles Keycloak lues en interne).
+- README : section Deploiement (image, orchestration, variables, lancement, verification de /actuator/health,
+  mise a jour, sauvegardes), Configuration (SPRING_PROFILES_ACTIVE, SPRING_DATASOURCE_*,
+  SERVER_FORWARD_HEADERS_STRATEGY), Persistance, Lancer en local, Journal des acces (proxy).
+- Tests : SecuriteWebTest (la sante et ses sondes liveness / readiness ne repondent jamais 401 ni 403 sans jeton,
+  le reste de la supervision reste protege).
+

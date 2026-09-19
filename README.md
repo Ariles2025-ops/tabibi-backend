@@ -34,6 +34,9 @@ poste de developpement (`src/main/resources/application.yml`) :
 | `TABIBI_CORS_ORIGINES` | `http://localhost:4200` | origines autorisees a appeler l'API depuis un navigateur, separees par des virgules (ex. `https://tabibi.example,https://www.tabibi.example`) |
 | `TABIBI_TELECONSULTATION_BASE_URL` | `https://meet.jit.si` | instance Jitsi Meet des teleconsultations |
 | `TABIBI_RAPPELS_ACTIFS` | `true` | `false` coupe le planificateur des rappels |
+| `SPRING_PROFILES_ACTIVE` | (aucun : en memoire) | `postgres` active JPA / Liquibase sur PostgreSQL |
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | `jdbc:postgresql://localhost:5432/tabibi` / `tabibi` / `tabibi` | base PostgreSQL (profil `postgres`) |
+| `SERVER_FORWARD_HEADERS_STRATEGY` | `native` (profil `postgres`) | prise en compte des en-tetes `X-Forwarded-*` du reverse proxy ; `none` en acces direct |
 
 ## Endpoints
 
@@ -205,8 +208,9 @@ pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete
 - **Stockage** : en memoire, journal borne aux 10 000 dernieres entrees (dev/tests) ; sous PostgreSQL,
   table `journal_acces` (Liquibase 016, index sur `horodatage` et `(sujet, horodatage)`), sans purge
   automatique : prevoir une retention (par exemple une suppression periodique des entrees de plus d'un an).
-- **Derriere un reverse proxy**, l'adresse vue par le serveur est celle du proxy : activer la prise en
-  compte des en-tetes `X-Forwarded-*` (`server.forward-headers-strategy=native`, proxys internes seulement).
+- **Derriere un reverse proxy**, l'adresse vue par le serveur est celle du proxy : le profil `postgres`
+  active la prise en compte des en-tetes `X-Forwarded-*` (`server.forward-headers-strategy=native`, en
+  provenance des proxys internes seulement ; `SERVER_FORWARD_HEADERS_STRATEGY=none` en acces direct).
 
 ## Notifications
 
@@ -231,7 +235,8 @@ Deux adaptateurs derriere chaque port de persistance :
 - **en memoire** (profil par defaut, dev et tests) : aucune base requise, praticiens et creneaux de
   demonstration a identifiants fixes ;
 - **JPA / PostgreSQL + Liquibase** (profil `postgres`) : `mvn spring-boot:run -Dspring-boot.run.profiles=postgres`,
-  migrations dans `src/main/resources/db/changelog`.
+  migrations dans `src/main/resources/db/changelog` ; base lue dans `SPRING_DATASOURCE_URL` / `_USERNAME` /
+  `_PASSWORD` (defaut : le PostgreSQL de `docker-compose.yml`).
 
 ## Lancer en local
 
@@ -240,6 +245,9 @@ docker compose up -d          # Postgres + Keycloak (realm tabibi importe)
 mvn spring-boot:run           # API sur http://localhost:8080 (en memoire)
 # Keycloak : http://localhost:8081 (admin / admin)
 ```
+
+`docker-compose.yml` contient aussi, en commentaire, le service `backend` (l'API en conteneur, image construite
+par `docker build -t tabibi-backend .`) pour tester localement la configuration de production.
 
 ### Comptes de demonstration Keycloak (dev local uniquement)
 
@@ -262,6 +270,64 @@ curl -s -X POST http://localhost:8081/realms/tabibi/protocol/openid-connect/toke
   -d client_id=tabibi-web -d grant_type=password -d username=medecin.demo -d password=medecin \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])'
 ```
+
+## Deploiement
+
+Tout est conteneurise : `Dockerfile` (image de l'API) et `docker-compose.prod.yml` (PostgreSQL, Keycloak, API,
+front web, Caddy). Seuls les ports 80/443 de Caddy sont exposes ; les autres services ne se parlent que sur le
+reseau interne `interne`, les donnees vivent dans des volumes nommes (`tabibi-pg`, `caddy-data`, `caddy-config`).
+
+### Image de l'API
+
+`Dockerfile` multi-etapes : construction du jar avec `maven:3.9-eclipse-temurin-21` (`mvn -B -q -DskipTests package`,
+les tests tournent en CI), execution sur `eclipse-temurin:21-jre-alpine` avec un utilisateur sans privilege (`tabibi`),
+port 8080, `HEALTHCHECK` sur `/actuator/health`, `ENTRYPOINT ["java","-jar","/app/app.jar"]`, JVM dimensionnee sur la
+memoire du conteneur (`-XX:MaxRAMPercentage=75.0`). Le contexte de construction est reduit par `.dockerignore`.
+
+```bash
+docker build -t tabibi-backend .
+docker run --rm -p 8080:8080 tabibi-backend        # profil en memoire, Keycloak attendu sur localhost:8081
+```
+
+### Orchestration (`docker-compose.prod.yml`)
+
+| Service | Image | Role |
+|---|---|---|
+| `postgres` | `postgres:16-alpine` | bases `tabibi` (donnees de patients) et `keycloak` (role dedie, cree par `infra/postgres/init/01-keycloak.sh` a la premiere initialisation du volume), `healthcheck` `pg_isready` |
+| `keycloak` | `quay.io/keycloak/keycloak:26.0` | `start --import-realm` (mode production), `KC_DB=postgres`, `KC_HOSTNAME=https://auth.<domaine>`, `KC_HTTP_ENABLED=true` et `KC_PROXY_HEADERS=xforwarded` derriere Caddy, administrateur initial par variables |
+| `backend` | `ghcr.io/<org>/tabibi-backend:latest` | `SPRING_PROFILES_ACTIVE=postgres`, `SPRING_DATASOURCE_*`, `TABIBI_KEYCLOAK_ISSUER=https://auth.<domaine>/realms/tabibi` (emetteur attendu), cles de signature lues en interne (`SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/...`), `TABIBI_CORS_ORIGINES=https://<domaine>`, `SERVER_FORWARD_HEADERS_STRATEGY=native` ; demarre une fois PostgreSQL sain |
+| `web` | `ghcr.io/<org>/tabibi-web:latest` | front Angular (depot `tabibi-web`) |
+| `caddy` | `caddy:2-alpine` | reverse proxy, certificats Let's Encrypt automatiques (`infra/caddy/Caddyfile`) : `<domaine>` -> `web:80`, `api.<domaine>` -> `backend:8080`, `auth.<domaine>` -> `keycloak:8080` ; HSTS, `nosniff` |
+
+Les trois noms DNS (`<domaine>`, `api.<domaine>`, `auth.<domaine>`) doivent pointer vers le serveur avant le
+premier demarrage (obtention des certificats).
+
+```bash
+cp .env.example .env            # puis renseigner DOMAINE, ACME_EMAIL, ORG_GITHUB et les secrets (openssl rand -base64 32)
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml ps                       # backend « healthy » apres une minute environ
+curl -s https://api.<domaine>/actuator/health                      # {"status":"UP"}
+curl -s https://api.<domaine>/actuator/health/readiness            # sonde de disponibilite
+curl -s https://auth.<domaine>/realms/tabibi | head -c 200         # realm importe
+docker compose -f docker-compose.prod.yml logs -f backend          # journal de l'API
+```
+
+Mise a jour : `docker compose -f docker-compose.prod.yml pull backend web && docker compose -f docker-compose.prod.yml up -d`
+(les migrations Liquibase s'appliquent au demarrage de l'API).
+
+### Sauvegardes
+
+`infra/sauvegarde/pg_dump.sh [repertoire]` sauvegarde les bases `tabibi` et `keycloak` (`pg_dump` au format custom,
+compresse, un fichier horodate par base dans `/var/backups/tabibi` par defaut, repertoire en `chmod 700`) et supprime
+les fichiers de plus de 14 jours (`RETENTION_JOURS`). A planifier chaque nuit :
+
+```
+0 3 * * * /opt/tabibi/tabibi-backend/infra/sauvegarde/pg_dump.sh >> /var/log/tabibi-sauvegarde.log 2>&1
+```
+
+Restauration : `docker compose -f docker-compose.prod.yml exec -T postgres pg_restore -U tabibi -d tabibi --clean --if-exists < tabibi-<horodatage>.dump`.
+Les sauvegardes contiennent des donnees de sante : copie chiffree hors du serveur, acces restreint.
 
 ## Tester
 

@@ -1,0 +1,35 @@
+# Reverse proxy Tabibi : certificats TLS automatiques (Let's Encrypt) pour le front, l'API et Keycloak.
+# {$DOMAINE} et {$ACME_EMAIL} viennent de l'environnement du conteneur caddy (fichier .env).
+# Les trois noms (DOMAINE, api.DOMAINE, auth.DOMAINE) doivent pointer vers ce serveur avant le demarrage.
+{
+	email {$ACME_EMAIL}
+}
+
+(securite) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# Front web (image ghcr.io/<org>/tabibi-web, depot tabibi-web)
+{$DOMAINE} {
+	import securite
+	encode gzip
+	reverse_proxy web:80
+}
+
+# API (image ghcr.io/<org>/tabibi-backend)
+api.{$DOMAINE} {
+	import securite
+	encode gzip
+	reverse_proxy backend:8080
+}
+
+# Keycloak, derriere le proxy (KC_PROXY_HEADERS=xforwarded, KC_HTTP_ENABLED=true)
+auth.{$DOMAINE} {
+	import securite
+	reverse_proxy keycloak:8080
+}

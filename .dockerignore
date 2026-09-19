@@ -1,0 +1,15 @@
+# Contexte de construction de l'image : seuls pom.xml et src/ sont necessaires.
+target/
+.git/
+.github/
+.idea/
+*.iml
+.DS_Store
+docs/
+infra/
+docker-compose*.yml
+Dockerfile
+.dockerignore
+.env
+.env.example
+*.md

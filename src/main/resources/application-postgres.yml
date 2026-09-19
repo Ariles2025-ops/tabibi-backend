@@ -3,9 +3,10 @@ spring:
   autoconfigure:
     exclude: ""
   datasource:
-    url: ${TABIBI_DB_URL:jdbc:postgresql://localhost:5432/tabibi}
-    username: ${TABIBI_DB_USER:tabibi}
-    password: ${TABIBI_DB_PASSWORD:tabibi}
+    # Variables standard de Spring Boot (docker-compose.prod.yml), valeurs par defaut = docker-compose.yml de dev.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tabibi}
+    username: ${SPRING_DATASOURCE_USERNAME:tabibi}
+    password: ${SPRING_DATASOURCE_PASSWORD:tabibi}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -14,3 +15,15 @@ spring:
       hibernate.jdbc.time_zone: UTC
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  # Derriere un reverse proxy (Caddy) : adresse et schema du client lus dans X-Forwarded-*, en
+  # provenance des proxys internes seulement (RemoteIpValve de Tomcat) ; none pour un acces direct.
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:native}
+
+management:
+  endpoint:
+    health:
+      # Sondes /actuator/health/liveness et /actuator/health/readiness pour les conteneurs et orchestrateurs.
+      probes:
+        enabled: true

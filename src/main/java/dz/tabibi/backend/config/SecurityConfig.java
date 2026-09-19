@@ -34,8 +34,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Supervision (sante et sondes liveness/readiness, sans detail) et documentation d'API.
                 .requestMatchers(
                         "/actuator/health",
+                        "/actuator/health/**",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html").permitAll()
