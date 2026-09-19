@@ -19,6 +19,26 @@ jobs:
           cache: maven
       - name: Build & tests
         run: mvn -B verify
+      - name: Resume des tests en echec
+        if: failure()
+        run: |
+          {
+            echo '## Tests en echec (surefire)'
+            echo
+            found=0
+            for f in target/surefire-reports/*.txt; do
+              [ -e "$f" ] || continue
+              if grep -q '<<< \(FAILURE\|ERROR\)!' "$f"; then
+                found=1
+                echo "### $(basename "$f")"
+                echo '```'
+                sed -n '1,90p' "$f"
+                echo '```'
+                echo
+              fi
+            done
+            if [ "$found" = 0 ]; then echo '_Aucun rapport surefire en echec trouve._'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Image de production publiee sur GHCR : seulement sur la branche principale, une fois verify vert.
   image:
