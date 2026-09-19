@@ -59,4 +59,13 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
                 .sorted(Comparator.comparing(RendezVous::debut))
                 .toList();
     }
+
+    @Override
+    public List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a) {
+        return parId.values().stream()
+                .filter(r -> r.statut() == StatutRdv.CONFIRME && !r.rappelEnvoye())
+                .filter(r -> !r.debut().isBefore(de) && r.debut().isBefore(a))
+                .sorted(Comparator.comparing(RendezVous::debut))
+                .toList();
+    }
 }

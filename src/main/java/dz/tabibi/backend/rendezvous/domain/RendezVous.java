@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Un rendez-vous entre un patient et un medecin, sur un creneau donne.
- * Le comportement metier (confirmer, annuler, honorer) vit dans l'entite.
+ * Le comportement metier (confirmer, annuler, honorer, rappeler) vit dans l'entite.
  */
 public class RendezVous {
 
@@ -18,18 +18,26 @@ public class RendezVous {
     /** Creneau de l'agenda reserve, ou null pour un rendez-vous pris sur un horaire libre. */
     private final UUID creneauId;
     private StatutRdv statut;
+    /** Date d'envoi du rappel de la veille au patient, ou null tant qu'il n'a pas ete envoye. */
+    private Instant rappelEnvoyeLe;
 
     public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut) {
         this(id, patientId, medecinId, debut, statut, null);
     }
 
     public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut, UUID creneauId) {
+        this(id, patientId, medecinId, debut, statut, creneauId, null);
+    }
+
+    public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut, UUID creneauId,
+                      Instant rappelEnvoyeLe) {
         this.id = id;
         this.patientId = patientId;
         this.medecinId = medecinId;
         this.debut = debut;
         this.statut = statut;
         this.creneauId = creneauId;
+        this.rappelEnvoyeLe = rappelEnvoyeLe;
     }
 
     /** Cree un rendez-vous confirme sur un horaire libre (hors agenda). */
@@ -85,6 +93,15 @@ public class RendezVous {
         return statut == StatutRdv.ANNULE;
     }
 
+    /** Le rappel de la veille a ete envoye au patient a cette date : il ne le sera plus. */
+    public void marquerRappelEnvoye(Instant quand) {
+        this.rappelEnvoyeLe = quand;
+    }
+
+    public boolean rappelEnvoye() {
+        return rappelEnvoyeLe != null;
+    }
+
     public UUID id() { return id; }
     public UUID patientId() { return patientId; }
     public UUID medecinId() { return medecinId; }
@@ -92,4 +109,6 @@ public class RendezVous {
     /** Peut etre null (rendez-vous pris hors agenda). */
     public UUID creneauId() { return creneauId; }
     public StatutRdv statut() { return statut; }
+    /** Null tant que le rappel de la veille n'a pas ete envoye. */
+    public Instant rappelEnvoyeLe() { return rappelEnvoyeLe; }
 }

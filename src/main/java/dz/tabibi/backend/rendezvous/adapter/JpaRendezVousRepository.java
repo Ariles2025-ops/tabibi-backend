@@ -52,4 +52,11 @@ public class JpaRendezVousRepository implements RendezVousRepository {
         return jpa.findByMedecinIdOrderByDebut(medecinId)
                 .stream().map(RendezVousEntity::versDomaine).toList();
     }
+
+    @Override
+    public List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a) {
+        return jpa.findByStatutAndRappelEnvoyeLeIsNullAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
+                        StatutRdv.CONFIRME, de, a)
+                .stream().map(RendezVousEntity::versDomaine).toList();
+    }
 }

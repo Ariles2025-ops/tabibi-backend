@@ -22,4 +22,10 @@ public interface RendezVousRepository {
 
     /** Agenda d'un medecin : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
     List<RendezVous> parMedecin(UUID medecinId);
+
+    /**
+     * Rendez-vous confirmes dont le rappel n'a pas encore ete envoye et dont le debut est dans
+     * l'intervalle [de, a[, du plus proche au plus lointain.
+     */
+    List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a);
 }

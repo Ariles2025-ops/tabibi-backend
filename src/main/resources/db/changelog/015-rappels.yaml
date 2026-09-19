@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-rendez-vous-rappel
+      author: tabibi
+      changes:
+        - addColumn:
+            tableName: rendez_vous
+            columns:
+              - column: { name: rappel_envoye_le, type: timestamptz }

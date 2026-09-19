@@ -38,6 +38,10 @@ class RendezVousEntity {
     @Column(name = "creneau_id")
     private UUID creneauId;
 
+    /** Date d'envoi du rappel de la veille ; absente tant qu'il n'a pas ete envoye. */
+    @Column(name = "rappel_envoye_le")
+    private Instant rappelEnvoyeLe;
+
     protected RendezVousEntity() { }
 
     static RendezVousEntity de(RendezVous r) {
@@ -48,11 +52,12 @@ class RendezVousEntity {
         e.debut = r.debut();
         e.statut = r.statut();
         e.creneauId = r.creneauId();
+        e.rappelEnvoyeLe = r.rappelEnvoyeLe();
         return e;
     }
 
     RendezVous versDomaine() {
-        return new RendezVous(id, patientId, medecinId, debut, statut, creneauId);
+        return new RendezVous(id, patientId, medecinId, debut, statut, creneauId, rappelEnvoyeLe);
     }
 
     UUID getMedecinId() { return medecinId; }

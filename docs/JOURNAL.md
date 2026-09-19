@@ -360,3 +360,28 @@
   201 / 400 / 409 au rattachement, 200 liste, 204 sans corps au retrait, 404 / 403, SECRETAIRE 200 cabinets, agenda
   200 / 403, creneau 201 / 400 / 403, honorer 200 / 409, annuler 200 / 409 / 403 / 404), RendezVousWebTest
   (POST /api/medecin/rendezvous/{id}/annuler : 200, 401, PATIENT 403, 409 / 403 / 404).
+
+## v0.17.0 — Rappels
+- Un rappel de rendez-vous, une seule fois, par rendez-vous confirme dont le debut est dans les 24 prochaines heures :
+  le patient est prevenu (« Rappel de rendez-vous », « Votre rendez-vous du <date> est demain. Pensez a vous presenter
+  10 minutes en avance. ») et le rendez-vous est marque (rappelEnvoyeLe = heure de l'execution). Les rendez-vous
+  annules ou honores, passes, plus lointains ou deja rappeles sont ignores ; fenetre [maintenant, maintenant + 24 h[.
+- RappelService (module rappels, application : RendezVousRepository, Notifieur, java.time.Clock) : int executer()
+  renvoie le nombre de rappels envoyes ; l'horloge est un bean de config/HorlogeConfig (Clock.systemUTC), remplacee par
+  Clock.fixed dans les tests.
+- PlanificateurRappels (module rappels, adapter : @Component, @Scheduled cron "0 0 * * * *", toutes les heures) appelle
+  executer() et journalise le seul nombre envoye ; conditionne par tabibi.rappels.actifs (matchIfMissing = true) ;
+  application.yml : tabibi.rappels.actifs: ${TABIBI_RAPPELS_ACTIFS:true}. config/PlanificationConfig porte
+  @EnableScheduling, dans une configuration a part que les @WebMvcTest (qui n'importent que SecurityConfig) ne chargent
+  pas.
+- POST /api/admin/rappels/executer (ADMIN, 200) : declenchement manuel, corps { nombre }.
+- Domaine rendezvous : RendezVous.rappelEnvoyeLe (nullable) + marquerRappelEnvoye(Instant) + rappelEnvoye() ; nouveau
+  constructeur a 7 parametres, les constructeurs existants sont conserves ; port RendezVousRepository.
+  confirmesSansRappelEntre(de, a) (memoire : filtre et tri par debut ; JPA : requete derivee
+  findByStatutAndRappelEnvoyeLeIsNullAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut, le statut de l'entite etant
+  un enum en chaine) ; entite JPA mise a jour ; Liquibase 015 (colonne rendez_vous.rappel_envoye_le timestamptz nullable).
+- README (endpoint ADMIN, section Rappels et propriete tabibi.rappels.actifs, notifications, structure).
+- Tests : RappelServiceTest a horloge fixe (rendez-vous dans 2 h rappele et marque avec le message attendu, dans 30 h
+  ignore, bornes de la fenetre : a l'instant inclus, 23 h 59 inclus, 24 h exclu, passe exclu ; deja rappele ignore et
+  date intacte ; annule et honore ignores ; deux executions n'envoient qu'une fois ; rien a envoyer), RappelWebTest
+  (401 sans jeton, PATIENT et MEDECIN 403, ADMIN 200 { nombre }).

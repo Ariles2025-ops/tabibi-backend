@@ -128,6 +128,7 @@ Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig
 | GET | `/api/admin/avis?statut=SIGNALE` | avis, statut optionnel (PUBLIE, SIGNALE, MASQUE), les plus anciens d'abord, avec patientId et rendezVousId |
 | POST | `/api/admin/avis/{id}/masquer` | retire un avis de la vue publique (404, 409 si deja masque) |
 | POST | `/api/admin/avis/{id}/retablir` | remet un avis en ligne (404, 409 si deja publie) |
+| POST | `/api/admin/rappels/executer` | declenche manuellement les rappels de rendez-vous des 24 prochaines heures : `{ "nombre": n }` |
 
 Documentation d'API : `/swagger-ui.html`.
 
@@ -147,6 +148,23 @@ tabibi:
     base-url: ${TABIBI_TELECONSULTATION_BASE_URL:https://meet.jit.si}   # instance publique, remplacable par la votre
 ```
 
+## Rappels de rendez-vous
+
+Chaque rendez-vous **confirme** qui commence dans les 24 prochaines heures vaut un rappel au patient
+(« Rappel de rendez-vous »), envoye **une seule fois** : le rendez-vous est marque a l'envoi
+(`rendez_vous.rappel_envoye_le`). Le planificateur `PlanificateurRappels` (`@Scheduled`, toutes les heures)
+appelle `RappelService.executer()`, qui lit l'heure sur l'horloge injectee (`Clock`, bean de `HorlogeConfig`,
+UTC ; fixe dans les tests). L'administrateur peut declencher l'envoi a la main
+(`POST /api/admin/rappels/executer`).
+
+Configuration (`application.yml`) :
+
+```yaml
+tabibi:
+  rappels:
+    actifs: ${TABIBI_RAPPELS_ACTIFS:true}   # false coupe le planificateur (tests, instances multiples) ; l'appel manuel reste possible
+```
+
 ## Notifications
 
 Les cas d'usage previennent les utilisateurs par le port `Notifieur` (module `notifications`) :
@@ -157,7 +175,8 @@ pharmacie sur Dawini, le patient (« Reponse d'une pharmacie », sans detail) ; 
 medecin (ouverture d'un creneau, annulation d'un rendez-vous qui remet son creneau a disposition), chaque patient
 inscrit sur sa liste d'attente (« Creneau disponible », port `AlerteCreneau` du module `listeattente`, realise par
 `ListeAttenteService`) ; a l'annulation par le cabinet (medecin ou secretaire), le patient (« Rendez-vous annule par le
-cabinet ») ; au rattachement d'une secretaire et a son retrait, la secretaire. Aujourd'hui l'adaptateur
+cabinet ») ; au rattachement d'une secretaire et a son retrait, la secretaire ; la veille d'un rendez-vous confirme, le
+patient (« Rappel de rendez-vous », une seule fois). Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
 au domaine. Les messages ne sont jamais journalises.
@@ -229,9 +248,10 @@ dawini/          besoins de medicaments des patients et reponses des pharmacies 
 profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue)
 listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
 cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-vous honores ou annules pour lui
+rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
-config/          securite (JWT + roles Keycloak)
+config/          securite (JWT + roles Keycloak), horloge (Clock) et planification (@EnableScheduling)
 ```
 
 Le detail de chaque version est dans `docs/JOURNAL.md`.

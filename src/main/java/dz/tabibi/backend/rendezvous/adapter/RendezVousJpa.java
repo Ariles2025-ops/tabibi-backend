@@ -14,4 +14,8 @@ interface RendezVousJpa extends JpaRepository<RendezVousEntity, UUID> {
     List<RendezVousEntity> findByPatientIdOrderByDebut(UUID patientId);
 
     List<RendezVousEntity> findByMedecinIdOrderByDebut(UUID medecinId);
+
+    /** Rendez-vous d'un statut, sans rappel envoye, dont le debut est dans [de, a[, du plus proche au plus lointain. */
+    List<RendezVousEntity> findByStatutAndRappelEnvoyeLeIsNullAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
+            StatutRdv statut, Instant de, Instant a);
 }

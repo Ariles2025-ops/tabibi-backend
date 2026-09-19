@@ -22,6 +22,10 @@ tabibi:
     # Salle video Jitsi Meet (open source, sans SDK proprietaire) : instance publique par defaut,
     # remplacable par une instance auto-hebergee. Le lien d'une salle vaut base-url/salleId.
     base-url: ${TABIBI_TELECONSULTATION_BASE_URL:https://meet.jit.si}
+  rappels:
+    # Rappel de rendez-vous 24 h avant, envoye toutes les heures par le planificateur ;
+    # false coupe le planificateur (l'appel manuel POST /api/admin/rappels/executer reste possible).
+    actifs: ${TABIBI_RAPPELS_ACTIFS:true}
 
 springdoc:
   swagger-ui:
