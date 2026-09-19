@@ -5,10 +5,12 @@ import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
 import dz.tabibi.backend.creneaux.application.CreneauService;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
+import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +20,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CreneauServiceTest {
 
-    private final CreneauService service = new CreneauService(new EnMemoireCreneauRepository());
+    /** Fausse alerte de la liste d'attente : memorise les creneaux liberes signales. */
+    static class FausseAlerteCreneau implements AlerteCreneau {
+        record Alerte(UUID medecinId, Instant debut) {}
+
+        final List<Alerte> alertes = new ArrayList<>();
+
+        @Override
+        public void creneauLibere(UUID medecinId, Instant debut) {
+            alertes.add(new Alerte(medecinId, debut));
+        }
+    }
+
+    private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
+    private final CreneauService service = new CreneauService(new EnMemoireCreneauRepository(), alerte);
 
     @Test
     void liste_les_creneaux_disponibles_d_un_medecin_seede() {
@@ -59,6 +74,16 @@ class CreneauServiceTest {
     }
 
     @Test
+    void ouvrir_un_creneau_alerte_la_liste_d_attente_du_medecin() {
+        UUID medecin = UUID.randomUUID();
+        Instant debut = Instant.now().plus(2, ChronoUnit.DAYS);
+
+        service.ouvrir(medecin, debut, 30);
+
+        assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(medecin, debut));
+    }
+
+    @Test
     void refuse_un_creneau_dans_le_passe() {
         Instant passe = Instant.now().minus(1, ChronoUnit.HOURS);
 
@@ -66,6 +91,7 @@ class CreneauServiceTest {
                 .isInstanceOf(CreneauInvalideException.class);
         assertThatThrownBy(() -> service.ouvrir(UUID.randomUUID(), null, 20))
                 .isInstanceOf(CreneauInvalideException.class);
+        assertThat(alerte.alertes).isEmpty();
     }
 
     @Test
@@ -76,6 +102,7 @@ class CreneauServiceTest {
         assertThatThrownBy(() -> service.ouvrir(medecin, futur, 4)).isInstanceOf(CreneauInvalideException.class);
         assertThatThrownBy(() -> service.ouvrir(medecin, futur, 121)).isInstanceOf(CreneauInvalideException.class);
         assertThat(service.disponiblesPour(medecin)).isEmpty();
+        assertThat(alerte.alertes).isEmpty();
     }
 
     @Test

@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/011-dawini.yaml
   - include:
       file: db/changelog/012-profil.yaml
+  - include:
+      file: db/changelog/013-liste-attente.yaml

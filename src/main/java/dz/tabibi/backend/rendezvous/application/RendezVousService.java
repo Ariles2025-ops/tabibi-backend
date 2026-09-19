@@ -6,6 +6,7 @@ import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
+import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
@@ -20,7 +21,8 @@ import java.util.UUID;
 
 /**
  * Cas d'usage des rendez-vous. Contient la regle metier, pas le client.
- * Le patient et le medecin sont prevenus (port Notifieur) a la reservation, le medecin a l'annulation.
+ * Le patient et le medecin sont prevenus (port Notifieur) a la reservation, le medecin a l'annulation ;
+ * un creneau remis a disposition est signale au port AlerteCreneau (liste d'attente du medecin).
  */
 @Service
 public class RendezVousService {
@@ -28,11 +30,14 @@ public class RendezVousService {
     private final RendezVousRepository repository;
     private final CreneauRepository creneaux;
     private final Notifieur notifieur;
+    private final AlerteCreneau alerteCreneau;
 
-    public RendezVousService(RendezVousRepository repository, CreneauRepository creneaux, Notifieur notifieur) {
+    public RendezVousService(RendezVousRepository repository, CreneauRepository creneaux, Notifieur notifieur,
+                             AlerteCreneau alerteCreneau) {
         this.repository = repository;
         this.creneaux = creneaux;
         this.notifieur = notifieur;
+        this.alerteCreneau = alerteCreneau;
     }
 
     /**
@@ -74,9 +79,9 @@ public class RendezVousService {
     }
 
     /**
-     * Annule un rendez-vous du patient et remet son creneau a disposition.
-     * Annuler un rendez-vous deja annule ne change rien : son creneau a pu etre
-     * repris entre-temps par un autre patient et ne doit pas etre libere a nouveau.
+     * Annule un rendez-vous du patient et remet son creneau a disposition (la liste d'attente
+     * du medecin est alors alertee). Annuler un rendez-vous deja annule ne change rien : son
+     * creneau a pu etre repris entre-temps par un autre patient et ne doit pas etre libere a nouveau.
      * @throws RendezVousIntrouvableException si le rendez-vous n'existe pas.
      * @throws AccesRefuseException si le rendez-vous appartient a un autre patient.
      */
@@ -91,9 +96,7 @@ public class RendezVousService {
             return rdv;
         }
         rdv.annuler();
-        if (rdv.creneauId() != null) {
-            creneaux.parId(rdv.creneauId()).map(Creneau::liberer).ifPresent(creneaux::enregistrer);
-        }
+        libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
         notifieur.notifier(annule.medecinId(), "Rendez-vous annule",
                 "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a ete annule par le patient.");
@@ -120,6 +123,20 @@ public class RendezVousService {
         }
         rdv.honorer();
         return repository.enregistrer(rdv);
+    }
+
+    /**
+     * Remet a disposition le creneau de l'agenda reserve par ce rendez-vous, s'il y en a un, et
+     * alerte la liste d'attente du medecin ; sans effet pour un rendez-vous pris hors agenda.
+     */
+    private void libererCreneau(RendezVous rdv) {
+        if (rdv.creneauId() == null) {
+            return;
+        }
+        creneaux.parId(rdv.creneauId()).map(Creneau::liberer).ifPresent(creneau -> {
+            creneaux.enregistrer(creneau);
+            alerteCreneau.creneauLibere(creneau.medecinId(), creneau.debut());
+        });
     }
 
     /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */

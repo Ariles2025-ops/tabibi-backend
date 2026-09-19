@@ -3,13 +3,17 @@ package dz.tabibi.backend.creneaux.application;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
+import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Cas d'usage des creneaux : consulter les disponibilites d'un medecin, ouvrir un creneau. */
+/**
+ * Cas d'usage des creneaux : consulter les disponibilites d'un medecin, ouvrir un creneau.
+ * L'ouverture d'un creneau est signalee au port AlerteCreneau (liste d'attente du medecin).
+ */
 @Service
 public class CreneauService {
 
@@ -17,9 +21,11 @@ public class CreneauService {
     public static final int DUREE_MAX_MINUTES = 120;
 
     private final CreneauRepository repository;
+    private final AlerteCreneau alerteCreneau;
 
-    public CreneauService(CreneauRepository repository) {
+    public CreneauService(CreneauRepository repository, AlerteCreneau alerteCreneau) {
         this.repository = repository;
+        this.alerteCreneau = alerteCreneau;
     }
 
     public List<Creneau> disponiblesPour(UUID medecinId) {
@@ -27,7 +33,7 @@ public class CreneauService {
     }
 
     /**
-     * Ouvre un creneau disponible dans l'agenda du medecin.
+     * Ouvre un creneau disponible dans l'agenda du medecin ; la liste d'attente du medecin en est alertee.
      * Regles : le debut est dans le futur, la duree est comprise entre 5 et 120 minutes.
      * @throws CreneauInvalideException si une regle n'est pas respectee.
      */
@@ -39,6 +45,8 @@ public class CreneauService {
             throw new CreneauInvalideException("La duree doit etre comprise entre "
                     + DUREE_MIN_MINUTES + " et " + DUREE_MAX_MINUTES + " minutes.");
         }
-        return repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, dureeMinutes, true));
+        Creneau creneau = repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, dureeMinutes, true));
+        alerteCreneau.creneauLibere(creneau.medecinId(), creneau.debut());
+        return creneau;
     }
 }

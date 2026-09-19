@@ -11,6 +11,7 @@ import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.dawini.domain.BesoinIntrouvableException;
 import dz.tabibi.backend.dawini.domain.BesoinInvalideException;
 import dz.tabibi.backend.dawini.domain.ReponseInvalideException;
+import dz.tabibi.backend.listeattente.domain.InscriptionIntrouvableException;
 import dz.tabibi.backend.messagerie.domain.ConversationIntrouvableException;
 import dz.tabibi.backend.messagerie.domain.MessageInvalideException;
 import dz.tabibi.backend.notifications.domain.NotificationIntrouvableException;
@@ -47,7 +48,8 @@ public class GestionErreursApi {
             ConversationIntrouvableException.class,
             AvisIntrouvableException.class,
             BesoinIntrouvableException.class,
-            ProfilIntrouvableException.class})
+            ProfilIntrouvableException.class,
+            InscriptionIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }

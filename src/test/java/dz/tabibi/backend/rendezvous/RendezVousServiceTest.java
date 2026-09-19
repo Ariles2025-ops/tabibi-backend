@@ -7,6 +7,7 @@ import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
+import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
 import dz.tabibi.backend.rendezvous.application.RendezVousService;
@@ -45,10 +46,23 @@ class RendezVousServiceTest {
         }
     }
 
+    /** Fausse alerte de la liste d'attente : memorise les creneaux liberes signales. */
+    static class FausseAlerteCreneau implements AlerteCreneau {
+        record Alerte(UUID medecinId, Instant debut) {}
+
+        final List<Alerte> alertes = new ArrayList<>();
+
+        @Override
+        public void creneauLibere(UUID medecinId, Instant debut) {
+            alertes.add(new Alerte(medecinId, debut));
+        }
+    }
+
     private final CreneauRepository creneaux = new EnMemoireCreneauRepository();
     private final FauxNotifieur notifieur = new FauxNotifieur();
+    private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
     private final RendezVousService service =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur);
+            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte);
 
     private Creneau premierCreneauDisponible() {
         return creneaux.disponiblesPour(MEDECIN_DEMO).get(0);
@@ -160,6 +174,27 @@ class RendezVousServiceTest {
         assertThat(notifieur.pour(MEDECIN_DEMO).get(1).sujet()).isEqualTo("Rendez-vous annule");
         assertThat(notifieur.pour(MEDECIN_DEMO).get(1).message()).contains("07/12/2026");
         assertThat(notifieur.pour(patient)).hasSize(1); // seule la confirmation initiale
+        assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(MEDECIN_DEMO, creneau.debut()));
+    }
+
+    @Test
+    void la_reservation_n_alerte_pas_la_liste_d_attente() {
+        service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+        service.reserver(UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z"));
+
+        assertThat(alerte.alertes).isEmpty();
+    }
+
+    @Test
+    void annuler_un_rendezvous_pris_hors_agenda_ne_libere_aucun_creneau_et_n_alerte_personne() {
+        UUID patient = UUID.randomUUID();
+        RendezVous rdv = service.reserver(patient, UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z"));
+
+        RendezVous annule = service.annuler(patient, rdv.id());
+
+        assertThat(annule.statut()).isEqualTo(StatutRdv.ANNULE);
+        assertThat(notifieur.pour(rdv.medecinId())).hasSize(2); // nouveau rendez-vous, puis annulation
+        assertThat(alerte.alertes).isEmpty();
     }
 
     @Test
@@ -172,6 +207,7 @@ class RendezVousServiceTest {
         assertThat(rdv.statut()).isEqualTo(StatutRdv.CONFIRME);
         assertThat(estDisponible(creneau.id())).isFalse();
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1); // pas d'annulation notifiee
+        assertThat(alerte.alertes).isEmpty();
     }
 
     @Test
@@ -193,6 +229,7 @@ class RendezVousServiceTest {
 
         assertThat(estDisponible(creneau.id())).isFalse();
         assertThat(notifieur.appels).hasSize(notificationsAvant); // la seconde annulation ne previent personne
+        assertThat(alerte.alertes).hasSize(1); // seule la premiere annulation a alerte la liste d'attente
     }
 
     @Test

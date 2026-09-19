@@ -57,6 +57,9 @@ Role PATIENT :
 | POST | `/api/dawini/besoins` | publie un besoin de medicament `{ medicament, wilayaCode, commune, precision }` (201, 400) |
 | GET | `/api/dawini/besoins/mes` | mes besoins, tous statuts, les plus recents d'abord, avec `nombreReponses` |
 | POST | `/api/dawini/besoins/{id}/cloturer` | cloture mon besoin (404, 403, 409 si deja cloture) |
+| POST | `/api/medecins/{id}/liste-attente` | m'inscrit sur la liste d'attente d'un medecin (201, 409 si deja inscrit) : je suis prevenu des qu'un creneau se libere chez lui |
+| GET | `/api/liste-attente/mes` | mes inscriptions en liste d'attente, les plus anciennes d'abord |
+| POST | `/api/liste-attente/{id}/retirer` | me retire d'une liste d'attente (204 sans corps, 404, 403 si l'inscription est a un autre patient) |
 
 Role MEDECIN :
 
@@ -75,6 +78,7 @@ Role MEDECIN :
 | POST | `/api/medecin/candidature` | depose ma candidature a l'annuaire `{ nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone }` (201, 400, 409) |
 | GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
 | POST | `/api/avis/{id}/signaler` | signale a l'administrateur un avis publie qui me concerne (403 sinon, 409 s'il n'est pas publie) |
+| GET | `/api/medecin/liste-attente` | ma liste d'attente : patients inscrits, les plus anciens d'abord |
 
 Role PHARMACIE (Dawini) :
 
@@ -135,7 +139,10 @@ Les cas d'usage previennent les utilisateurs par le port `Notifieur` (module `no
 a la reservation d'un rendez-vous, le patient (« Rendez-vous confirme ») et le medecin (« Nouveau
 rendez-vous ») ; a l'annulation, le medecin (« Rendez-vous annule ») ; a chaque message de la
 messagerie, l'autre participant (« Nouveau message », sans le contenu) ; a chaque reponse d'une
-pharmacie sur Dawini, le patient (« Reponse d'une pharmacie », sans detail). Aujourd'hui l'adaptateur
+pharmacie sur Dawini, le patient (« Reponse d'une pharmacie », sans detail) ; a chaque creneau libere chez un
+medecin (ouverture d'un creneau, annulation d'un rendez-vous qui remet son creneau a disposition), chaque patient
+inscrit sur sa liste d'attente (« Creneau disponible », port `AlerteCreneau` du module `listeattente`, realise par
+`ListeAttenteService`). Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
 au domaine. Les messages ne sont jamais journalises.
@@ -204,6 +211,7 @@ messagerie/      conversations patient-medecin (apres un rendez-vous) et message
 avis/            avis verifies des patients (rendez-vous honore), synthese publique, moderation
 dawini/          besoins de medicaments des patients et reponses des pharmacies (role PHARMACIE)
 profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue)
+listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
 identite/        MoiController
 commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak)

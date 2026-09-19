@@ -293,3 +293,32 @@
   wilaya bornee, langues et defaut fr, utilisateur et demande obligatoires), service (vide avant, creation datee,
   remplacement sans doublon, un profil par utilisateur, refus sans toucher au profil existant) ; web 401 sans jeton,
   404 sans profil, PUT 200 puis GET 200, accessible a un medecin, 400 invalide.
+
+## v0.15.0 — Liste d'attente
+- POST /api/medecins/{id}/liste-attente (PATIENT, 201) : inscription du patient sur la liste d'attente d'un medecin
+  (une seule par couple patient / medecin, 409 sinon) ; GET /api/medecins/** reste public mais ce POST exige un
+  jeton (le permitAll de SecurityConfig ne porte que sur GET, verifie par le test web).
+- GET /api/liste-attente/mes (PATIENT) : mes inscriptions, les plus anciennes d'abord.
+- POST /api/liste-attente/{id}/retirer (PATIENT, 204 sans corps) : 404 si inconnue, 403 si elle est a un autre patient.
+- GET /api/medecin/liste-attente (MEDECIN) : sa liste d'attente, les plus anciens inscrits d'abord.
+- Vue InscriptionVue { id, patientId, medecinId, inscritLe }.
+- Alerte de creneau libere : port de domaine AlerteCreneau (creneauLibere(medecinId, debut)) realise par
+  ListeAttenteService, qui previent chaque patient inscrit sur la liste du medecin (« Creneau disponible », « Un creneau
+  vient de se liberer chez votre medecin le <date>. Reservez vite. »). Branchement : CreneauService.ouvrir l'appelle
+  apres enregistrement du creneau ; RendezVousService.annuler l'appelle quand un creneau de l'agenda est effectivement
+  remis a disposition (jamais pour un rendez-vous pris hors agenda, ni pour une seconde annulation). Sans cycle Spring :
+  listeattente.application ne depend que de ListeAttenteRepository et du Notifieur.
+- Module listeattente : InscriptionAttente (record immuable : inscrire, estDe, concerne), port ListeAttenteRepository
+  (enregistrer, parId, parPatientEtMedecin, parPatient, parMedecin, supprimer), ListeAttenteService (inscrire,
+  mesInscriptions, retirer, listeDuMedecin, creneauLibere) ; exception InscriptionIntrouvable (404) dans
+  GestionErreursApi ; le doublon est un conflit (TransitionInvalide, 409).
+- Persistance : adaptateur en memoire (ordre d'inscription conserve a date egale) et JPA (findByPatientIdAndMedecinId,
+  findByPatientIdOrderByInscritLeAsc, findByMedecinIdOrderByInscritLeAsc, deleteById) ; Liquibase 013 (table
+  liste_attente : unique (patient_id, medecin_id), index medecin_id).
+- Tests : service (inscription, doublon 409, plusieurs medecins, listes triees par patient et par medecin, retrait puis
+  reinscription, retrait 403 / 404, alerte qui previent chaque inscrit du medecin et personne d'autre, medecin sans
+  liste, patient retire non prevenu), CreneauServiceTest (alerte a l'ouverture, aucune si le creneau est refuse),
+  RendezVousServiceTest (alerte a l'annulation qui libere le creneau ; aucune a la reservation, pour un rendez-vous
+  hors agenda, pour une annulation refusee ou une seconde annulation) avec une fausse AlerteCreneau ; web 401 sans
+  jeton sur le POST d'inscription malgre le GET public, 403 par role, 201 / 409, 200 liste, 204 sans corps, 403 / 404
+  au retrait, 200 / 403 / 401 pour la liste du medecin.

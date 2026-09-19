@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-liste-attente
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: liste_attente
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: patient_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: medecin_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: inscrit_le, type: timestamptz, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            constraintName: uk_liste_attente_patient_medecin
+            tableName: liste_attente
+            columnNames: patient_id, medecin_id
+        - createIndex:
+            indexName: idx_liste_attente_medecin
+            tableName: liste_attente
+            columns:
+              - column: { name: medecin_id }
