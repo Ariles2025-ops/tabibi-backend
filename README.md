@@ -412,9 +412,25 @@ Le realm `tabibi` (`infra/keycloak/tabibi-realm.json`, verifie par `RealmKeycloa
 ## Tester
 
 ```bash
-mvn test                      # tests unitaires + web (aucun service externe requis)
+mvn test                      # tests unitaires, web et scenario de bout en bout (aucun service externe requis)
 mvn verify -Dit.docker=true   # + test d'integration PostgreSQL (Testcontainers, Docker requis)
+mvn test -Dtest=ScenarioApiTest   # le scenario seul
 ```
+
+Trois niveaux :
+
+- **unitaires** : domaine et cas d'usage sur les adaptateurs en memoire ou de faux ports (`*ServiceTest`, `*Test`) ;
+- **web** (`@WebMvcTest` + `@Import(SecurityConfig.class)`, service simule) : securite par role, codes HTTP, format des
+  reponses et des erreurs, sans filtre d'audit ni de limitation de debit ;
+- **scenario de bout en bout** (`ScenarioApiTest`, `@SpringBootTest` sur un port libre, `TestRestTemplate`) : l'application
+  complete demarre **sans base ni Keycloak** (profil par defaut, planificateur des rappels, filtres d'audit et de limitation
+  de debit, PDF reel) ; seul `JwtDecoder` est simule et traduit les jetons `patient`, `medecin` et `admin` en `Jwt` construits
+  a la main (sujet + `realm_access.roles`), tout autre jeton est refuse (401). Parcours : le medecin ouvre un creneau, le
+  patient le reserve (409 s'il le reserve deux fois), les deux sont prevenus, le medecin honore, le patient depose un avis
+  (un seul), la synthese publique montre un avis anonymise, le medecin redige une ordonnance, la verification publique du
+  code repond 200 sans donnee personnelle, le PDF est remis au patient et au medecin (401 sans jeton, 403 pour un tiers),
+  le journal des acces de l'administrateur a tout trace sans contenu ; une rafale sur `POST /api/conversations` finit en
+  429 avec `Retry-After`.
 
 ## Structure (hexagonale)
 

@@ -561,3 +561,23 @@
   Retry-After et corps JSON sans atteindre la chaine, quota propre a chaque route et a chaque IP, recharge, routes non
   concernees jamais limitees ni comptees, X-Forwarded-For ignore hors proxy et premier element derriere un proxy avec
   repli sur l'adresse distante, adresse inconnue, regles par defaut et ordre du filtre, regle incomplete refusee).
+
+## v0.24.1 — Scenario de bout en bout de l'API
+- ScenarioApiTest (@SpringBootTest webEnvironment RANDOM_PORT, TestRestTemplate, sans Docker ni Keycloak) : profil par
+  defaut (adaptateurs en memoire), contexte complet (planificateur des rappels, filtres d'audit et de limitation de debit,
+  generateur PDF reel) ; @MockBean JwtDecoder traduit les jetons « patient », « medecin », « admin » en Jwt construits a la
+  main (Jwt.withTokenValue(...).header("alg", "none").subject(...).claim("realm_access", { roles }), stubbing par
+  doReturn / doThrow pour que tout autre jeton soit refuse 401 par la chaine reelle).
+- Verifie que l'application demarre sans base (aucun bean DataSource) avec PlanificateurRappels, filtreAudit et
+  filtreLimiteDebit, que la sante est publique, que /api/moi repond 401 sans jeton ou avec un jeton inconnu, 403 pour un
+  patient sur /api/admin/**, 200 avec un jeton valide.
+- Parcours complet : le medecin ouvre un creneau (403 pour un patient) -> visible sans jeton -> le patient le reserve
+  (201, 409 la seconde fois) -> notifications des deux (« Rendez-vous confirme », « Nouveau rendez-vous », compteur non lus)
+  -> le medecin honore (HONORE) -> le patient depose un avis (201, 409 le second) -> la synthese publique montre 1 avis
+  anonymise, moyenne 5.0 -> le medecin redige une ordonnance rattachee au rendez-vous (201, code de 8 caracteres) ->
+  verification publique du code en minuscules 200 valide sans donnee personnelle, code inconnu 404 -> PDF 200
+  application/pdf inline (plus de 1 ko, commence par %PDF-) pour le patient et le medecin, 401 sans jeton, 403 pour
+  l'administrateur -> journal des acces du medecin (ADMIN seul) : creneau, ordonnance et honorer traces, jamais le contenu.
+- Rafale de POST /api/conversations vers un medecin jamais consulte (403 metier, mais comptes) : 429 avec Retry-After et
+  corps { "erreur": "Trop de requetes, reessayez dans un instant." } avant la 25e requete.
+- README (section Tester : trois niveaux de tests), pom.xml 0.24.1.
