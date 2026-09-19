@@ -12,7 +12,11 @@ interface NotificationJpa extends JpaRepository<NotificationEntity, UUID> {
 
     long countByDestinataireIdAndLueFalse(UUID destinataireId);
 
-    /** Effacement de compte : requete derivee de suppression, a executer dans une transaction. */
+    /**
+     * Effacement de compte : requete derivee de suppression, a executer dans une transaction.
+     * Le type de retour est {@code int} : c'est ce que rend une suppression Spring Data, et c'est
+     * le seul type qu'accepte l'execution d'une requete annotee {@link Modifying}.
+     */
     @Modifying
-    long deleteByDestinataireId(UUID destinataireId);
+    int deleteByDestinataireId(UUID destinataireId);
 }
