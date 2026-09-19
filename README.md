@@ -35,6 +35,7 @@ poste de developpement (`src/main/resources/application.yml`) :
 |---|---|---|
 | `TABIBI_KEYCLOAK_ISSUER` | `http://localhost:8081/realms/tabibi` | emetteur des jetons (realm Keycloak) |
 | `TABIBI_CORS_ORIGINES` | `http://localhost:4200` | origines autorisees a appeler l'API depuis un navigateur, separees par des virgules (ex. `https://tabibi.example,https://www.tabibi.example`) |
+| `TABIBI_WEB_BASE_URL` | `http://localhost:4200` | adresse publique du front web, vers laquelle renvoie le QR code d'une ordonnance imprimee (`/verifier?code=XXXX`) |
 | `TABIBI_TELECONSULTATION_BASE_URL` | `https://meet.jit.si` | instance Jitsi Meet des teleconsultations |
 | `TABIBI_RAPPELS_ACTIFS` | `true` | `false` coupe le planificateur des rappels |
 | `SPRING_PROFILES_ACTIVE` | (aucun : en memoire) | `postgres` active JPA / Liquibase sur PostgreSQL |
@@ -137,6 +138,7 @@ PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 | Methode | Chemin | Description |
 |---|---|---|
 | GET | `/api/ordonnances/{id}` | une ordonnance, pour son patient ou son medecin auteur |
+| GET | `/api/ordonnances/{id}/pdf` | la meme ordonnance imprimable (`application/pdf`, `Content-Disposition: inline; filename="ordonnance-<code>.pdf"`), voir « Ordonnance imprimable » |
 | GET | `/api/teleconsultations/{id}` | une teleconsultation, pour son patient ou son medecin |
 | GET | `/api/conversations` | mes conversations, la plus recente activite d'abord, avec `nonLus` |
 | GET | `/api/conversations/{id}/messages` | messages du plus ancien au plus recent ; les messages recus sont marques lus |
@@ -158,6 +160,26 @@ Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig
 | GET | `/api/admin/audit/sujet/{id}?limite=100` | les acces d'un utilisateur (sujet de son jeton), les plus recents d'abord |
 
 Documentation d'API : `/swagger-ui.html`.
+
+## Ordonnance imprimable
+
+`GET /api/ordonnances/{id}/pdf` remet au patient ou au medecin auteur (memes regles d'acces que la consultation :
+403 pour un tiers, 404 si absente) une page A4 produite en memoire par l'adaptateur `OpenPdfGenerateurOrdonnance`
+(port de domaine `GenerateurPdfOrdonnance`, bibliotheques **OpenPDF** et **ZXing**) : en-tete « Tabibi », nom du
+medecin (annuaire, `MedecinRepository.parId`, « Medecin » a defaut), nom du patient (profil, « Patient » s'il n'est
+pas renseigne), date d'emission a l'heure d'Algerie, tableau des lignes (medicament, posologie, duree), code de
+verification en gros caracteres et **QR code** (140 pt) encodant l'adresse publique de verification
+`tabibi.web.base-url/verifier?code=XXXX`, avec la mention « Verifiez cette ordonnance sur ... ». Un pharmacien
+scanne le code : la page du front interroge `GET /api/ordonnances/verifier/{code}`, qui ne revele aucune donnee
+personnelle. Le document n'est ni stocke ni journalise : il est regenere a chaque demande.
+
+Configuration (`application.yml`) :
+
+```yaml
+tabibi:
+  web:
+    base-url: ${TABIBI_WEB_BASE_URL:http://localhost:4200}   # origine publique du front en production
+```
 
 ## Teleconsultation
 
@@ -394,7 +416,7 @@ mvn verify -Dit.docker=true   # + test d'integration PostgreSQL (Testcontainers,
 annuaire/        praticiens, recherche publique
 creneaux/        disponibilites et ouverture de creneaux
 rendezvous/      reservation, annulation, agenda, rendez-vous honores
-ordonnances/     redaction, consultation, verification publique par code
+ordonnances/     redaction, consultation, verification publique par code, version imprimable (port GenerateurPdfOrdonnance, adaptateur OpenPDF + ZXing)
 notifications/   boite de reception, port Notifieur et notifieur interne
 teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 administration/  candidatures des medecins, validation par l'administrateur, statistiques

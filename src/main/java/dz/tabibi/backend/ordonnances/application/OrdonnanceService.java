@@ -1,30 +1,60 @@
 package dz.tabibi.backend.ordonnances.application;
 
+import dz.tabibi.backend.annuaire.domain.Medecin;
+import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.ordonnances.domain.CodeVerification;
+import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
+import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
+import dz.tabibi.backend.profil.domain.Profil;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Cas d'usage des ordonnances : rediger, consulter, verifier par code. */
+/**
+ * Cas d'usage des ordonnances : rediger, consulter, verifier par code, imprimer (PDF avec QR code).
+ * La version imprimable porte le nom du medecin (annuaire) et celui du patient (profil) ; a defaut,
+ * une mention generique : le document reste utilisable, le code de verification fait foi.
+ */
 @Service
 public class OrdonnanceService {
 
     /** Nombre de tirages avant d'abandonner la recherche d'un code libre (jamais atteint en pratique). */
     private static final int ESSAIS_CODE = 10;
 
-    private final OrdonnanceRepository repository;
+    /** Repli quand le medecin n'est pas (ou plus) dans l'annuaire. */
+    static final String MEDECIN_INCONNU = "Medecin";
+    /** Repli quand le patient n'a pas renseigne son profil. */
+    static final String PATIENT_INCONNU = "Patient";
+    /** Chemin de la page publique de verification du front web ; le code est passe en parametre. */
+    static final String CHEMIN_VERIFICATION = "/verifier?code=";
 
-    public OrdonnanceService(OrdonnanceRepository repository) {
+    private final OrdonnanceRepository repository;
+    private final GenerateurPdfOrdonnance generateurPdf;
+    private final ProfilRepository profils;
+    private final MedecinRepository medecins;
+    private final String baseUrlWeb;
+
+    public OrdonnanceService(OrdonnanceRepository repository,
+                             GenerateurPdfOrdonnance generateurPdf,
+                             ProfilRepository profils,
+                             MedecinRepository medecins,
+                             @Value("${tabibi.web.base-url:http://localhost:4200}") String baseUrlWeb) {
         this.repository = repository;
+        this.generateurPdf = generateurPdf;
+        this.profils = profils;
+        this.medecins = medecins;
+        this.baseUrlWeb = baseUrlWeb.endsWith("/") ? baseUrlWeb.substring(0, baseUrlWeb.length() - 1) : baseUrlWeb;
     }
 
     /**
@@ -71,6 +101,26 @@ public class OrdonnanceService {
             throw new AccesRefuseException("Cette ordonnance ne vous concerne pas.");
         }
         return ordonnance;
+    }
+
+    /**
+     * Version imprimable (PDF) d'une ordonnance, aux memes conditions d'acces que {@link #parIdPour} :
+     * son patient ou son medecin auteur. Le QR code encode l'adresse publique de verification
+     * ({@code base-url/verifier?code=XXXX}), qui ne revele aucune donnee personnelle.
+     * @throws OrdonnanceIntrouvableException si elle n'existe pas.
+     * @throws AccesRefuseException si le demandeur n'est ni l'un ni l'autre.
+     */
+    public OrdonnanceImprimable pdf(UUID demandeurId, UUID ordonnanceId) {
+        Ordonnance ordonnance = parIdPour(demandeurId, ordonnanceId);
+        String nomMedecin = medecins.parId(ordonnance.medecinId()).map(Medecin::nomComplet).orElse(MEDECIN_INCONNU);
+        String nomPatient = profils.parUtilisateur(ordonnance.patientId()).map(Profil::nomComplet).orElse(PATIENT_INCONNU);
+        byte[] contenu = generateurPdf.generer(ordonnance, nomMedecin, nomPatient, urlVerification(ordonnance));
+        return new OrdonnanceImprimable(ordonnance.codeVerification(), contenu);
+    }
+
+    /** Adresse de la page publique de verification du front web pour cette ordonnance. */
+    String urlVerification(Ordonnance ordonnance) {
+        return baseUrlWeb + CHEMIN_VERIFICATION + ordonnance.codeVerification();
     }
 
     /**

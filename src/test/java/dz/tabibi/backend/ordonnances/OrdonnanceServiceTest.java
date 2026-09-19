@@ -1,17 +1,27 @@
 package dz.tabibi.backend.ordonnances;
 
+import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
+import dz.tabibi.backend.annuaire.domain.Medecin;
+import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.ordonnances.adapter.EnMemoireOrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
+import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
+import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
 import dz.tabibi.backend.ordonnances.domain.StatutOrdonnance;
+import dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository;
+import dz.tabibi.backend.profil.domain.DemandeProfil;
+import dz.tabibi.backend.profil.domain.Profil;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -30,8 +40,31 @@ class OrdonnanceServiceTest {
             new LigneOrdonnance("Paracetamol 1 g", "1 comprime matin et soir", "5 jours"),
             new LigneOrdonnance("Amoxicilline 500 mg", "1 gelule toutes les 8 heures", "7 jours"));
 
+    /** Faux port de generation : garde ce qu'on lui demande et rend un contenu reconnaissable. */
+    static class FauxGenerateur implements GenerateurPdfOrdonnance {
+        Ordonnance ordonnance;
+        String nomMedecin;
+        String nomPatient;
+        String urlVerification;
+        int appels;
+
+        @Override
+        public byte[] generer(Ordonnance ordonnance, String nomMedecin, String nomPatient, String urlVerification) {
+            this.ordonnance = ordonnance;
+            this.nomMedecin = nomMedecin;
+            this.nomPatient = nomPatient;
+            this.urlVerification = urlVerification;
+            appels++;
+            return ("%PDF-faux " + ordonnance.codeVerification()).getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
     private final OrdonnanceRepository repository = new EnMemoireOrdonnanceRepository();
-    private final OrdonnanceService service = new OrdonnanceService(repository);
+    private final FauxGenerateur generateur = new FauxGenerateur();
+    private final ProfilRepository profils = new EnMemoireProfilRepository();
+    private final MedecinRepository medecins = new EnMemoireMedecinRepository();
+    private final OrdonnanceService service =
+            new OrdonnanceService(repository, generateur, profils, medecins, "https://tabibi.example/");
 
     /** Ordonnance emise a une date choisie, enregistree directement (sans passer par le service). */
     private Ordonnance emiseLe(UUID patient, String date, StatutOrdonnance statut, String code) {
@@ -171,5 +204,52 @@ class OrdonnanceServiceTest {
     void verifier_un_code_inconnu_est_introuvable() {
         assertThatThrownBy(() -> service.verifier("ZZZZZZZZ"))
                 .isInstanceOf(OrdonnanceIntrouvableException.class);
+    }
+
+    @Test
+    void pdf_delegue_au_generateur_avec_les_noms_et_l_url_de_verification() {
+        medecins.enregistrer(new Medecin(MEDECIN, "Dr Amina Belkacem", "cardiologue", "Cardiologue", "16", "Alger", "Alger-Centre"));
+        profils.enregistrer(Profil.renseigner(PATIENT, new DemandeProfil("Nadia Saidi", null, null, "16", "fr"),
+                Instant.parse("2026-03-01T09:00:00Z")));
+        Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES);
+
+        OrdonnanceImprimable imprimable = service.pdf(PATIENT, o.id());
+
+        assertThat(generateur.appels).isEqualTo(1);
+        assertThat(generateur.ordonnance).isEqualTo(o);
+        assertThat(generateur.nomMedecin).isEqualTo("Dr Amina Belkacem");
+        assertThat(generateur.nomPatient).isEqualTo("Nadia Saidi");
+        assertThat(generateur.urlVerification).isEqualTo("https://tabibi.example/verifier?code=" + o.codeVerification());
+        assertThat(imprimable.codeVerification()).isEqualTo(o.codeVerification());
+        assertThat(imprimable.nomFichier()).isEqualTo("ordonnance-" + o.codeVerification() + ".pdf");
+        assertThat(new String(imprimable.contenu(), StandardCharsets.UTF_8)).isEqualTo("%PDF-faux " + o.codeVerification());
+    }
+
+    @Test
+    void pdf_sans_profil_ni_fiche_d_annuaire_utilise_des_noms_generiques() {
+        Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES); // MEDECIN aleatoire : absent de l'annuaire
+
+        service.pdf(MEDECIN, o.id());
+
+        assertThat(generateur.nomMedecin).isEqualTo("Medecin");
+        assertThat(generateur.nomPatient).isEqualTo("Patient");
+    }
+
+    @Test
+    void pdf_est_accessible_au_patient_et_au_medecin_auteur_seulement() {
+        Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES);
+
+        assertThat(service.pdf(PATIENT, o.id()).contenu()).isNotNull();
+        assertThat(service.pdf(MEDECIN, o.id()).contenu()).isNotNull();
+        assertThatThrownBy(() -> service.pdf(UUID.randomUUID(), o.id()))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThat(generateur.appels).isEqualTo(2); // rien n'est genere pour un tiers
+    }
+
+    @Test
+    void pdf_d_une_ordonnance_inconnue_est_introuvable() {
+        assertThatThrownBy(() -> service.pdf(PATIENT, UUID.randomUUID()))
+                .isInstanceOf(OrdonnanceIntrouvableException.class);
+        assertThat(generateur.appels).isZero();
     }
 }

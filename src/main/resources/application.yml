@@ -22,6 +22,10 @@ tabibi:
     # Origines (schema://hote:port) autorisees a appeler l'API depuis un navigateur, separees par
     # des virgules : le serveur de dev Angular par defaut ; en production, l'origine publique du front.
     origines: ${TABIBI_CORS_ORIGINES:http://localhost:4200}
+  web:
+    # Adresse publique du front web : le QR code d'une ordonnance imprimee renvoie vers sa page de
+    # verification (base-url/verifier?code=XXXX). En production, l'origine publique du front.
+    base-url: ${TABIBI_WEB_BASE_URL:http://localhost:4200}
   teleconsultation:
     # Salle video Jitsi Meet (open source, sans SDK proprietaire) : instance publique par defaut,
     # remplacable par une instance auto-hebergee. Le lien d'une salle vaut base-url/salleId.

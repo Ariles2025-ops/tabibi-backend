@@ -3,10 +3,13 @@ package dz.tabibi.backend.ordonnances.adapter;
 import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
+import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,8 +25,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Point d'entree REST des ordonnances : redaction par le medecin, consultation par le
- * patient ou le medecin auteur, verification publique par code. Les erreurs metier
+ * Point d'entree REST des ordonnances : redaction par le medecin, consultation et version
+ * imprimable (PDF) par le patient ou le medecin auteur, verification publique par code. Les erreurs metier
  * (contenu invalide, introuvable, acces refuse) sont traduites par GestionErreursApi.
  */
 @RestController
@@ -85,6 +88,21 @@ public class OrdonnanceController {
     @PreAuthorize("hasAnyRole('PATIENT', 'MEDECIN')")
     public OrdonnanceVue parId(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         return OrdonnanceVue.de(service.parIdPour(identifiant(jwt), id));
+    }
+
+    /**
+     * Version imprimable d'une ordonnance (PDF avec QR code de verification), aux memes conditions
+     * que la consultation : son patient ou son medecin auteur (403 sinon, 404 si absente). Le
+     * document s'affiche dans le navigateur (Content-Disposition inline) sous le nom ordonnance-<code>.pdf.
+     */
+    @GetMapping("/api/ordonnances/{id}/pdf")
+    @PreAuthorize("hasAnyRole('PATIENT', 'MEDECIN')")
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        OrdonnanceImprimable imprimable = service.pdf(identifiant(jwt), id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + imprimable.nomFichier() + "\"")
+                .body(imprimable.contenu());
     }
 
     /** Verification publique par un pharmacien (sans jeton, voir SecurityConfig) ; 404 si le code est inconnu. */

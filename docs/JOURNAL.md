@@ -514,3 +514,27 @@
 - docker-compose.prod.yml : le service `web` recoit DOMAINE (l'image tabibi-web en derive l'URL de l'API et de Keycloak
   pour assets/config.json et sa CSP) ; sans cette variable, le front retombait sur localhost.
 - pom.xml : version alignee sur le journal (0.22.x).
+
+## v0.23.0 — Ordonnance imprimable avec QR code de verification
+- Port de domaine GenerateurPdfOrdonnance (byte[] generer(ordonnance, nomMedecin, nomPatient, urlVerification)) et
+  valeur OrdonnanceImprimable (code de verification + contenu, nom de fichier ordonnance-<code>.pdf).
+- Adaptateur OpenPdfGenerateurOrdonnance (@Component, OpenPDF 2.0.3 + ZXing 3.5.3 core et javase) : page A4 en
+  memoire, en-tete « Tabibi », medecin, patient, date d'emission (FormatDate, heure d'Algerie), statut, tableau des
+  lignes (medicament, posologie, duree), code de verification en gros caracteres (Courier 26), QR code de 140 pt
+  (marge 1, correction M) encodant l'adresse publique de verification, mention « Verifiez cette ordonnance sur ... ».
+- OrdonnanceService.pdf(sujet, id) : memes regles d'acces que la consultation (patient destinataire ou medecin
+  auteur, sinon AccesRefuseException / OrdonnanceIntrouvableException) ; nom du medecin lu dans l'annuaire
+  (MedecinRepository.parId, repli « Medecin »), nom du patient dans son profil (ProfilRepository.parUtilisateur,
+  repli « Patient ») ; URL de verification ${tabibi.web.base-url}/verifier?code=XXXX (propriete tabibi.web.base-url,
+  defaut http://localhost:4200, variable TABIBI_WEB_BASE_URL, barre finale toleree).
+- GET /api/ordonnances/{id}/pdf (PATIENT ou MEDECIN) : application/pdf, Content-Disposition inline avec le nom
+  ordonnance-<code>.pdf ; type de contenu pose sur la reponse (pas de produces) pour que les erreurs 403 / 404
+  restent au format JSON { "erreur": "..." }.
+- pom.xml : com.github.librepdf:openpdf 2.0.3, com.google.zxing:core et javase 3.5.3 ; version 0.23.0.
+- README (Configuration, endpoints, section Ordonnance imprimable, structure).
+- Tests : OrdonnanceServiceTest (pdf : delegation au port avec un faux generateur, noms de l'annuaire et du profil,
+  URL de verification, nom de fichier, replis generiques, acces du patient et du medecin seulement, ordonnance
+  inconnue, rien n'est genere pour un tiers), OrdonnanceWebTest (200 application/pdf avec Content-Disposition inline
+  et corps transmis pour le patient et le medecin, 401 sans jeton, 403 pour un tiers, 404 si inconnue),
+  OpenPdfGenerateurOrdonnanceTest (vrai document : commence par %PDF-, se termine par %%EOF, plus de 1 ko,
+  ordonnance annulee et champs absents, deux documents distincts).

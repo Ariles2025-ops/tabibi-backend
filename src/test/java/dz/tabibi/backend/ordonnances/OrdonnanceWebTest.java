@@ -6,6 +6,7 @@ import dz.tabibi.backend.ordonnances.adapter.OrdonnanceController;
 import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
+import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
@@ -21,6 +22,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -31,11 +33,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Ordonnances : redaction et liste du medecin reservees au role MEDECIN, consultation par le patient
+ * Ordonnances : redaction et liste du medecin reservees au role MEDECIN, consultation et PDF par le patient
  * ou le medecin, verification publique par code sans jeton ; erreurs metier traduites par le conseil global.
  */
 @WebMvcTest(OrdonnanceController.class)
@@ -184,6 +188,53 @@ class OrdonnanceWebTest {
         when(service.verifier(any())).thenThrow(OrdonnanceIntrouvableException.codeInconnu());
 
         mvc.perform(get("/api/ordonnances/verifier/{code}", "ZZZZZZZZ"))
+           .andExpect(status().isNotFound())
+           .andExpect(jsonPath("$.erreur").exists());
+    }
+
+    @Test
+    void pdf_par_le_patient_repond_un_document_pdf_en_ligne() throws Exception {
+        UUID id = UUID.randomUUID();
+        byte[] contenu = "%PDF-1.4 faux".getBytes(StandardCharsets.UTF_8);
+        when(service.pdf(PATIENT, id)).thenReturn(new OrdonnanceImprimable("AB23CD45", contenu));
+
+        mvc.perform(get("/api/ordonnances/{id}/pdf", id).with(patient()))
+           .andExpect(status().isOk())
+           .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+           .andExpect(header().string("Content-Disposition", "inline; filename=\"ordonnance-AB23CD45.pdf\""))
+           .andExpect(content().bytes(contenu));
+    }
+
+    @Test
+    void pdf_par_le_medecin_auteur_repond_200() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(service.pdf(MEDECIN, id)).thenReturn(new OrdonnanceImprimable("AB23CD45", new byte[] {'%', 'P', 'D', 'F'}));
+
+        mvc.perform(get("/api/ordonnances/{id}/pdf", id).with(medecin()))
+           .andExpect(status().isOk())
+           .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    void pdf_refuse_sans_jeton() throws Exception {
+        mvc.perform(get("/api/ordonnances/{id}/pdf", UUID.randomUUID())).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void pdf_par_un_tiers_repond_403() throws Exception {
+        when(service.pdf(any(), any())).thenThrow(new AccesRefuseException("Cette ordonnance ne vous concerne pas."));
+
+        mvc.perform(get("/api/ordonnances/{id}/pdf", UUID.randomUUID()).with(patient()))
+           .andExpect(status().isForbidden())
+           .andExpect(jsonPath("$.erreur").value("Cette ordonnance ne vous concerne pas."));
+    }
+
+    @Test
+    void pdf_d_une_ordonnance_inconnue_repond_404() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(service.pdf(any(), any())).thenThrow(new OrdonnanceIntrouvableException(id));
+
+        mvc.perform(get("/api/ordonnances/{id}/pdf", id).with(patient()))
            .andExpect(status().isNotFound())
            .andExpect(jsonPath("$.erreur").exists());
     }
