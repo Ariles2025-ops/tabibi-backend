@@ -93,26 +93,28 @@ public class SupabaseMedecinRepository implements MedecinRepository {
 
     @Override
     public Optional<Medecin> parId(UUID id) {
+        // La table doctor_profiles n'est pas lisible par la cle anon (RLS) : on passe par
+        // la fonction publique praticien(p_id) (SECURITY DEFINER), meme source que la fiche web.
         try {
-            String select = URLEncoder.encode(
-                    "id,full_name,specialty_fr,specialty_slug,wilaya_code,wilaya_fr,city",
-                    StandardCharsets.UTF_8);
-            HttpRequest req = HttpRequest.newBuilder(URI.create(
-                    url + "/rest/v1/doctor_profiles?id=eq." + id + "&select=" + select + "&limit=1"))
+            ObjectNode corps = json.createObjectNode();
+            corps.put("p_id", id.toString());
+            corps.putNull("p_legacy_id");
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url + "/rest/v1/rpc/praticien"))
                     .timeout(Duration.ofSeconds(15))
                     .header("apikey", anon)
                     .header("Authorization", "Bearer " + anon)
-                    .GET()
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(corps.toString()))
                     .build();
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() >= 300) {
                 return Optional.empty();
             }
-            JsonNode arr = json.readTree(resp.body());
-            if (arr.isArray() && arr.size() > 0) {
-                return Optional.ofNullable(versMedecin(arr.get(0)));
+            JsonNode root = json.readTree(resp.body());
+            if (root.isArray()) {
+                root = root.size() > 0 ? root.get(0) : null;
             }
-            return Optional.empty();
+            return Optional.ofNullable(versMedecin(root));
         } catch (Exception e) {
             return Optional.empty();
         }
