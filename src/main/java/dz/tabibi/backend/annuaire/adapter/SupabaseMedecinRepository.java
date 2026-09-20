@@ -131,6 +131,17 @@ public class SupabaseMedecinRepository implements MedecinRepository {
             return null;
         }
         String wilCode = n.hasNonNull("wilaya_code") ? String.valueOf(n.get("wilaya_code").asInt()) : null;
+        Double note = n.hasNonNull("rating") ? n.get("rating").asDouble() : null;
+        int avis = n.hasNonNull("review_count") ? n.get("review_count").asInt() : 0;
+        List<String> langues = new ArrayList<>();
+        JsonNode l = n.get("languages");
+        if (l != null && l.isArray()) {
+            for (JsonNode x : l) {
+                if (!x.isNull()) {
+                    langues.add(x.asText());
+                }
+            }
+        }
         return new Medecin(
                 UUID.fromString(n.get("id").asText()),
                 txt(n, "full_name"),
@@ -138,7 +149,21 @@ public class SupabaseMedecinRepository implements MedecinRepository {
                 txt(n, "specialty_fr"),
                 wilCode,
                 txt(n, "wilaya_fr"),
-                txt(n, "city"));
+                txt(n, "city"),
+                note,
+                avis,
+                langues,
+                bool(n, "accepts_card"),
+                bool(n, "accepts_cash"),
+                bool(n, "accepts_chifa"),
+                bool(n, "telehealth_enabled"),
+                bool(n, "is_verified"),
+                txt(n, "entity_type"),
+                txt(n, "bio"));
+    }
+
+    private static boolean bool(JsonNode n, String champ) {
+        return n.hasNonNull(champ) && n.get(champ).asBoolean();
     }
 
     private static String txt(JsonNode n, String champ) {
