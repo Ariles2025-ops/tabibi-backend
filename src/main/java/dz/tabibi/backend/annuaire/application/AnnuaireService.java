@@ -3,13 +3,14 @@ package dz.tabibi.backend.annuaire.application;
 import dz.tabibi.backend.annuaire.domain.CritereRecherche;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
+import dz.tabibi.backend.annuaire.domain.StatsAnnuaire;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Cas d'usage de l'annuaire : rechercher des praticiens, consulter une fiche. */
+/** Cas d'usage de l'annuaire : rechercher des praticiens, consulter une fiche, statistiques. */
 @Service
 public class AnnuaireService {
 
@@ -25,5 +26,9 @@ public class AnnuaireService {
 
     public Optional<Medecin> parId(UUID id) {
         return repository.parId(id);
+    }
+
+    public StatsAnnuaire stats() {
+        return repository.stats();
     }
 }

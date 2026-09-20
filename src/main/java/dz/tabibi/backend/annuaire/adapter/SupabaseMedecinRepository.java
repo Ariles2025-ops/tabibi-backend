@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import dz.tabibi.backend.annuaire.domain.CritereRecherche;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
+import dz.tabibi.backend.annuaire.domain.StatsAnnuaire;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -147,6 +148,36 @@ public class SupabaseMedecinRepository implements MedecinRepository {
             node.putNull(champ);
         } else {
             node.put(champ, valeur);
+        }
+    }
+
+    @Override
+    public StatsAnnuaire stats() {
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url + "/rest/v1/rpc/stats_publiques"))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("apikey", anon)
+                    .header("Authorization", "Bearer " + anon)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                    .build();
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() >= 300) {
+                return new StatsAnnuaire(0, 58);
+            }
+            JsonNode root = json.readTree(resp.body());
+            if (root.isArray()) {
+                root = root.size() > 0 ? root.get(0) : root;
+            }
+            if (root.has("stats_publiques")) {
+                root = root.get("stats_publiques");
+            }
+            long total = root.hasNonNull("total") ? root.get("total").asLong() : 0;
+            int wil = (root.get("wilayas") != null && root.get("wilayas").isArray())
+                    ? root.get("wilayas").size() : 58;
+            return new StatsAnnuaire(total, wil);
+        } catch (Exception e) {
+            return new StatsAnnuaire(0, 58);
         }
     }
 }

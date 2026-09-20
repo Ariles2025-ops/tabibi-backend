@@ -3,6 +3,7 @@ package dz.tabibi.backend.annuaire.adapter;
 import dz.tabibi.backend.annuaire.application.AnnuaireService;
 import dz.tabibi.backend.annuaire.domain.CritereRecherche;
 import dz.tabibi.backend.annuaire.domain.Medecin;
+import dz.tabibi.backend.annuaire.domain.StatsAnnuaire;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,12 @@ public class AnnuaireController {
             @RequestParam(required = false) String wilaya,
             @RequestParam(required = false) String q) {
         return service.rechercher(CritereRecherche.de(specialite, wilaya, q));
+    }
+
+    /** Statistiques publiques de l'annuaire (total de praticiens, nombre de wilayas). */
+    @GetMapping("/api/medecins/stats")
+    public StatsAnnuaire stats() {
+        return service.stats();
     }
 
     /** Fiche d'un praticien ; 404 s'il est inconnu. */
