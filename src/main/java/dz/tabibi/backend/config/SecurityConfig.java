@@ -48,6 +48,8 @@ public class SecurityConfig {
                         "/actuator/metrics",
                         "/actuator/metrics/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/medecins", "/api/medecins/**").permitAll()
+                // Donnees de reference publiques (filtres de recherche) : sans jeton.
+                .requestMatchers(HttpMethod.GET, "/api/wilayas", "/api/specialites").permitAll()
                 // Verification d'une ordonnance par son code (pharmacien) : sans jeton, sans donnee personnelle.
                 .requestMatchers(HttpMethod.GET, "/api/ordonnances/verifier/**").permitAll()
                 // Administration : verrou par chemin, en plus du @PreAuthorize des controleurs (defense en profondeur).
