@@ -13,6 +13,11 @@ spring:
         jwt:
           # Emetteur des jetons = le realm Keycloak (fourni par docker-compose)
           issuer-uri: ${TABIBI_KEYCLOAK_ISSUER:http://localhost:8081/realms/tabibi}
+          # En fixant aussi le jwk-set-uri, le decodeur JWT devient PARESSEUX : il ne
+          # contacte Keycloak qu'a la 1re validation de jeton, pas au demarrage. Ainsi le
+          # backend demarre meme si Keycloak est eteint, et les endpoints publics
+          # (medecins, wilayas, specialites) repondent. L'emetteur reste valide.
+          jwk-set-uri: ${TABIBI_KEYCLOAK_JWKS:http://localhost:8081/realms/tabibi/protocol/openid-connect/certs}
 
 server:
   port: 8080
