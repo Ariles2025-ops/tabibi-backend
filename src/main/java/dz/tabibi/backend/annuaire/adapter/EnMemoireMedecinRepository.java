@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * des candidatures validees par l'administrateur.
  */
 @Repository
-@Profile("!postgres")
+@Profile("!postgres & !supabase")
 public class EnMemoireMedecinRepository implements MedecinRepository {
 
     /**
