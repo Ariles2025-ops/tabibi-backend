@@ -85,9 +85,11 @@ class AdministrationWebTest {
     }
 
     @Test
-    void deposer_interdit_a_un_patient() throws Exception {
+    void deposer_est_ouvert_a_un_patient_qui_devient_medecin_a_la_validation() throws Exception {
+        when(service.deposer(any(), any())).thenReturn(candidature());
+
         mvc.perform(post("/api/medecin/candidature").with(patient()).contentType(MediaType.APPLICATION_JSON).content(CORPS))
-           .andExpect(status().isForbidden());
+           .andExpect(status().isCreated());
     }
 
     @Test
@@ -155,8 +157,10 @@ class AdministrationWebTest {
     }
 
     @Test
-    void ma_candidature_interdite_a_un_patient() throws Exception {
-        mvc.perform(get("/api/medecin/candidature").with(patient())).andExpect(status().isForbidden());
+    void ma_candidature_est_lisible_par_un_patient() throws Exception {
+        when(service.maCandidature(any())).thenReturn(candidature());
+
+        mvc.perform(get("/api/medecin/candidature").with(patient())).andExpect(status().isOk());
     }
 
     @Test

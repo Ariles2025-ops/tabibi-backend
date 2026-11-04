@@ -23,7 +23,8 @@ public record CandidatureMedecin(
         StatutCandidature statut,
         String motifRefus,
         Instant deposeeLe,
-        Instant traiteeLe
+        Instant traiteeLe,
+        UUID ficheReclamee
 ) {
 
     /**
@@ -51,7 +52,8 @@ public record CandidatureMedecin(
                 StatutCandidature.EN_ATTENTE,
                 null,
                 deposeeLe,
-                null);
+                null,
+                demande.ficheReclamee());
     }
 
     /**
@@ -61,7 +63,7 @@ public record CandidatureMedecin(
     public CandidatureMedecin valider(Instant quand) {
         exigerEnAttente("validee");
         return new CandidatureMedecin(id, medecinId, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr,
-                ville, numeroOrdre, telephone, StatutCandidature.VALIDEE, null, deposeeLe, quand);
+                ville, numeroOrdre, telephone, StatutCandidature.VALIDEE, null, deposeeLe, quand, ficheReclamee);
     }
 
     /**
@@ -73,7 +75,12 @@ public record CandidatureMedecin(
         String motifRenseigne = obligatoire(motif, "Le motif du refus est obligatoire.");
         exigerEnAttente("refusee");
         return new CandidatureMedecin(id, medecinId, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr,
-                ville, numeroOrdre, telephone, StatutCandidature.REFUSEE, motifRenseigne, deposeeLe, quand);
+                ville, numeroOrdre, telephone, StatutCandidature.REFUSEE, motifRenseigne, deposeeLe, quand, ficheReclamee);
+    }
+
+    /** Vrai si le medecin reclame une fiche importee dans l'annuaire au lieu d'en creer une. */
+    public boolean estUneReclamation() {
+        return ficheReclamee != null;
     }
 
     public boolean estEnAttente() {

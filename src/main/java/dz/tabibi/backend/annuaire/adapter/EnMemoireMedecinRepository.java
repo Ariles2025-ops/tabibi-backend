@@ -35,7 +35,7 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     );
 
     /** Meme ordre que la requete JPQL de l'adaptateur JPA. */
-    private static final Comparator<Medecin> PAR_NOM = Comparator.comparing(Medecin::nomComplet);
+    private static final Comparator<Medecin> PAR_NOM = Comparator.comparing((Medecin m) -> m.cleDeTri().isEmpty()).thenComparing(Medecin::cleDeTri);
 
     private final Map<UUID, Medecin> parId = new ConcurrentHashMap<>();
 
@@ -63,5 +63,10 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     public Medecin enregistrer(Medecin medecin) {
         parId.put(medecin.id(), medecin);
         return medecin;
+    }
+
+    @Override
+    public void supprimer(UUID id) {
+        parId.remove(id);
     }
 }

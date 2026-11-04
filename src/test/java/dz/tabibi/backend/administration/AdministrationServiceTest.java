@@ -37,8 +37,10 @@ class AdministrationServiceTest {
     private final CandidatureRepository candidatures = new EnMemoireCandidatureRepository();
     private final MedecinRepository medecins = new EnMemoireMedecinRepository();
     private final NotificationRepository notifications = new EnMemoireNotificationRepository();
+    /** Comptes auxquels le role MEDECIN a ete donne. */
+    private final List<UUID> comptesMedecins = new java.util.ArrayList<>();
     private final AdministrationService service =
-            new AdministrationService(candidatures, medecins, new NotifieurInterne(notifications));
+            new AdministrationService(candidatures, medecins, new NotifieurInterne(notifications), comptesMedecins::add);
 
     /** Candidature deposee a une date choisie, enregistree directement (sans passer par le service). */
     private CandidatureMedecin deposeeLe(UUID medecin, String date) {
@@ -117,6 +119,7 @@ class AdministrationServiceTest {
         assertThat(medecins.rechercher(CritereRecherche.de("cardiologue", "16", "nadia"))).containsExactly(publie);
         assertThat(notificationsDe(MEDECIN)).hasSize(1);
         assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature validee");
+        assertThat(comptesMedecins).containsExactly(MEDECIN);
     }
 
     @Test
@@ -195,5 +198,42 @@ class AdministrationServiceTest {
         assertThat(stats.candidaturesEnAttente()).isEqualTo(2);
         assertThat(stats.candidaturesValidees()).isEqualTo(1);
         assertThat(stats.candidaturesRefusees()).isEqualTo(1);
+    }
+
+    @Test
+    void reclamer_une_fiche_importee_la_remplace_par_celle_du_compte() {
+        UUID fiche = UUID.randomUUID();
+        medecins.enregistrer(new Medecin(fiche, "BENSALEM Nadia", "cardiologue", "Cardiologue", "16", "Alger", "Hydra"));
+        assertThat(service.ficheReclamable(fiche)).isTrue();
+
+        CandidatureMedecin c = service.deposer(MEDECIN, new DemandeCandidature("Dr Nadia Bensalem", "cardiologue",
+                "Cardiologue", "16", "Alger", "Hydra", "16-12345", "0550000000", fiche));
+        assertThat(c.estUneReclamation()).isTrue();
+        assertThat(service.ficheReclamable(fiche)).isTrue();
+
+        service.valider(c.id());
+
+        assertThat(medecins.parId(fiche)).isEmpty();
+        assertThat(medecins.parId(MEDECIN)).isPresent();
+        assertThat(medecins.rechercher(CritereRecherche.de("cardiologue", "16", "bensalem"))).hasSize(1);
+        assertThat(service.ficheReclamable(fiche)).isFalse();
+        assertThat(service.ficheReclamable(MEDECIN)).isFalse();
+    }
+
+    @Test
+    void une_fiche_deja_reclamee_ne_peut_plus_l_etre() {
+        UUID fiche = UUID.randomUUID();
+        medecins.enregistrer(new Medecin(fiche, "BENSALEM Nadia", "cardiologue", "Cardiologue", "16", "Alger", null));
+        DemandeCandidature reclamation = new DemandeCandidature("Dr Nadia Bensalem", "cardiologue", null, "16",
+                null, null, "16-12345", null, fiche);
+        CandidatureMedecin premiere = service.deposer(MEDECIN, reclamation);
+        CandidatureMedecin seconde = service.deposer(UUID.randomUUID(), reclamation);
+        service.valider(premiere.id());
+
+        assertThatThrownBy(() -> service.valider(seconde.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThat(candidatures.parId(seconde.id()).orElseThrow().estEnAttente()).isTrue();
+        assertThatThrownBy(() -> service.deposer(UUID.randomUUID(), reclamation))
+                .isInstanceOf(TransitionInvalideException.class);
+        assertThat(service.ficheReclamable(UUID.randomUUID())).isFalse();
     }
 }

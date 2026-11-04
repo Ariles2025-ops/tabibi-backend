@@ -31,3 +31,7 @@ databaseChangeLog:
       file: db/changelog/015-rappels.yaml
   - include:
       file: db/changelog/016-audit.yaml
+  - include:
+      file: db/changelog/017-reclamation.yaml
+  - include:
+      file: db/changelog/018-nom-tri.yaml

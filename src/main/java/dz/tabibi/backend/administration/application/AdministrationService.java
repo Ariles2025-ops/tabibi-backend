@@ -1,5 +1,6 @@
 package dz.tabibi.backend.administration.application;
 
+import dz.tabibi.backend.administration.domain.AttributionRoleMedecin;
 import dz.tabibi.backend.administration.domain.CandidatureIntrouvableException;
 import dz.tabibi.backend.administration.domain.CandidatureInvalideException;
 import dz.tabibi.backend.administration.domain.CandidatureMedecin;
@@ -30,11 +31,14 @@ public class AdministrationService {
     private final CandidatureRepository candidatures;
     private final MedecinRepository medecins;
     private final Notifieur notifieur;
+    private final AttributionRoleMedecin roles;
 
-    public AdministrationService(CandidatureRepository candidatures, MedecinRepository medecins, Notifieur notifieur) {
+    public AdministrationService(CandidatureRepository candidatures, MedecinRepository medecins, Notifieur notifieur,
+                                 AttributionRoleMedecin roles) {
         this.candidatures = candidatures;
         this.medecins = medecins;
         this.notifieur = notifieur;
+        this.roles = roles;
     }
 
     /**
@@ -51,7 +55,20 @@ public class AdministrationService {
                             ? "Une candidature est deja en attente d'examen."
                             : "Votre candidature a deja ete validee.");
                 });
+        if (demande != null && demande.ficheReclamee() != null && !ficheReclamable(demande.ficheReclamee())) {
+            throw new TransitionInvalideException("Cette fiche a deja ete reclamee ou n'existe plus.");
+        }
         return candidatures.enregistrer(CandidatureMedecin.deposer(medecinId, demande, Instant.now()));
+    }
+
+    /**
+     * Vrai si la fiche existe et n'appartient encore a aucun compte : une fiche creee ou reclamee
+     * porte l'identifiant du compte du praticien, qui a donc une candidature validee.
+     */
+    public boolean ficheReclamable(UUID ficheId) {
+        return medecins.parId(ficheId).isPresent()
+                && candidatures.derniereDuMedecin(ficheId)
+                        .filter(c -> c.statut() == StatutCandidature.VALIDEE).isEmpty();
     }
 
     /**
@@ -75,10 +92,20 @@ public class AdministrationService {
      */
     @Transactional
     public CandidatureMedecin valider(UUID candidatureId) {
-        CandidatureMedecin validee = candidatures.enregistrer(charger(candidatureId).valider(Instant.now()));
+        CandidatureMedecin candidature = charger(candidatureId);
+        if (candidature.estUneReclamation() && medecins.parId(candidature.ficheReclamee()).isEmpty()) {
+            throw new TransitionInvalideException("Cette fiche a deja ete reclamee ou n'existe plus.");
+        }
+        CandidatureMedecin validee = candidatures.enregistrer(candidature.valider(Instant.now()));
+        if (validee.estUneReclamation()) {
+            // La fiche importee est remplacee par celle du praticien, sous l'identifiant de son compte.
+            medecins.supprimer(validee.ficheReclamee());
+        }
         medecins.enregistrer(fichePublique(validee));
+        roles.accorder(validee.medecinId());
         notifieur.notifier(validee.medecinId(), "Candidature validee",
-                "Votre candidature a ete validee : vous figurez desormais dans l'annuaire Tabibi.");
+                "Votre candidature a ete validee : vous figurez desormais dans l'annuaire Tabibi. "
+                        + "Reconnectez-vous pour ouvrir votre espace medecin.");
         return validee;
     }
 

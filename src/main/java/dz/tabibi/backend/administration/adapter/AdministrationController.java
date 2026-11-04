@@ -41,17 +41,26 @@ public class AdministrationController {
     /** Vue d'une candidature telle que renvoyee par l'API (au medecin comme a l'administrateur). */
     public record CandidatureVue(UUID id, UUID medecinId, String nomComplet, String specialiteSlug, String specialiteFr,
                                  String wilayaCode, String wilayaFr, String ville, String numeroOrdre, String telephone,
-                                 String statut, String motifRefus, Instant deposeeLe, Instant traiteeLe) {
+                                 String statut, String motifRefus, Instant deposeeLe, Instant traiteeLe,
+                                 UUID ficheReclamee) {
         static CandidatureVue de(CandidatureMedecin c) {
             return new CandidatureVue(c.id(), c.medecinId(), c.nomComplet(), c.specialiteSlug(), c.specialiteFr(),
                     c.wilayaCode(), c.wilayaFr(), c.ville(), c.numeroOrdre(), c.telephone(),
-                    c.statut().name(), c.motifRefus(), c.deposeeLe(), c.traiteeLe());
+                    c.statut().name(), c.motifRefus(), c.deposeeLe(), c.traiteeLe(), c.ficheReclamee());
         }
     }
 
-    /** Depot de candidature par le medecin connecte (400 si incomplete, 409 si une candidature est deja en cours ou validee). */
+    /** Indique si la fiche peut encore etre reclamee par son praticien (public : affiche le bouton sur la fiche). */
+    public record Reclamable(boolean reclamable) {}
+
+    @GetMapping("/api/medecins/{id}/reclamable")
+    public Reclamable reclamable(@PathVariable UUID id) {
+        return new Reclamable(service.ficheReclamable(id));
+    }
+
+    /** Depot de candidature par toute personne connectee (le role MEDECIN est donne a la validation) (400 si incomplete, 409 si une candidature est deja en cours ou validee). */
     @PostMapping("/api/medecin/candidature")
-    @PreAuthorize("hasRole('MEDECIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CandidatureVue> deposer(@RequestBody DemandeCandidature demande,
                                                   @AuthenticationPrincipal Jwt jwt) {
         CandidatureMedecin candidature = service.deposer(identifiant(jwt), demande);
@@ -60,7 +69,7 @@ public class AdministrationController {
 
     /** Derniere candidature du medecin connecte ; 404 s'il n'en a depose aucune. */
     @GetMapping("/api/medecin/candidature")
-    @PreAuthorize("hasRole('MEDECIN')")
+    @PreAuthorize("isAuthenticated()")
     public CandidatureVue maCandidature(@AuthenticationPrincipal Jwt jwt) {
         return CandidatureVue.de(service.maCandidature(identifiant(jwt)));
     }

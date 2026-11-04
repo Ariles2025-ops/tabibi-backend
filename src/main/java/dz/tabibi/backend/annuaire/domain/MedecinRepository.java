@@ -13,4 +13,7 @@ public interface MedecinRepository {
 
     /** Publie ou met a jour la fiche d'un praticien (meme identifiant = meme fiche). */
     Medecin enregistrer(Medecin medecin);
+
+    /** Retire une fiche de l'annuaire (fiche importee remplacee par celle du praticien qui l'a reclamee). */
+    void supprimer(UUID id);
 }
