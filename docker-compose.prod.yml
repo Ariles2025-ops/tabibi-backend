@@ -26,7 +26,9 @@ services:
       start_period: 20s
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    # Keycloak 26.0 avec l'extension de connexion par SMS et le theme Tabibi (infra/keycloak-sms).
+    build: { context: ./infra/keycloak-sms }
+    image: tabibi-local/keycloak:latest
     restart: unless-stopped
     # Mode production (start) : base PostgreSQL dediee, realm tabibi importe au premier demarrage.
     command: ["start", "--import-realm"]
@@ -43,6 +45,14 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD manquant dans .env}
+      # Envoi des codes de connexion : console (code dans les journaux), budgetsms ou http (voir infra/keycloak-sms).
+      TABIBI_SMS_MODE: ${TABIBI_SMS_MODE:-console}
+      TABIBI_SMS_SENDER: ${TABIBI_SMS_SENDER:-Tabibi}
+      TABIBI_BUDGETSMS_USERNAME: ${TABIBI_BUDGETSMS_USERNAME:-}
+      TABIBI_BUDGETSMS_USERID: ${TABIBI_BUDGETSMS_USERID:-}
+      TABIBI_BUDGETSMS_HANDLE: ${TABIBI_BUDGETSMS_HANDLE:-}
+      TABIBI_SMS_URL: ${TABIBI_SMS_URL:-}
+      TABIBI_SMS_TOKEN: ${TABIBI_SMS_TOKEN:-}
     volumes:
       # Realm de production derive du realm de dev par infra/keycloak/realm-production.py (sans les
       # comptes de demonstration, sans mot de passe direct, avec le domaine reel) : a generer avant le premier demarrage.
@@ -65,6 +75,8 @@ services:
       TABIBI_KEYCLOAK_ISSUER: https://auth.${DOMAINE}/realms/tabibi
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tabibi/protocol/openid-connect/certs
       TABIBI_CORS_ORIGINES: https://${DOMAINE}
+      # Compte de service Keycloak qui donne le role MEDECIN a la validation d'une candidature (vide : role a donner a la main).
+      TABIBI_KEYCLOAK_ADMIN_SECRET: ${TABIBI_KEYCLOAK_ADMIN_SECRET:-}
       TABIBI_TELECONSULTATION_BASE_URL: ${TABIBI_TELECONSULTATION_BASE_URL:-https://meet.jit.si}
       # Adresse et schema du client lus dans les en-tetes X-Forwarded-* poses par Caddy.
       SERVER_FORWARD_HEADERS_STRATEGY: native
