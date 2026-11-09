@@ -19,9 +19,21 @@
         <input type="checkbox" name="consent" value="yes" <#if consent??>checked</#if> required>
         <span>${msg("auth.phone.consent")}</span>
       </label>
+      <p class="kc-legal">
+        <a href="${properties.tabibiSiteUrl}/legal/cgu.html<#if locale?? && locale.currentLanguageTag == "ar">#ar</#if>" target="_blank" rel="noopener">${msg("auth.legal.cgu")}</a>
+        <a href="${properties.tabibiSiteUrl}/legal/confidentialite.html<#if locale?? && locale.currentLanguageTag == "ar">#ar</#if>" target="_blank" rel="noopener">${msg("auth.legal.privacy")}</a>
+      </p>
       <div class="kc-foot">
         <button class="n-btn n-btn--primary n-btn--lg n-btn--block" type="submit">${msg("auth.phone.submit")}</button>
       </div>
     </form>
+    <#if auth?? && auth.showTryAnotherWayLink()>
+      <form id="kc-try-another" action="${url.loginAction}" method="post">
+        <input type="hidden" name="tryAnotherWay" value="on"/>
+      </form>
+      <p class="kc-legal">
+        <a href="#" onclick="document.getElementById('kc-try-another').submit();return false;">${msg("auth.staff.password")}</a>
+      </p>
+    </#if>
   </#if>
 </@layout.registrationLayout>

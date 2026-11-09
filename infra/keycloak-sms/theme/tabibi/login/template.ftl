@@ -19,6 +19,29 @@
 </head>
 <body class="n-root">
   <div class="kc-page">
+    <aside class="kc-brand" aria-hidden="true">
+      <div class="kc-brand__logo">${msg("app.name")}<i>.</i></div>
+      <div class="kc-brand__pitch">
+        <#if rtl>
+          <h2>صحتك لا يجب أن <span class="acc">تنتظر أبدًا.</span></h2>
+          <p>احجز موعدًا مع طبيب في كامل الجزائر — 58 ولاية، على مدار الساعة.</p>
+          <ul>
+            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> أطباء موثوقون</li>
+            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> موعد في 30 ثانية</li>
+            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> بياناتك محمية (قانون 18-07)</li>
+          </ul>
+        <#else>
+          <h2>Votre santé ne devrait <span class="acc">jamais attendre.</span></h2>
+          <p>Prenez rendez-vous avec un médecin partout en Algérie — 58 wilayas, 24h/24.</p>
+          <ul>
+            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Médecins vérifiés</li>
+            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Rendez-vous en 30 secondes</li>
+            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Vos données protégées (loi 18-07)</li>
+          </ul>
+        </#if>
+      </div>
+      <div class="kc-brand__foot">© 2026 Tabibi</div>
+    </aside>
     <div class="kc-shell">
       <header class="kc-top">
         <span class="kc-logo">${msg("app.name")}<i>.</i></span>
