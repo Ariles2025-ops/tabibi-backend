@@ -15,7 +15,8 @@
   <title>${msg("app.name")}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap">
-  <#list properties.styles?split(' ') as style><link rel="stylesheet" href="${url.resourcesPath}/${style}"></#list>
+  <#-- ?v= force le navigateur a recharger le CSS apres une mise a jour (sinon Safari garde l'ancien). -->
+  <#list properties.styles?split(' ') as style><link rel="stylesheet" href="${url.resourcesPath}/${style}?v=20261109b"></#list>
 </head>
 <body class="n-root">
   <div class="kc-page">
