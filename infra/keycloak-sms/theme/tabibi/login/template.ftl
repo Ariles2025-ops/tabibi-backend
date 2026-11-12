@@ -33,7 +33,7 @@
           </ul>
         <#else>
           <h2>Votre santé ne devrait <span class="acc">jamais attendre.</span></h2>
-          <p>Prenez rendez-vous avec un médecin partout en Algérie — 58 wilayas, 24h/24.</p>
+          <p>Prenez rendez-vous avec un médecin partout en Algérie — 69 wilayas, 24h/24.</p>
           <ul>
             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Médecins vérifiés</li>
             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Rendez-vous en 30 secondes</li>
