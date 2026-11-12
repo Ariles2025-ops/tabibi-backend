@@ -4,6 +4,7 @@
     <div class="kc-heading">
       <h1>${msg("auth.phone.title")}</h1>
       <p>${msg("auth.phone.subtitle")}</p>
+      <p class="kc-muted">${msg("auth.phone.newAccount")}</p>
     </div>
   <#elseif section = "form">
     <form class="kc-form" action="${url.loginAction}" method="post" novalidate>
