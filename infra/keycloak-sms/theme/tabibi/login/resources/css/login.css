@@ -52,3 +52,20 @@ html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app);
   .kc-shell { max-inline-size: 26rem; margin-inline: auto; align-self: center; flex: none; padding-block: 3rem; padding-inline: var(--n-space-6); }
   .kc-foot { position: static; margin-block-start: var(--n-space-4); background: transparent; }
 }
+
+/* Ecran de choix de la methode de connexion (telephone / e-mail) */
+.kc-choice { display:flex; flex-direction:column; gap:12px; }
+.kc-or { display:flex; align-items:center; gap:12px; color:var(--n-color-text-muted); font-size:.9rem; }
+.kc-or::before, .kc-or::after { content:""; height:1px; flex:1; background:var(--n-color-border-strong); }
+.kc-choicebtn { display:flex; align-items:center; gap:12px; width:100%; text-align:start; }
+.kc-choicebtn__ic { font-size:18px; flex:none; }
+.kc-choicebtn__tx { display:flex; flex-direction:column; line-height:1.25; }
+.kc-choicebtn__tx small { font-weight:400; opacity:.85; font-size:.8rem; }
+.kc-choicebtn--ghost { background:var(--n-color-bg-surface); color:var(--n-color-text-brand); border:var(--n-size-border-strong) solid var(--n-color-border-brand); }
+.kc-choicebtn--ghost .kc-choicebtn__tx small { color:var(--n-color-text-muted); opacity:1; }
+.kc-back { background:none; border:0; color:var(--n-color-text-link); cursor:pointer; font:inherit; padding:0; margin-block-end:4px; }
+
+/* Correctif : titre + sous-texte empiles et alignes a gauche (prime sur le style .n-btn). */
+.kc-choicebtn.kc-choicebtn { justify-content:flex-start; text-align:start; height:auto; min-block-size:var(--n-size-touch-min); padding-block:12px; }
+.kc-choicebtn .kc-choicebtn__tx { display:flex !important; flex-direction:column; align-items:flex-start; gap:2px; }
+.kc-choicebtn .kc-choicebtn__tx small { display:block; }
