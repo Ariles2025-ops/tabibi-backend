@@ -1,6 +1,6 @@
 <#-- Connexion par identifiant / mot de passe (Keycloak standard), mise a la charte Tabibi. -->
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') displayInfo=(realm.password && realm.registrationAllowed && !registrationDisabled??); section>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') displayInfo=false; section>
   <#if section = "header">
     <div class="kc-heading">
       <h1>${msg("loginAccountTitle")}</h1>
@@ -45,6 +45,10 @@
           <button class="n-btn n-btn--primary n-btn--lg n-btn--block" name="login" id="kc-login" type="submit">${msg("doLogIn")}</button>
         </div>
       </form>
+    </#if>
+    <#if realm.password && realm.registrationAllowed && !registrationDisabled??>
+      <div class="kc-or">${msg("auth.choose.or")}</div>
+      <a class="n-btn n-btn--secondary n-btn--block" href="${url.registrationUrl}">${msg("auth.register.cta")}</a>
     </#if>
     <#if realm.password && social?? && social.providers?has_content>
       <hr class="n-divider" aria-hidden="true">
