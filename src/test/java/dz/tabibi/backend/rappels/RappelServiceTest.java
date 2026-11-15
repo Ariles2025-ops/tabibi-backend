@@ -59,6 +59,47 @@ class RappelServiceTest {
     }
 
     @Test
+    void le_rappel_part_aussi_par_sms_au_numero_verifie_et_un_echec_sms_ne_bloque_rien() {
+        RendezVous avecTel = confirmeDans(Duration.ofHours(2));
+        RendezVous sansTel = confirmeDans(Duration.ofHours(3));
+        RendezVous passerelleKo = confirmeDans(Duration.ofHours(4));
+        List<String> envoyes = new java.util.ArrayList<>();
+        service.setSms(new dz.tabibi.backend.rappels.domain.EnvoiSms() {
+            public boolean disponible() { return true; }
+            public void envoyer(String tel, String texte) {
+                if (tel.equals("+213770000000")) throw new IllegalStateException("ERR 1001");
+                envoyes.add(tel + " | " + texte);
+            }
+        }, new dz.tabibi.backend.commun.domain.ComptesUtilisateurs() {
+            public boolean disponible() { return true; }
+            public java.util.Optional<InfosCompte> infos(UUID c) {
+                if (c.equals(avecTel.patientId())) return java.util.Optional.of(new InfosCompte(c, "A", null, "0550 12 34 56"));
+                if (c.equals(passerelleKo.patientId())) return java.util.Optional.of(new InfosCompte(c, "B", null, "+213770000000"));
+                return java.util.Optional.of(new InfosCompte(c, "C", null, null));
+            }
+            public java.util.Optional<UUID> parEmail(String e) { return java.util.Optional.empty(); }
+            public void accorderRole(UUID c, String r) { }
+        });
+
+        assertThat(service.executer()).isEqualTo(3);
+
+        assertThat(envoyes).containsExactly("+213550123456 | Tabibi : rappel de votre rendez-vous le 06/12/2026 à 13:00. Pour annuler : tabibi.doctor/mes-rendez-vous");
+        assertThat(notifieur.appels).hasSize(3);
+        for (RendezVous r : List.of(avecTel, sansTel, passerelleKo)) {
+            assertThat(recharge(r).rappelEnvoye()).isTrue();
+        }
+    }
+
+    @Test
+    void normalise_les_numeros_algeriens() {
+        assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser("0550 12 34 56")).isEqualTo("+213550123456");
+        assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser("213661234567")).isEqualTo("+213661234567");
+        assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser("+213 7 71 23 45 67")).isEqualTo("+213771234567");
+        assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser("021 23 45 67")).isNull();
+        assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser(null)).isNull();
+    }
+
+    @Test
     void un_rendezvous_dans_deux_heures_est_rappele_au_patient_et_marque() {
         RendezVous rdv = confirmeDans(Duration.ofHours(2));
         assertThat(rdv.rappelEnvoye()).isFalse();
