@@ -64,6 +64,7 @@ html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app);
 .kc-choicebtn--ghost { background:var(--n-color-bg-surface); color:var(--n-color-text-brand); border:var(--n-size-border-strong) solid var(--n-color-border-brand); }
 .kc-choicebtn--ghost .kc-choicebtn__tx small { color:var(--n-color-text-muted); opacity:1; }
 .kc-back { background:none; border:0; color:var(--n-color-text-link); cursor:pointer; font:inherit; padding:0; margin-block-end:4px; }
+a.kc-back { display:inline-block; text-decoration:none; }
 
 /* Correctif : titre + sous-texte empiles et alignes a gauche (prime sur le style .n-btn). */
 .kc-choicebtn.kc-choicebtn { justify-content:flex-start; text-align:start; height:auto; min-block-size:var(--n-size-touch-min); padding-block:12px; }

@@ -8,6 +8,10 @@
   <#if section = "header">
   <#elseif section = "form">
     <div id="choice-screen"<#if startPhone> hidden</#if>>
+      <#-- Retour vers l'application qui a demande la connexion (site web), sinon vers tabibi.doctor. -->
+      <#assign retourUrl = properties.tabibiSiteUrl>
+      <#if client?? && (client.baseUrl)?has_content><#assign retourUrl = client.baseUrl></#if>
+      <a class="kc-back" href="${retourUrl}">${msg("auth.choose.back")}</a>
       <div class="kc-heading">
         <h1>${msg("auth.choose.title")}</h1>
         <p>${msg("auth.choose.subtitle")}</p>
