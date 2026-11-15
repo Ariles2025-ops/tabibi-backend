@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -280,5 +281,68 @@ class ParcoursCompletsTest {
         ok(put("/api/moi/profil"), compte(patient, "PATIENT"),
                 "{\"nomComplet\":\"Amina Belkacem\",\"telephone\":\"0550123456\",\"dateNaissance\":\"1990-05-12\",\"wilayaCode\":\"16\",\"langue\":\"fr\"}");
         assertThat((String) lire(ok(get("/api/moi/profil"), compte(patient, "PATIENT"), null), "$.nomComplet")).isEqualTo("Amina Belkacem");
+    }
+
+    @Test
+    void agenda_des_creneaux_du_medecin_liste_suppression_chevauchement() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID();
+        String libre = ouvrirCreneau(medecin, demain(8));
+        String pris = ouvrirCreneau(medecin, demain(12));
+        reserver(patient, pris);
+
+        assertThat((List<?>) lire(ok(get("/api/medecin/creneaux"), compte(medecin, "MEDECIN"), null), "$")).hasSize(2);
+        // un creneau qui chevauche un creneau ouvert est refuse
+        assertThat(statut(post("/api/medecin/creneaux"), compte(medecin, "MEDECIN"),
+                "{\"debut\":\"" + Instant.parse(demain(8)).plus(10, ChronoUnit.MINUTES) + "\",\"dureeMinutes\":30}")).isEqualTo(400);
+        // un creneau reserve ne se supprime pas, un libre oui ; un autre medecin ne touche pas a l'agenda
+        assertThat(statut(delete("/api/medecin/creneaux/" + pris), compte(medecin, "MEDECIN"), null)).isEqualTo(409);
+        assertThat(statut(delete("/api/medecin/creneaux/" + libre), compte(UUID.randomUUID(), "MEDECIN"), null)).isEqualTo(403);
+        assertThat(statut(delete("/api/medecin/creneaux/" + libre), compte(medecin, "MEDECIN"), null)).isEqualTo(204);
+        assertThat((List<?>) lire(ok(get("/api/medecin/creneaux"), compte(medecin, "MEDECIN"), null), "$")).hasSize(1);
+    }
+
+    @Test
+    void un_patient_ne_bloque_pas_tout_l_agenda() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID();
+        reserver(patient, ouvrirCreneau(medecin, demain(9)));
+        String second = ouvrirCreneau(medecin, demain(10));
+        assertThat(statut(post("/api/creneaux/" + second + "/reserver"), compte(patient, "PATIENT"), null)).isEqualTo(409);
+    }
+
+    @Test
+    void le_cabinet_voit_ses_patients_par_leur_nom() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID(), secretaire = UUID.randomUUID();
+        ok(put("/api/moi/profil"), compte(patient, "PATIENT"),
+                "{\"nomComplet\":\"Yacine Haddad\",\"telephone\":\"0661000000\",\"wilayaCode\":\"16\",\"langue\":\"fr\"}");
+        reserver(patient, ouvrirCreneau(medecin, demain(13)));
+
+        String patients = ok(get("/api/medecin/patients"), compte(medecin, "MEDECIN"), null);
+        assertThat((String) lire(patients, "$[0].nomComplet")).isEqualTo("Yacine Haddad");
+        // un autre medecin ne voit pas ce patient
+        assertThat((List<?>) lire(ok(get("/api/medecin/patients"), compte(UUID.randomUUID(), "MEDECIN"), null), "$")).isEmpty();
+        // la secretaire rattachee le voit, pas une autre
+        ok(post("/api/medecin/secretaires"), compte(medecin, "MEDECIN"), "{\"secretaireId\":\"" + secretaire + "\"}");
+        assertThat((List<?>) lire(ok(get("/api/secretaire/medecins/" + medecin + "/patients"), compte(secretaire, "SECRETAIRE"), null), "$")).hasSize(1);
+        assertThat(statut(get("/api/secretaire/medecins/" + medecin + "/patients"), compte(UUID.randomUUID(), "SECRETAIRE"), null)).isEqualTo(403);
+        assertThat((List<?>) lire(ok(get("/api/secretaire/medecins/" + medecin + "/creneaux"), compte(secretaire, "SECRETAIRE"), null), "$")).hasSize(1);
+    }
+
+    @Test
+    void terminer_la_teleconsultation_rend_le_rendez_vous_honore() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID();
+        RendezVous rdv = rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), patient, medecin,
+                Instant.now().plus(2, ChronoUnit.HOURS), StatutRdv.CONFIRME));
+        String t = lire(ok(post("/api/medecin/teleconsultations"), compte(medecin, "MEDECIN"), "{\"rendezVousId\":\"" + rdv.id() + "\"}"), "$.id");
+        ok(post("/api/teleconsultations/" + t + "/consentir"), compte(patient, "PATIENT"), null);
+        ok(post("/api/teleconsultations/" + t + "/demarrer"), compte(medecin, "MEDECIN"), null);
+        // la consultation se tient a l'heure du rendez-vous : on simule l'heure passee
+        RendezVous enCours = rendezVous.enregistrer(new RendezVous(rdv.id(), patient, medecin,
+                Instant.now().minus(5, ChronoUnit.MINUTES), StatutRdv.CONFIRME));
+        ok(post("/api/teleconsultations/" + t + "/terminer"), compte(medecin, "MEDECIN"), null);
+        assertThat(rendezVous.parId(enCours.id()).orElseThrow().statut()).isEqualTo(StatutRdv.HONORE);
+
+        // une teleconsultation ne se propose pas sur un rendez-vous deja passe
+        assertThat(statut(post("/api/medecin/teleconsultations"), compte(medecin, "MEDECIN"),
+                "{\"rendezVousId\":\"" + rdvPasse(patient, medecin).id() + "\"}")).isEqualTo(409);
     }
 }

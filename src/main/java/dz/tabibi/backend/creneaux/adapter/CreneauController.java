@@ -48,6 +48,21 @@ public class CreneauController {
         return ResponseEntity.status(HttpStatus.CREATED).body(creneau);
     }
 
+    /** Agenda des creneaux a venir du medecin connecte, libres ou reserves. */
+    @GetMapping("/api/medecin/creneaux")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public List<Creneau> mesCreneaux(@AuthenticationPrincipal Jwt jwt) {
+        return service.aVenirDu(identifiant(jwt));
+    }
+
+    /** Suppression d'un creneau libre (409 s'il est reserve, 403 s'il est a un autre medecin). */
+    @org.springframework.web.bind.annotation.DeleteMapping("/api/medecin/creneaux/{id}")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<Void> supprimer(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        service.supprimer(identifiant(jwt), id);
+        return ResponseEntity.noContent().build();
+    }
+
     /** Le sujet du jeton Keycloak est l'identifiant du medecin. */
     private static UUID identifiant(Jwt jwt) {
         return UUID.fromString(jwt.getSubject());

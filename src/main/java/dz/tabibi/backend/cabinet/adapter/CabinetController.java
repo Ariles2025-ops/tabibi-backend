@@ -6,6 +6,8 @@ import dz.tabibi.backend.creneaux.adapter.CreneauController.DemandeCreneau;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.rendezvous.adapter.RendezVousController.RendezVousVue;
 import jakarta.validation.constraints.NotNull;
+import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
+import dz.tabibi.backend.cabinet.domain.CabinetInvalideException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,17 +34,27 @@ import java.util.UUID;
 public class CabinetController {
 
     private final CabinetService service;
+    private final ComptesUtilisateurs comptes;
 
-    public CabinetController(CabinetService service) {
+    public CabinetController(CabinetService service, ComptesUtilisateurs comptes) {
         this.service = service;
+        this.comptes = comptes;
     }
 
-    public record DemandeRattachement(@NotNull UUID secretaireId) {}
+    /** La secretaire est designee par l'e-mail de son compte Tabibi (ou, a defaut, par son identifiant). */
+    public record DemandeRattachement(UUID secretaireId, String email) {}
 
     /** Vue d'un rattachement telle que renvoyee par l'API (au medecin comme a la secretaire). */
-    public record RattachementVue(UUID id, UUID medecinId, UUID secretaireId, Instant creeLe) {
+    public record RattachementVue(UUID id, UUID medecinId, UUID secretaireId, Instant creeLe,
+                                  String secretaireNom, String secretaireEmail) {
         static RattachementVue de(Rattachement r) {
-            return new RattachementVue(r.id(), r.medecinId(), r.secretaireId(), r.creeLe());
+            return new RattachementVue(r.id(), r.medecinId(), r.secretaireId(), r.creeLe(), null, null);
+        }
+
+        RattachementVue avec(ComptesUtilisateurs comptes) {
+            return comptes.infos(secretaireId)
+                    .map(c -> new RattachementVue(id, medecinId, secretaireId, creeLe, c.nomComplet(), c.email()))
+                    .orElse(this);
         }
     }
 
@@ -51,15 +63,24 @@ public class CabinetController {
     @PreAuthorize("hasRole('MEDECIN')")
     public ResponseEntity<RattachementVue> rattacher(@RequestBody DemandeRattachement demande,
                                                      @AuthenticationPrincipal Jwt jwt) {
-        Rattachement rattachement = service.rattacher(identifiant(jwt), demande.secretaireId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(RattachementVue.de(rattachement));
+        UUID secretaireId = demande.secretaireId();
+        if (demande.email() != null && !demande.email().isBlank()) {
+            secretaireId = comptes.parEmail(demande.email()).orElseThrow(() ->
+                    new CabinetInvalideException("Aucun compte Tabibi n'utilise cette adresse e-mail : la secrétaire doit d'abord créer son compte."));
+        } else if (secretaireId != null && comptes.disponible() && comptes.infos(secretaireId).isEmpty()) {
+            throw new CabinetInvalideException("Aucun compte Tabibi ne correspond à cet identifiant.");
+        }
+        Rattachement rattachement = service.rattacher(identifiant(jwt), secretaireId);
+        // La secretaire recoit son role : elle accede a l'espace secretaire a sa prochaine connexion.
+        comptes.accorderRole(rattachement.secretaireId(), "SECRETAIRE");
+        return ResponseEntity.status(HttpStatus.CREATED).body(RattachementVue.de(rattachement).avec(comptes));
     }
 
     /** Secretaires rattachees au cabinet du medecin connecte, les plus anciens rattachements d'abord. */
     @GetMapping("/api/medecin/secretaires")
     @PreAuthorize("hasRole('MEDECIN')")
     public List<RattachementVue> mesSecretaires(@AuthenticationPrincipal Jwt jwt) {
-        return service.secretairesDuMedecin(identifiant(jwt)).stream().map(RattachementVue::de).toList();
+        return service.secretairesDuMedecin(identifiant(jwt)).stream().map(r -> RattachementVue.de(r).avec(comptes)).toList();
     }
 
     /** Retrait d'une secretaire du cabinet (204 sans corps ; 404 si inconnu, 403 si le rattachement est a un autre medecin). */
@@ -91,6 +112,20 @@ public class CabinetController {
                                                  @AuthenticationPrincipal Jwt jwt) {
         Creneau creneau = service.ouvrirCreneauPour(identifiant(jwt), medecinId, demande.debut(), demande.dureeMinutes());
         return ResponseEntity.status(HttpStatus.CREATED).body(creneau);
+    }
+
+    @GetMapping("/api/secretaire/medecins/{medecinId}/creneaux")
+    @PreAuthorize("hasRole('SECRETAIRE')")
+    public List<Creneau> creneaux(@PathVariable UUID medecinId, @AuthenticationPrincipal Jwt jwt) {
+        return service.creneauxPour(identifiant(jwt), medecinId);
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/api/secretaire/medecins/{medecinId}/creneaux/{id}")
+    @PreAuthorize("hasRole('SECRETAIRE')")
+    public ResponseEntity<Void> supprimerCreneau(@PathVariable UUID medecinId, @PathVariable UUID id,
+                                                 @AuthenticationPrincipal Jwt jwt) {
+        service.supprimerCreneauPour(identifiant(jwt), medecinId, id);
+        return ResponseEntity.noContent().build();
     }
 
     /** Le patient est venu : une secretaire rattachee marque le rendez-vous HONORE (403 sinon, 409 s'il n'est pas confirme). */

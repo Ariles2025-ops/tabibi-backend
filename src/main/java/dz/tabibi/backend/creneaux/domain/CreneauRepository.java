@@ -16,4 +16,10 @@ public interface CreneauRepository {
     Optional<Creneau> parId(UUID id);
 
     Creneau enregistrer(Creneau creneau);
+
+    /** Creneaux d'un medecin (libres ou reserves) qui commencent apres {@code depuis}, du plus proche au plus lointain. */
+    List<Creneau> aVenirPour(UUID medecinId, java.time.Instant depuis);
+
+    /** Supprime definitivement un creneau. */
+    void supprimer(UUID id);
 }

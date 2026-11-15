@@ -66,6 +66,9 @@ public class TeleconsultationService {
                     "Seul un rendez-vous confirme peut donner lieu a une teleconsultation (statut actuel : "
                             + rdv.statut() + ").");
         }
+        if (!rdv.debut().isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous est déjà passé : la téléconsultation ne peut plus être proposée.");
+        }
         if (repository.parRendezVous(rendezVousId).isPresent()) {
             throw new TransitionInvalideException("Une teleconsultation existe deja pour ce rendez-vous.");
         }
@@ -142,7 +145,15 @@ public class TeleconsultationService {
     public Teleconsultation terminer(UUID medecinId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.terminer(Instant.now());
-        return repository.enregistrer(teleconsultation);
+        Teleconsultation terminee = repository.enregistrer(teleconsultation);
+        // La consultation a eu lieu : le rendez-vous passe a « honore » (le patient peut alors donner son avis).
+        rendezVous.parId(terminee.rendezVousId()).ifPresent(rdv -> {
+            if (rdv.statut() == StatutRdv.CONFIRME && !rdv.debut().isAfter(Instant.now())) {
+                rdv.honorer();
+                rendezVous.enregistrer(rdv);
+            }
+        });
+        return terminee;
     }
 
     /**

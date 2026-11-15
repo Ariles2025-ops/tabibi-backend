@@ -151,8 +151,10 @@ class RendezVousServiceTest {
     @Test
     void liste_les_rendezvous_du_patient_par_date() {
         UUID patient = UUID.randomUUID();
+        // Un rendez-vous a venir par medecin : le patient reserve chez deux praticiens de demonstration.
+        UUID autreMedecin = dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository.MEDECINS_DEMO.get(1).id();
         List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
-        service.reserverCreneau(patient, disponibles.get(1).id());
+        service.reserverCreneau(patient, creneaux.disponiblesPour(autreMedecin).get(1).id());
         service.reserverCreneau(patient, disponibles.get(0).id());
         service.reserverCreneau(UUID.randomUUID(), disponibles.get(2).id());
 
@@ -383,5 +385,16 @@ class RendezVousServiceTest {
         assertThatThrownBy(() -> avecRdvs.annuler(patient, honore.id())).isInstanceOf(TransitionInvalideException.class);
         assertThat(alerte.alertes).isEmpty();
     }
-}
 
+    @Test
+    void un_patient_ne_garde_qu_un_rendezvous_a_venir_par_medecin() {
+        UUID patient = UUID.randomUUID();
+        List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
+        RendezVous premier = service.reserverCreneau(patient, disponibles.get(0).id());
+
+        assertThatThrownBy(() -> service.reserverCreneau(patient, disponibles.get(1).id()))
+                .isInstanceOf(CreneauDejaReserveException.class);
+        service.annuler(patient, premier.id());
+        assertThat(service.reserverCreneau(patient, disponibles.get(1).id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+    }
+}

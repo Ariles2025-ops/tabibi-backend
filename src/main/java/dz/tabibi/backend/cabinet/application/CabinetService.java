@@ -117,6 +117,19 @@ public class CabinetService {
         return creneaux.ouvrir(medecinId, debut, dureeMinutes);
     }
 
+    /** Creneaux a venir d'un medecin, vus par une secretaire rattachee. */
+    public List<Creneau> creneauxPour(UUID secretaireId, UUID medecinId) {
+        verifierAcces(secretaireId, medecinId);
+        return creneaux.aVenirDu(medecinId);
+    }
+
+    /** Une secretaire rattachee supprime un creneau libre de l'agenda du medecin. */
+    @Transactional
+    public void supprimerCreneauPour(UUID secretaireId, UUID medecinId, UUID creneauId) {
+        verifierAcces(secretaireId, medecinId);
+        creneaux.supprimer(medecinId, creneauId);
+    }
+
     /**
      * Une secretaire rattachee au medecin du rendez-vous le marque honore.
      * @throws RendezVousIntrouvableException si le rendez-vous n'existe pas.

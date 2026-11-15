@@ -72,4 +72,17 @@ public class EnMemoireCreneauRepository implements CreneauRepository {
         parId.put(creneau.id(), creneau);
         return creneau;
     }
+
+    @Override
+    public List<Creneau> aVenirPour(UUID medecinId, Instant depuis) {
+        return parId.values().stream()
+                .filter(c -> c.medecinId().equals(medecinId) && c.debut().isAfter(depuis))
+                .sorted(Comparator.comparing(Creneau::debut))
+                .toList();
+    }
+
+    @Override
+    public void supprimer(UUID id) {
+        parId.remove(id);
+    }
 }

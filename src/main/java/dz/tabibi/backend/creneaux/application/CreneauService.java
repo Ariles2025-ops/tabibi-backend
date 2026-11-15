@@ -6,6 +6,9 @@ import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import org.springframework.stereotype.Service;
 
+import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
+import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -49,8 +52,36 @@ public class CreneauService {
             throw new CreneauInvalideException("La duree doit etre comprise entre "
                     + DUREE_MIN_MINUTES + " et " + DUREE_MAX_MINUTES + " minutes.");
         }
+        Instant fin = debut.plusSeconds(60L * dureeMinutes);
+        boolean chevauche = repository.aVenirPour(medecinId, debut.minusSeconds(60L * DUREE_MAX_MINUTES)).stream()
+                .anyMatch(c -> c.debut().isBefore(fin) && debut.isBefore(c.debut().plusSeconds(60L * c.dureeMinutes())));
+        if (chevauche) {
+            throw new CreneauInvalideException("Ce créneau chevauche un créneau déjà ouvert à cette heure-là.");
+        }
         Creneau creneau = repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, dureeMinutes, true));
         alerteCreneau.creneauLibere(creneau.medecinId(), creneau.debut());
         return creneau;
+    }
+
+    /** Creneaux a venir du medecin, libres ou reserves, du plus proche au plus lointain (sa vue d'agenda). */
+    public List<Creneau> aVenirDu(UUID medecinId) {
+        return repository.aVenirPour(medecinId, Instant.now());
+    }
+
+    /**
+     * Supprime un creneau libre de l'agenda du medecin.
+     * @throws CreneauIntrouvableException si le creneau n'existe pas.
+     * @throws AccesRefuseException s'il est dans l'agenda d'un autre medecin.
+     * @throws TransitionInvalideException s'il est deja reserve (il faut alors annuler le rendez-vous).
+     */
+    public void supprimer(UUID medecinId, UUID creneauId) {
+        Creneau creneau = repository.parId(creneauId).orElseThrow(() -> new CreneauIntrouvableException(creneauId));
+        if (!creneau.medecinId().equals(medecinId)) {
+            throw new AccesRefuseException("Ce créneau n'est pas dans votre agenda.");
+        }
+        if (!creneau.disponible()) {
+            throw new TransitionInvalideException("Ce créneau est réservé : annulez d'abord le rendez-vous.");
+        }
+        repository.supprimer(creneauId);
     }
 }

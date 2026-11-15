@@ -60,6 +60,7 @@ class CabinetWebTest {
     @Autowired MockMvc mvc;
     @MockBean JwtDecoder jwtDecoder; // requis par le resource server, non appele grace a jwt()
     @MockBean CabinetService service;
+    @MockBean dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes;
 
     private static RequestPostProcessor patient() {
         return jwt().jwt(j -> j.subject(PATIENT.toString()))

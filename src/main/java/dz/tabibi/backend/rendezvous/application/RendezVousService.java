@@ -69,14 +69,29 @@ public class RendezVousService {
             throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
         }
         if (!creneau.debut().isAfter(Instant.now())) {
-            throw new CreneauDejaReserveException("Ce creneau est deja passe.");
+            throw new CreneauDejaReserveException("Ce créneau est déjà passé.");
         }
+        verifierPasDeRendezVousAVenir(patientId, creneau.medecinId());
         creneaux.enregistrer(creneau.reserver());
         RendezVous rdv = repository.enregistrer(
                 RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id()));
         alerteCreneau.patientAReserve(rdv.patientId(), rdv.medecinId());
         notifierReservation(rdv);
         return rdv;
+    }
+
+    /**
+     * Un patient ne garde qu'un rendez-vous a venir par medecin : il ne peut pas bloquer tout l'agenda.
+     * @throws CreneauDejaReserveException s'il a deja un rendez-vous confirme a venir avec ce medecin.
+     */
+    private void verifierPasDeRendezVousAVenir(UUID patientId, UUID medecinId) {
+        Instant maintenant = Instant.now();
+        boolean dejaUn = repository.parPatient(patientId).stream()
+                .anyMatch(r -> r.estAvec(medecinId) && r.statut() == StatutRdv.CONFIRME && r.debut().isAfter(maintenant));
+        if (dejaUn) {
+            throw new CreneauDejaReserveException(
+                    "Vous avez déjà un rendez-vous à venir avec ce médecin : annulez-le pour en choisir un autre.");
+        }
     }
 
     /** Rendez-vous d'un patient, tous statuts, du plus proche au plus lointain. */
