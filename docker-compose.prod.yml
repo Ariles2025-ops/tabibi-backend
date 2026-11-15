@@ -78,6 +78,12 @@ services:
       # Compte de service Keycloak qui donne le role MEDECIN a la validation d'une candidature (vide : role a donner a la main).
       TABIBI_KEYCLOAK_ADMIN_SECRET: ${TABIBI_KEYCLOAK_ADMIN_SECRET:-}
       TABIBI_TELECONSULTATION_BASE_URL: ${TABIBI_TELECONSULTATION_BASE_URL:-https://meet.jit.si}
+      # Rappels de rendez-vous par SMS : memes reglages BudgetSMS que la connexion par SMS de Keycloak (.env).
+      TABIBI_SMS_MODE: ${TABIBI_SMS_MODE:-console}
+      TABIBI_SMS_SENDER: ${TABIBI_SMS_SENDER:-Tabibi}
+      TABIBI_BUDGETSMS_USERNAME: ${TABIBI_BUDGETSMS_USERNAME:-}
+      TABIBI_BUDGETSMS_USERID: ${TABIBI_BUDGETSMS_USERID:-}
+      TABIBI_BUDGETSMS_HANDLE: ${TABIBI_BUDGETSMS_HANDLE:-}
       # Adresse et schema du client lus dans les en-tetes X-Forwarded-* poses par Caddy.
       SERVER_FORWARD_HEADERS_STRATEGY: native
     depends_on:
