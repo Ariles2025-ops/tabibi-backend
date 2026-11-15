@@ -30,6 +30,18 @@ import java.util.UUID;
 @Service
 public class TeleconsultationService {
 
+    /**
+     * Visio ouverte ? Fermee au lancement (TABIBI_TELECONSULTATION_ACTIVE=false en production) : aucune
+     * teleconsultation ne peut etre proposee. Ouverte par defaut hors Spring (essais unitaires).
+     */
+    private boolean active = true;
+
+    @org.springframework.beans.factory.annotation.Value("${tabibi.teleconsultation.active:false}")
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+
     private final TeleconsultationRepository repository;
     private final RendezVousRepository rendezVous;
     private final Notifieur notifieur;
@@ -56,6 +68,9 @@ public class TeleconsultationService {
      */
     @Transactional
     public Teleconsultation planifier(UUID medecinId, UUID rendezVousId) {
+        if (!active) {
+            throw new TransitionInvalideException("La téléconsultation arrive bientôt sur Tabibi.");
+        }
         RendezVous rdv = rendezVous.parId(rendezVousId)
                 .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
         if (!rdv.estAvec(medecinId)) {

@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * chaque test joue une fonctionnalite comme le site web la jouerait, en enchainant les roles
  * (patient, medecin, secretaire, pharmacie, administrateur).
  */
-@SpringBootTest(properties = {"tabibi.rappels.actifs=false", "tabibi.limite.actions-par-minute=0"})
+@SpringBootTest(properties = {"tabibi.rappels.actifs=false", "tabibi.limite.actions-par-minute=0", "tabibi.teleconsultation.active=true"})
 @AutoConfigureMockMvc
 class ParcoursCompletsTest {
 
