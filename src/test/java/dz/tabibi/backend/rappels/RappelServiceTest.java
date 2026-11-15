@@ -4,6 +4,7 @@ import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rappels.application.RappelService;
 import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import org.junit.jupiter.api.Test;
 
@@ -113,9 +114,8 @@ class RappelServiceTest {
         RendezVous annule = confirmeDans(Duration.ofHours(3));
         annule.annuler();
         rendezVous.enregistrer(annule);
-        RendezVous honore = confirmeDans(Duration.ofHours(4));
-        honore.honorer();
-        rendezVous.enregistrer(honore);
+        RendezVous honore = rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                MAINTENANT.plus(Duration.ofHours(4)), StatutRdv.HONORE));
 
         assertThat(service.executer()).isEqualTo(0);
         assertThat(notifieur.appels).isEmpty();

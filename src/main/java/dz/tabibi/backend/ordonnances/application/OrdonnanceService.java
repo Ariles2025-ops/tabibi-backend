@@ -8,6 +8,7 @@ import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
+import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import org.springframework.stereotype.Service;
@@ -25,10 +26,12 @@ public class OrdonnanceService {
 
     private final OrdonnanceRepository repository;
     private final RendezVousRepository rendezVous;
+    private final Notifieur notifieur;
 
-    public OrdonnanceService(OrdonnanceRepository repository, RendezVousRepository rendezVous) {
+    public OrdonnanceService(OrdonnanceRepository repository, RendezVousRepository rendezVous, Notifieur notifieur) {
         this.repository = repository;
         this.rendezVous = rendezVous;
+        this.notifieur = notifieur;
     }
 
     /**
@@ -54,7 +57,10 @@ public class OrdonnanceService {
         }
         Ordonnance ordonnance = Ordonnance.emettre(
                 medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now());
-        return repository.enregistrer(ordonnance);
+        Ordonnance emise = repository.enregistrer(ordonnance);
+        notifieur.notifier(patientId, "Nouvelle ordonnance",
+                "Votre medecin vous a delivre une ordonnance : retrouvez-la dans « Mes ordonnances ».");
+        return emise;
     }
 
     /** Ordonnances d'un patient, de la plus recente a la plus ancienne. */

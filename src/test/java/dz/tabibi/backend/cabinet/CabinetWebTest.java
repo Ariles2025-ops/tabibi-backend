@@ -267,8 +267,9 @@ class CabinetWebTest {
 
     @Test
     void honorer_par_la_secretaire_repond_200_et_409_si_le_rendezvous_n_est_pas_confirme() throws Exception {
-        RendezVous rdv = rendezVous();
-        rdv.honorer();
+        RendezVous base = rendezVous();
+        RendezVous rdv = new RendezVous(base.id(), base.patientId(), base.medecinId(), base.debut(),
+                dz.tabibi.backend.rendezvous.domain.StatutRdv.HONORE);
         UUID annule = UUID.randomUUID();
         when(service.honorerPour(SECRETAIRE, rdv.id())).thenReturn(rdv);
         when(service.honorerPour(SECRETAIRE, annule))

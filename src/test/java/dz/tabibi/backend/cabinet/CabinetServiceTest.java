@@ -34,6 +34,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CabinetServiceTest {
 
+    private final EnMemoireRendezVousRepository depotRdv = new EnMemoireRendezVousRepository();
+
+    /** Rendez-vous confirme deja commence chez ce medecin (seul un rendez-vous passe peut etre honore). */
+    private RendezVous rdvPasseChez(UUID medecin) {
+        return depotRdv.enregistrer(new RendezVous(UUID.randomUUID(), UUID.randomUUID(), medecin,
+                java.time.Instant.now().minusSeconds(3600), dz.tabibi.backend.rendezvous.domain.StatutRdv.CONFIRME));
+    }
+
+
     private static final UUID MEDECIN = EnMemoireMedecinRepository.MEDECINS_DEMO.get(0).id();
     private static final UUID AUTRE_MEDECIN = EnMemoireMedecinRepository.MEDECINS_DEMO.get(1).id();
     private static final UUID SECRETAIRE = UUID.randomUUID();
@@ -71,7 +80,7 @@ class CabinetServiceTest {
     private final FauxNotifieur notifieur = new FauxNotifieur();
     private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
     private final RendezVousService rendezVous =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte);
+            new RendezVousService(depotRdv, creneaux, notifieur, alerte);
     private final CreneauService creneauService = new CreneauService(creneaux, alerte);
     private final CabinetService service = new CabinetService(rattachements, rendezVous, creneauService, notifieur);
 
@@ -206,7 +215,7 @@ class CabinetServiceTest {
 
     @Test
     void honore_un_rendezvous_pour_le_medecin_rattache() {
-        RendezVous rdv = rendezVousChez(MEDECIN);
+        RendezVous rdv = rdvPasseChez(MEDECIN);
         service.rattacher(MEDECIN, SECRETAIRE);
 
         RendezVous honore = service.honorerPour(SECRETAIRE, rdv.id());
@@ -248,7 +257,7 @@ class CabinetServiceTest {
     @Test
     void annuler_pour_le_cabinet_est_refuse_sans_rattachement_deux_fois_et_apres_un_rendezvous_honore() {
         RendezVous rdv = rendezVousChez(MEDECIN);
-        RendezVous honore = rendezVousChez(MEDECIN);
+        RendezVous honore = rdvPasseChez(MEDECIN);
         service.rattacher(MEDECIN, SECRETAIRE);
         service.honorerPour(SECRETAIRE, honore.id());
 

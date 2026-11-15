@@ -112,7 +112,10 @@ public class TeleconsultationService {
             throw new AccesRefuseException("Cette teleconsultation ne vous est pas destinee.");
         }
         teleconsultation.consentir(Instant.now());
-        return repository.enregistrer(teleconsultation);
+        Teleconsultation acceptee = repository.enregistrer(teleconsultation);
+        notifieur.notifier(acceptee.medecinId(), "Teleconsultation acceptee",
+                "Le patient a accepte la teleconsultation : vous pourrez la demarrer a l'heure du rendez-vous.");
+        return acceptee;
     }
 
     /**

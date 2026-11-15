@@ -76,6 +76,9 @@ public class RendezVous {
             throw new TransitionInvalideException(
                     "Seul un rendez-vous confirme peut etre honore (statut actuel : " + statut + ").");
         }
+        if (debut.isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : il ne peut pas etre marque comme honore.");
+        }
         this.statut = StatutRdv.HONORE;
     }
 

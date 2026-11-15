@@ -37,7 +37,7 @@ class OrdonnanceServiceTest {
 
     private final OrdonnanceRepository repository = new EnMemoireOrdonnanceRepository();
     private final RendezVousRepository rendezVous = new EnMemoireRendezVousRepository();
-    private final OrdonnanceService service = new OrdonnanceService(repository, rendezVous);
+    private final OrdonnanceService service = new OrdonnanceService(repository, rendezVous, (destinataire, sujet, message) -> { });
     /** Rendez-vous qui fait de PATIENT un patient de MEDECIN. */
     private RendezVous rdvCommun;
 

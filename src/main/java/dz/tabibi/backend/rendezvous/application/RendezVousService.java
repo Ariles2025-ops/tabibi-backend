@@ -50,6 +50,7 @@ public class RendezVousService {
             throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
         }
         RendezVous rdv = repository.enregistrer(RendezVous.confirmer(patientId, medecinId, debut));
+        alerteCreneau.patientAReserve(rdv.patientId(), rdv.medecinId());
         notifierReservation(rdv);
         return rdv;
     }
@@ -73,6 +74,7 @@ public class RendezVousService {
         creneaux.enregistrer(creneau.reserver());
         RendezVous rdv = repository.enregistrer(
                 RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id()));
+        alerteCreneau.patientAReserve(rdv.patientId(), rdv.medecinId());
         notifierReservation(rdv);
         return rdv;
     }

@@ -8,6 +8,7 @@ import dz.tabibi.backend.rendezvous.adapter.RendezVousController;
 import dz.tabibi.backend.rendezvous.application.RendezVousService;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -161,8 +162,7 @@ class RendezVousWebTest {
 
     @Test
     void honorer_par_le_medecin_repond_200() throws Exception {
-        RendezVous rdv = RendezVous.confirmer(PATIENT, MEDECIN, Instant.parse("2026-12-07T09:00:00Z"));
-        rdv.honorer();
+        RendezVous rdv = new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN, Instant.parse("2026-12-07T09:00:00Z"), StatutRdv.HONORE);
         when(service.honorer(MEDECIN, rdv.id())).thenReturn(rdv);
 
         mvc.perform(post("/api/rendezvous/{id}/honorer", rdv.id()).with(medecin()))

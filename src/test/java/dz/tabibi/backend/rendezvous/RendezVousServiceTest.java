@@ -61,8 +61,14 @@ class RendezVousServiceTest {
     private final CreneauRepository creneaux = new EnMemoireCreneauRepository();
     private final FauxNotifieur notifieur = new FauxNotifieur();
     private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
-    private final RendezVousService service =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte);
+    private final EnMemoireRendezVousRepository depotRdv = new EnMemoireRendezVousRepository();
+    private final RendezVousService service = new RendezVousService(depotRdv, creneaux, notifieur, alerte);
+
+    /** Rendez-vous confirme deja commence (seul un rendez-vous passe peut etre honore). */
+    private RendezVous rdvPasse(UUID medecin) {
+        return depotRdv.enregistrer(new RendezVous(UUID.randomUUID(), UUID.randomUUID(), medecin,
+                Instant.now().minusSeconds(3600), StatutRdv.CONFIRME));
+    }
 
     private Creneau premierCreneauDisponible() {
         return creneaux.disponiblesPour(MEDECIN_DEMO).get(0);
@@ -234,7 +240,7 @@ class RendezVousServiceTest {
 
     @Test
     void honore_un_rendezvous_confirme() {
-        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+        RendezVous rdv = rdvPasse(MEDECIN_DEMO);
 
         RendezVous honore = service.honorer(MEDECIN_DEMO, rdv.id());
 
@@ -257,7 +263,7 @@ class RendezVousServiceTest {
 
     @Test
     void refuse_d_honorer_deux_fois() {
-        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+        RendezVous rdv = rdvPasse(MEDECIN_DEMO);
         service.honorer(MEDECIN_DEMO, rdv.id());
 
         assertThatThrownBy(() -> service.honorer(MEDECIN_DEMO, rdv.id()))
@@ -311,7 +317,7 @@ class RendezVousServiceTest {
         List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
         RendezVous annuleParLePatient = service.reserverCreneau(patient, disponibles.get(0).id());
         service.annuler(patient, annuleParLePatient.id());
-        RendezVous honore = service.reserverCreneau(UUID.randomUUID(), disponibles.get(1).id());
+        RendezVous honore = rdvPasse(MEDECIN_DEMO);
         service.honorer(MEDECIN_DEMO, honore.id());
         RendezVous confirme = service.reserverCreneau(UUID.randomUUID(), disponibles.get(2).id());
         int notificationsAvant = notifieur.appels.size();
@@ -378,3 +384,4 @@ class RendezVousServiceTest {
         assertThat(alerte.alertes).isEmpty();
     }
 }
+

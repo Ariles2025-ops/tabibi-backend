@@ -8,6 +8,7 @@ import dz.tabibi.backend.notifications.domain.Notification;
 import dz.tabibi.backend.notifications.domain.NotificationRepository;
 import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.teleconsultation.adapter.EnMemoireTeleconsultationRepository;
@@ -100,9 +101,7 @@ class TeleconsultationServiceTest {
         RendezVous annule = rendezVousConfirme();
         annule.annuler();
         rendezVous.enregistrer(annule);
-        RendezVous honore = rendezVous.enregistrer(RendezVous.confirmer(PATIENT, MEDECIN, DEBUT.plusSeconds(3600)));
-        honore.honorer();
-        rendezVous.enregistrer(honore);
+        RendezVous honore = rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN, DEBUT.plusSeconds(3600), StatutRdv.HONORE));
 
         assertThatThrownBy(() -> service.planifier(MEDECIN, annule.id())).isInstanceOf(TransitionInvalideException.class);
         assertThatThrownBy(() -> service.planifier(MEDECIN, honore.id())).isInstanceOf(TransitionInvalideException.class);

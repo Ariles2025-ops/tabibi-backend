@@ -72,6 +72,11 @@ public class ListeAttenteService implements AlerteCreneau {
 
     /** Un creneau se libere chez ce medecin : chaque patient inscrit sur sa liste est prevenu. */
     @Override
+    public void patientAReserve(UUID patientId, UUID medecinId) {
+        repository.parPatientEtMedecin(patientId, medecinId).ifPresent(i -> repository.supprimer(i.id()));
+    }
+
+    @Override
     public void creneauLibere(UUID medecinId, Instant debut) {
         String message = "Un creneau vient de se liberer chez votre medecin le "
                 + FormatDate.lisible(debut) + ". Reservez vite.";
