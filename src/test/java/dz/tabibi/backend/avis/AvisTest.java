@@ -28,14 +28,14 @@ class AvisTest {
 
     @Test
     void deposer_cree_un_avis_publie_et_nettoie_le_commentaire() {
-        Avis a = avis(4, "  Tres a l'ecoute.  ");
+        Avis a = avis(4, "  Tres à l'ecoute.  ");
 
         assertThat(a.id()).isNotNull();
         assertThat(a.rendezVousId()).isEqualTo(RENDEZ_VOUS);
         assertThat(a.patientId()).isEqualTo(PATIENT);
         assertThat(a.medecinId()).isEqualTo(MEDECIN);
         assertThat(a.note()).isEqualTo(4);
-        assertThat(a.commentaire()).isEqualTo("Tres a l'ecoute.");
+        assertThat(a.commentaire()).isEqualTo("Tres à l'ecoute.");
         assertThat(a.statut()).isEqualTo(StatutAvis.PUBLIE);
         assertThat(a.estPublie()).isTrue();
         assertThat(a.deposeLe()).isEqualTo(DEPOSE_LE);

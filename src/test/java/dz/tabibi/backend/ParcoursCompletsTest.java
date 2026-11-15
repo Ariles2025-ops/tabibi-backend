@@ -163,7 +163,7 @@ class ParcoursCompletsTest {
         assertThat((List<?>) lire(ok(get("/api/ordonnances/mes"), compte(patient, "PATIENT"), null), "$")).hasSize(1);
         assertThat((List<?>) lire(ok(get("/api/medecin/ordonnances"), compte(medecin, "MEDECIN"), null), "$")).hasSize(1);
         ok(get("/api/ordonnances/verifier/" + code), null, null);
-        assertThat(nbNotifications(patient, "PATIENT")).as("le patient est prevenu de sa nouvelle ordonnance").isGreaterThan(avant);
+        assertThat(nbNotifications(patient, "PATIENT")).as("le patient est prévenu de sa nouvelle ordonnance").isGreaterThan(avant);
 
         // un autre medecin ne peut pas prescrire a ce patient
         assertThat(statut(post("/api/ordonnances"), compte(UUID.randomUUID(), "MEDECIN"),
@@ -183,7 +183,7 @@ class ParcoursCompletsTest {
         int avantMedecin = nbNotifications(medecin, "MEDECIN");
         ok(post("/api/teleconsultations/" + id + "/consentir"), compte(patient, "PATIENT"), null);
         assertThat((String) lire(ok(get("/api/teleconsultations/" + id), compte(patient, "PATIENT"), null), "$.lienSalle")).isNotBlank();
-        assertThat(nbNotifications(medecin, "MEDECIN")).as("le medecin sait que le patient a consenti").isGreaterThan(avantMedecin);
+        assertThat(nbNotifications(medecin, "MEDECIN")).as("le médecin sait que le patient a consenti").isGreaterThan(avantMedecin);
 
         ok(post("/api/teleconsultations/" + id + "/demarrer"), compte(medecin, "MEDECIN"), null);
         ok(post("/api/teleconsultations/" + id + "/terminer"), compte(medecin, "MEDECIN"), null);
@@ -200,7 +200,7 @@ class ParcoursCompletsTest {
 
         assertThat((List<?>) lire(ok(get("/api/conversations"), compte(medecin, "MEDECIN"), null), "$")).hasSize(1);
         assertThat((List<?>) lire(ok(get("/api/conversations/" + conv + "/messages"), compte(medecin, "MEDECIN"), null), "$")).hasSize(1);
-        ok(post("/api/conversations/" + conv + "/messages"), compte(medecin, "MEDECIN"), "{\"contenu\":\"Bonjour, je vous ecoute\"}");
+        ok(post("/api/conversations/" + conv + "/messages"), compte(medecin, "MEDECIN"), "{\"contenu\":\"Bonjour, je vous écoute\"}");
         assertThat((List<?>) lire(ok(get("/api/conversations/" + conv + "/messages"), compte(patient, "PATIENT"), null), "$")).hasSize(2);
 
         // sans rendez-vous commun, pas de conversation ; un tiers ne lit pas le fil

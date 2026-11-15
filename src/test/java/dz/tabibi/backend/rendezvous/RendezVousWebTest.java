@@ -100,11 +100,11 @@ class RendezVousWebTest {
     @Test
     void creneau_deja_reserve_repond_409() throws Exception {
         when(service.reserverCreneau(any(), any()))
-                .thenThrow(new CreneauDejaReserveException("Ce creneau n'est plus disponible."));
+                .thenThrow(new CreneauDejaReserveException("Ce créneau n'est plus disponible."));
 
         mvc.perform(post("/api/creneaux/{id}/reserver", UUID.randomUUID()).with(patient()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Ce creneau n'est plus disponible."));
+           .andExpect(jsonPath("$.erreur").value("Ce créneau n'est plus disponible."));
     }
 
     @Test
@@ -179,11 +179,11 @@ class RendezVousWebTest {
     @Test
     void honorer_un_rendezvous_annule_repond_409() throws Exception {
         when(service.honorer(any(), any()))
-                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirme peut etre honore (statut actuel : ANNULE)."));
+                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirmé peut être honoré (statut actuel : Annulé)."));
 
         mvc.perform(post("/api/rendezvous/{id}/honorer", UUID.randomUUID()).with(medecin()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirme peut etre honore (statut actuel : ANNULE)."));
+           .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirmé peut être honoré (statut actuel : Annulé)."));
     }
 
     @Test
@@ -212,14 +212,14 @@ class RendezVousWebTest {
         UUID dUnAutre = UUID.randomUUID();
         UUID inconnu = UUID.randomUUID();
         when(service.annulerParCabinet(MEDECIN, honore))
-                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : HONORE)."));
+                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : Honoré)."));
         when(service.annulerParCabinet(MEDECIN, dUnAutre))
                 .thenThrow(new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda."));
         when(service.annulerParCabinet(MEDECIN, inconnu)).thenThrow(new RendezVousIntrouvableException(inconnu));
 
         mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", honore).with(medecin()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : HONORE)."));
+           .andExpect(jsonPath("$.erreur").value("Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : Honoré)."));
         mvc.perform(post("/api/medecin/rendezvous/{id}/annuler", dUnAutre).with(medecin()))
            .andExpect(status().isForbidden())
            .andExpect(jsonPath("$.erreur").value("Ce rendez-vous n'est pas dans votre agenda."));

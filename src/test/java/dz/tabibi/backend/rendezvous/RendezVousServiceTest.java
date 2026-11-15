@@ -91,7 +91,7 @@ class RendezVousServiceTest {
         assertThat(rdv.medecinId()).isEqualTo(medecin);
         assertThat(rdv.creneauId()).isNull();
         assertThat(notifieur.pour(patient)).hasSize(1);
-        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirme");
+        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirmé");
         assertThat(notifieur.pour(patient).get(0).message()).contains("04/12/2026");
         assertThat(notifieur.pour(medecin)).hasSize(1);
         assertThat(notifieur.pour(medecin).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
@@ -126,7 +126,7 @@ class RendezVousServiceTest {
         assertThat(creneaux.disponiblesPour(MEDECIN_DEMO)).noneMatch(c -> c.id().equals(creneau.id()));
         assertThat(notifieur.appels).hasSize(2);
         assertThat(notifieur.pour(patient)).hasSize(1);
-        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirme");
+        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirmé");
         assertThat(notifieur.pour(patient).get(0).message()).contains("07/12/2026");
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1);
         assertThat(notifieur.pour(MEDECIN_DEMO).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
@@ -179,7 +179,7 @@ class RendezVousServiceTest {
         assertThat(creneaux.disponiblesPour(MEDECIN_DEMO)).anyMatch(c -> c.id().equals(creneau.id()));
         assertThat(service.mesRendezVous(patient)).allMatch(r -> r.statut() == StatutRdv.ANNULE);
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(2);
-        assertThat(notifieur.pour(MEDECIN_DEMO).get(1).sujet()).isEqualTo("Rendez-vous annule");
+        assertThat(notifieur.pour(MEDECIN_DEMO).get(1).sujet()).isEqualTo("Rendez-vous annulé");
         assertThat(notifieur.pour(MEDECIN_DEMO).get(1).message()).contains("07/12/2026");
         assertThat(notifieur.pour(patient)).hasSize(1); // seule la confirmation initiale
         assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(MEDECIN_DEMO, creneau.debut()));
@@ -308,7 +308,7 @@ class RendezVousServiceTest {
         assertThat(estDisponible(creneau.id())).isTrue();
         assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(MEDECIN_DEMO, creneau.debut()));
         assertThat(notifieur.pour(patient)).hasSize(2);
-        assertThat(notifieur.pour(patient).get(1).sujet()).isEqualTo("Rendez-vous annule par le cabinet");
+        assertThat(notifieur.pour(patient).get(1).sujet()).isEqualTo("Rendez-vous annulé par le cabinet");
         assertThat(notifieur.pour(patient).get(1).message()).contains("07/12/2026");
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1); // le cabinet n'est pas prevenu de sa propre annulation
     }

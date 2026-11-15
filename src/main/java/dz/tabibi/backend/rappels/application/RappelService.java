@@ -45,7 +45,7 @@ public class RappelService {
         for (RendezVous rdv : aRappeler) {
             notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
                     "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
-                            + ". Pensez a vous presenter 10 minutes en avance.", "/mes-rendez-vous");
+                            + ". Pensez à vous présenter 10 minutes en avance.", "/mes-rendez-vous");
             rdv.marquerRappelEnvoye(maintenant);
             rendezVous.enregistrer(rdv);
         }

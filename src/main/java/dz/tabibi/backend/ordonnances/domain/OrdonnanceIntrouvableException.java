@@ -15,6 +15,6 @@ public class OrdonnanceIntrouvableException extends RuntimeException {
 
     /** Aucune ordonnance ne porte le code saisi ; le code n'est pas repete dans le message. */
     public static OrdonnanceIntrouvableException codeInconnu() {
-        return new OrdonnanceIntrouvableException("Aucune ordonnance ne correspond a ce code de verification.");
+        return new OrdonnanceIntrouvableException("Aucune ordonnance ne correspond à ce code de vérification.");
     }
 }

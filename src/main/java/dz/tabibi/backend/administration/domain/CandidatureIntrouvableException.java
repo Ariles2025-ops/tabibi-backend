@@ -15,6 +15,6 @@ public class CandidatureIntrouvableException extends RuntimeException {
 
     /** Le medecin connecte n'a encore depose aucune candidature. */
     public static CandidatureIntrouvableException aucuneDeposee() {
-        return new CandidatureIntrouvableException("Aucune candidature deposee.");
+        return new CandidatureIntrouvableException("Aucune candidature déposée.");
     }
 }

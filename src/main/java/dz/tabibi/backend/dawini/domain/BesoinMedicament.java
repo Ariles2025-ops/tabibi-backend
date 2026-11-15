@@ -43,12 +43,12 @@ public record BesoinMedicament(
         return new BesoinMedicament(
                 UUID.randomUUID(),
                 patientId,
-                borne(obligatoire(demande.medicament(), "Le medicament est obligatoire."),
-                        LONGUEUR_MAX_MEDICAMENT, "Le nom du medicament ne peut pas depasser "),
+                borne(obligatoire(demande.medicament(), "Le médicament est obligatoire."),
+                        LONGUEUR_MAX_MEDICAMENT, "Le nom du médicament ne peut pas dépasser "),
                 borne(obligatoire(demande.wilayaCode(), "La wilaya est obligatoire."),
-                        LONGUEUR_MAX_WILAYA, "Le code de wilaya ne peut pas depasser "),
-                borne(facultatif(demande.commune()), LONGUEUR_MAX_COMMUNE, "La commune ne peut pas depasser "),
-                borne(facultatif(demande.precision()), LONGUEUR_MAX_PRECISION, "La precision ne peut pas depasser "),
+                        LONGUEUR_MAX_WILAYA, "Le code de wilaya ne peut pas dépasser "),
+                borne(facultatif(demande.commune()), LONGUEUR_MAX_COMMUNE, "La commune ne peut pas dépasser "),
+                borne(facultatif(demande.precision()), LONGUEUR_MAX_PRECISION, "La précision ne peut pas dépasser "),
                 StatutBesoin.OUVERT,
                 publieLe,
                 null);
@@ -60,7 +60,7 @@ public record BesoinMedicament(
      */
     public BesoinMedicament cloturer(Instant quand) {
         if (!estOuvert()) {
-            throw new TransitionInvalideException("Ce besoin est deja cloture.");
+            throw new TransitionInvalideException("Ce besoin est déjà clôturé.");
         }
         return new BesoinMedicament(id, patientId, medicament, wilayaCode, commune, precision,
                 StatutBesoin.CLOTURE, publieLe, quand);
@@ -88,7 +88,7 @@ public record BesoinMedicament(
 
     private static String borne(String valeur, int longueurMax, String debutMessage) {
         if (valeur != null && valeur.length() > longueurMax) {
-            throw new BesoinInvalideException(debutMessage + longueurMax + " caracteres.");
+            throw new BesoinInvalideException(debutMessage + longueurMax + " caractères.");
         }
         return valeur;
     }

@@ -125,12 +125,12 @@ class DawiniWebTest {
 
     @Test
     void publier_un_besoin_incomplet_repond_400() throws Exception {
-        when(service.publier(any(), any())).thenThrow(new BesoinInvalideException("Le medicament est obligatoire."));
+        when(service.publier(any(), any())).thenThrow(new BesoinInvalideException("Le médicament est obligatoire."));
 
         mvc.perform(post("/api/dawini/besoins").with(patient()).contentType(MediaType.APPLICATION_JSON)
                     .content("{\"wilayaCode\": \"16\"}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("Le medicament est obligatoire."));
+           .andExpect(jsonPath("$.erreur").value("Le médicament est obligatoire."));
     }
 
     @Test
@@ -168,13 +168,13 @@ class DawiniWebTest {
         UUID dejaCloture = UUID.randomUUID();
         UUID dUnAutre = UUID.randomUUID();
         UUID inconnu = UUID.randomUUID();
-        when(service.cloturer(PATIENT, dejaCloture)).thenThrow(new TransitionInvalideException("Ce besoin est deja cloture."));
+        when(service.cloturer(PATIENT, dejaCloture)).thenThrow(new TransitionInvalideException("Ce besoin est déjà clôturé."));
         when(service.cloturer(PATIENT, dUnAutre)).thenThrow(new AccesRefuseException("Ce besoin ne vous appartient pas."));
         when(service.cloturer(PATIENT, inconnu)).thenThrow(new BesoinIntrouvableException(inconnu));
 
         mvc.perform(post("/api/dawini/besoins/{id}/cloturer", dejaCloture).with(patient()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Ce besoin est deja cloture."));
+           .andExpect(jsonPath("$.erreur").value("Ce besoin est déjà clôturé."));
         mvc.perform(post("/api/dawini/besoins/{id}/cloturer", dUnAutre).with(patient()))
            .andExpect(status().isForbidden())
            .andExpect(jsonPath("$.erreur").value("Ce besoin ne vous appartient pas."));
@@ -243,12 +243,12 @@ class DawiniWebTest {
     @Test
     void repondre_a_un_besoin_cloture_ou_deja_repondu_repond_409() throws Exception {
         when(service.repondre(any(), any(), any()))
-                .thenThrow(new TransitionInvalideException("Ce besoin est cloture : il n'accepte plus de reponse."));
+                .thenThrow(new TransitionInvalideException("Ce besoin est clôturé : il n'accepte plus de réponse."));
 
         mvc.perform(post("/api/dawini/besoins/{id}/reponses", UUID.randomUUID()).with(pharmacie())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS_REPONSE))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Ce besoin est cloture : il n'accepte plus de reponse."));
+           .andExpect(jsonPath("$.erreur").value("Ce besoin est clôturé : il n'accepte plus de réponse."));
     }
 
     @Test

@@ -74,7 +74,7 @@ class TeleconsultationServiceTest {
         assertThat(teleconsultations.parId(t.id())).isPresent();
         assertThat(teleconsultations.parRendezVous(rdv.id())).isPresent();
         assertThat(notificationsDe(PATIENT)).hasSize(1);
-        assertThat(notificationsDe(PATIENT).get(0).sujet()).isEqualTo("Teleconsultation proposee");
+        assertThat(notificationsDe(PATIENT).get(0).sujet()).isEqualTo("Téléconsultation proposée");
         assertThat(notificationsDe(PATIENT).get(0).message()).contains("07/12/2026");
         assertThat(notificationsDe(PATIENT).get(0).message()).doesNotContain(t.salleId());
     }
@@ -202,7 +202,7 @@ class TeleconsultationServiceTest {
         assertThat(demarree.statut()).isEqualTo(StatutTeleconsultation.EN_COURS);
         assertThat(demarree.demarreeLe()).isNotNull();
         assertThat(notificationsDe(PATIENT)).hasSize(2);
-        assertThat(notificationsDe(PATIENT)).anyMatch(n -> n.sujet().equals("Teleconsultation demarree"));
+        assertThat(notificationsDe(PATIENT)).anyMatch(n -> n.sujet().equals("Téléconsultation démarrée"));
     }
 
     @Test

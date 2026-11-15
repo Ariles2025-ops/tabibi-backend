@@ -119,20 +119,20 @@ class MessagerieWebTest {
     @Test
     void ouvrir_sans_rendezvous_commun_repond_403() throws Exception {
         when(service.ouvrir(any(), any()))
-                .thenThrow(new AccesRefuseException("Vous ne pouvez ecrire qu'a un medecin avec qui vous avez un rendez-vous."));
+                .thenThrow(new AccesRefuseException("Vous ne pouvez écrire qu'a un médecin avec qui vous avez un rendez-vous."));
 
         mvc.perform(post("/api/conversations").with(patient()).contentType(MediaType.APPLICATION_JSON).content(CORPS_CONVERSATION))
            .andExpect(status().isForbidden())
-           .andExpect(jsonPath("$.erreur").value("Vous ne pouvez ecrire qu'a un medecin avec qui vous avez un rendez-vous."));
+           .andExpect(jsonPath("$.erreur").value("Vous ne pouvez écrire qu'a un médecin avec qui vous avez un rendez-vous."));
     }
 
     @Test
     void ouvrir_sans_medecin_repond_400() throws Exception {
-        when(service.ouvrir(any(), any())).thenThrow(new MessageInvalideException("Le medecin est obligatoire."));
+        when(service.ouvrir(any(), any())).thenThrow(new MessageInvalideException("Le médecin est obligatoire."));
 
         mvc.perform(post("/api/conversations").with(patient()).contentType(MediaType.APPLICATION_JSON).content("{}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("Le medecin est obligatoire."));
+           .andExpect(jsonPath("$.erreur").value("Le médecin est obligatoire."));
     }
 
     @Test

@@ -56,7 +56,7 @@ class NotificationWebTest {
 
     private static Notification notification(UUID destinataire, boolean lue) {
         return new Notification(UUID.randomUUID(), destinataire, CanalNotification.INTERNE,
-                "Rendez-vous confirme", "Votre rendez-vous du 07/12/2026 a 10:00 est confirme.",
+                "Rendez-vous confirmé", "Votre rendez-vous du 07/12/2026 à 10:00 est confirmé.",
                 lue, Instant.parse("2026-09-18T10:00:00Z"));
     }
 
@@ -75,8 +75,8 @@ class NotificationWebTest {
            .andExpect(jsonPath("$[0].id").value(n.id().toString()))
            .andExpect(jsonPath("$[0].destinataireId").value(PATIENT.toString()))
            .andExpect(jsonPath("$[0].canal").value("INTERNE"))
-           .andExpect(jsonPath("$[0].sujet").value("Rendez-vous confirme"))
-           .andExpect(jsonPath("$[0].message").value("Votre rendez-vous du 07/12/2026 a 10:00 est confirme."))
+           .andExpect(jsonPath("$[0].sujet").value("Rendez-vous confirmé"))
+           .andExpect(jsonPath("$[0].message").value("Votre rendez-vous du 07/12/2026 à 10:00 est confirmé."))
            .andExpect(jsonPath("$[0].lue").value(false))
            .andExpect(jsonPath("$[0].creeLe").exists());
     }

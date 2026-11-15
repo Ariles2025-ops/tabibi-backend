@@ -52,11 +52,11 @@ public class AdministrationService {
                 .filter(c -> c.statut() != StatutCandidature.REFUSEE)
                 .ifPresent(c -> {
                     throw new TransitionInvalideException(c.estEnAttente()
-                            ? "Une candidature est deja en attente d'examen."
-                            : "Votre candidature a deja ete validee.");
+                            ? "Une candidature est déjà en attente d'examen."
+                            : "Votre candidature a déjà été validée.");
                 });
         if (demande != null && demande.ficheReclamee() != null && !ficheReclamable(demande.ficheReclamee())) {
-            throw new TransitionInvalideException("Cette fiche a deja ete reclamee ou n'existe plus.");
+            throw new TransitionInvalideException("Cette fiche a déjà été réclamée ou n'existe plus.");
         }
         return candidatures.enregistrer(CandidatureMedecin.deposer(medecinId, demande, Instant.now()));
     }
@@ -94,7 +94,7 @@ public class AdministrationService {
     public CandidatureMedecin valider(UUID candidatureId) {
         CandidatureMedecin candidature = charger(candidatureId);
         if (candidature.estUneReclamation() && medecins.parId(candidature.ficheReclamee()).isEmpty()) {
-            throw new TransitionInvalideException("Cette fiche a deja ete reclamee ou n'existe plus.");
+            throw new TransitionInvalideException("Cette fiche a déjà été réclamée ou n'existe plus.");
         }
         CandidatureMedecin validee = candidatures.enregistrer(candidature.valider(Instant.now()));
         if (validee.estUneReclamation()) {
@@ -103,9 +103,9 @@ public class AdministrationService {
         }
         medecins.enregistrer(fichePublique(validee));
         roles.accorder(validee.medecinId());
-        notifieur.notifier(validee.medecinId(), "Candidature validee",
-                "Votre candidature a ete validee : vous figurez desormais dans l'annuaire Tabibi. "
-                        + "Reconnectez-vous pour ouvrir votre espace medecin.", "/medecin/agenda");
+        notifieur.notifier(validee.medecinId(), "Candidature validée",
+                "Votre candidature a été validée : vous figurez désormais dans l'annuaire Tabibi. "
+                        + "Reconnectez-vous pour ouvrir votre espace médecin.", "/medecin/agenda");
         return validee;
     }
 
@@ -118,8 +118,8 @@ public class AdministrationService {
     @Transactional
     public CandidatureMedecin refuser(UUID candidatureId, String motif) {
         CandidatureMedecin refusee = candidatures.enregistrer(charger(candidatureId).refuser(motif, Instant.now()));
-        notifieur.notifier(refusee.medecinId(), "Candidature refusee",
-                "Votre candidature a ete refusee. Motif : " + refusee.motifRefus(), "/medecin/candidature");
+        notifieur.notifier(refusee.medecinId(), "Candidature refusée",
+                "Votre candidature a été refusée. Motif : " + refusee.motifRefus(), "/medecin/candidature");
         return refusee;
     }
 

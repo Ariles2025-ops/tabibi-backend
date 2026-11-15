@@ -28,7 +28,7 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
      */
     public static final List<Medecin> MEDECINS_DEMO = List.of(
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000001"), "Dr Amina Belkacem", "cardiologue", "Cardiologue", "16", "Alger", "Alger-Centre"),
-            new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Dr Karim Haddad", "generaliste", "Medecin generaliste", "16", "Alger", "Bab Ezzouar"),
+            new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Dr Karim Haddad", "generaliste", "Médecin généraliste", "16", "Alger", "Bab Ezzouar"),
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000003"), "Dr Yacine Meziane", "dermatologue", "Dermatologue", "31", "Oran", "Oran"),
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000004"), "Dr Lila Cherif", "pediatre", "Pediatre", "25", "Constantine", "Constantine"),
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000005"), "Dr Sofiane Brahimi", "cardiologue", "Cardiologue", "31", "Oran", "Es Senia")

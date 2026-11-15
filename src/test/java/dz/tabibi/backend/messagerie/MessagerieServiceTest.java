@@ -179,7 +179,7 @@ class MessagerieServiceTest {
         assertThat(notifieur.appels).hasSize(1);
         assertThat(notifieur.pour(MEDECIN)).hasSize(1);
         assertThat(notifieur.pour(MEDECIN).get(0).sujet()).isEqualTo("Nouveau message");
-        assertThat(notifieur.pour(MEDECIN).get(0).message()).isEqualTo("Vous avez recu un nouveau message.");
+        assertThat(notifieur.pour(MEDECIN).get(0).message()).isEqualTo("Vous avez reçu un nouveau message.");
         assertThat(notifieur.pour(MEDECIN).get(0).message()).doesNotContain("fievre");
         assertThat(notifieur.pour(PATIENT)).isEmpty();
     }

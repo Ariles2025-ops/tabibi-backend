@@ -53,7 +53,7 @@ public class OrdonnanceService {
         boolean ligneIncomplete = lignes.stream()
                 .anyMatch(l -> l == null || l.medicament() == null || l.medicament().isBlank());
         if (ligneIncomplete) {
-            throw new OrdonnanceInvalideException("Chaque ligne doit indiquer un medicament.");
+            throw new OrdonnanceInvalideException("Chaque ligne doit indiquer un médicament.");
         }
         Ordonnance ordonnance = Ordonnance.emettre(
                 medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now());
@@ -138,7 +138,7 @@ public class OrdonnanceService {
                 return code;
             }
         }
-        throw new IllegalStateException("Impossible d'attribuer un code de verification libre.");
+        throw new IllegalStateException("Impossible d'attribuer un code de vérification libre.");
     }
 
     private void verifierPatientDuMedecin(UUID medecinId, UUID patientId, UUID rendezVousId) {
@@ -152,7 +152,7 @@ public class OrdonnanceService {
         }
         boolean patientDuMedecin = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
         if (!patientDuMedecin) {
-            throw new AccesRefuseException("Vous ne pouvez rediger une ordonnance que pour vos patients.");
+            throw new AccesRefuseException("Vous ne pouvez rédiger une ordonnance que pour vos patients.");
         }
     }
 }

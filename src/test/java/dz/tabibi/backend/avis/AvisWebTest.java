@@ -110,22 +110,22 @@ class AvisWebTest {
     @Test
     void deposer_une_note_hors_bornes_repond_400() throws Exception {
         when(service.deposer(any(), any(), anyInt(), any()))
-                .thenThrow(new AvisInvalideException("La note doit etre comprise entre 1 et 5."));
+                .thenThrow(new AvisInvalideException("La note doit être comprise entre 1 et 5."));
 
         mvc.perform(post("/api/avis").with(patient()).contentType(MediaType.APPLICATION_JSON)
                     .content("{\"rendezVousId\": \"44444444-4444-4444-4444-444444444444\", \"note\": 6}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("La note doit etre comprise entre 1 et 5."));
+           .andExpect(jsonPath("$.erreur").value("La note doit être comprise entre 1 et 5."));
     }
 
     @Test
     void deposer_sur_un_rendezvous_non_honore_ou_deja_note_repond_409() throws Exception {
         when(service.deposer(any(), any(), anyInt(), any()))
-                .thenThrow(new TransitionInvalideException("Un avis a deja ete depose pour ce rendez-vous."));
+                .thenThrow(new TransitionInvalideException("Un avis a déjà été déposé pour ce rendez-vous."));
 
         mvc.perform(post("/api/avis").with(patient()).contentType(MediaType.APPLICATION_JSON).content(CORPS))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Un avis a deja ete depose pour ce rendez-vous."));
+           .andExpect(jsonPath("$.erreur").value("Un avis a déjà été déposé pour ce rendez-vous."));
     }
 
     @Test
@@ -273,11 +273,11 @@ class AvisWebTest {
     @Test
     void masquer_deux_fois_repond_409_et_un_avis_inconnu_404() throws Exception {
         UUID id = UUID.randomUUID();
-        when(service.masquer(id)).thenThrow(new TransitionInvalideException("Cet avis est deja masque."));
+        when(service.masquer(id)).thenThrow(new TransitionInvalideException("Cet avis est déjà masqué."));
 
         mvc.perform(post("/api/admin/avis/{id}/masquer", id).with(admin()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Cet avis est deja masque."));
+           .andExpect(jsonPath("$.erreur").value("Cet avis est déjà masqué."));
 
         UUID inconnu = UUID.randomUUID();
         when(service.retablir(inconnu)).thenThrow(new AvisIntrouvableException(inconnu));

@@ -49,11 +49,11 @@ public class MessagerieService {
     @Transactional
     public ResultatOuverture ouvrir(UUID patientId, UUID medecinId) {
         if (medecinId == null) {
-            throw new MessageInvalideException("Le medecin est obligatoire.");
+            throw new MessageInvalideException("Le médecin est obligatoire.");
         }
         boolean rendezVousCommun = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
         if (!rendezVousCommun) {
-            throw new AccesRefuseException("Vous ne pouvez ecrire qu'a un medecin avec qui vous avez un rendez-vous.");
+            throw new AccesRefuseException("Vous ne pouvez écrire qu'a un médecin avec qui vous avez un rendez-vous.");
         }
         Optional<Conversation> existante = conversations.parParticipants(patientId, medecinId);
         if (existante.isPresent()) {
@@ -104,7 +104,7 @@ public class MessagerieService {
         Message message = messages.enregistrer(Message.envoyer(conversation.id(), sujet, contenu, Instant.now()));
         conversations.enregistrer(conversation.avecDernierMessageLe(message.envoyeLe()));
         notifieur.notifier(conversation.autreParticipant(sujet), "Nouveau message",
-                "Vous avez recu un nouveau message.", "/messagerie/" + conversation.id());
+                "Vous avez reçu un nouveau message.", "/messagerie/" + conversation.id());
         return message;
     }
 

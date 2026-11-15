@@ -40,7 +40,7 @@ public class ListeAttenteService implements AlerteCreneau {
     @Transactional
     public InscriptionAttente inscrire(UUID patientId, UUID medecinId) {
         if (repository.parPatientEtMedecin(patientId, medecinId).isPresent()) {
-            throw new TransitionInvalideException("Vous etes deja inscrit sur la liste d'attente de ce medecin.");
+            throw new TransitionInvalideException("Vous êtes déjà inscrit sur la liste d'attente de ce médecin.");
         }
         return repository.enregistrer(InscriptionAttente.inscrire(patientId, medecinId, Instant.now()));
     }
@@ -78,10 +78,10 @@ public class ListeAttenteService implements AlerteCreneau {
 
     @Override
     public void creneauLibere(UUID medecinId, Instant debut) {
-        String message = "Un creneau vient de se liberer chez votre medecin le "
-                + FormatDate.lisible(debut) + ". Reservez vite.";
+        String message = "Un créneau vient de se libérer chez votre médecin le "
+                + FormatDate.lisible(debut) + ". Réservez vite.";
         repository.parMedecin(medecinId)
-                .forEach(inscription -> notifieur.notifier(inscription.patientId(), "Creneau disponible", message,
+                .forEach(inscription -> notifieur.notifier(inscription.patientId(), "Créneau disponible", message,
                         "/medecins/" + medecinId));
     }
 }

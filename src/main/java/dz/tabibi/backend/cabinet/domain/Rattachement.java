@@ -22,13 +22,13 @@ public record Rattachement(
      */
     public static Rattachement rattacher(UUID medecinId, UUID secretaireId, Instant quand) {
         if (medecinId == null) {
-            throw new CabinetInvalideException("Le medecin est obligatoire.");
+            throw new CabinetInvalideException("Le médecin est obligatoire.");
         }
         if (secretaireId == null) {
-            throw new CabinetInvalideException("La secretaire est obligatoire.");
+            throw new CabinetInvalideException("La secrétaire est obligatoire.");
         }
         if (secretaireId.equals(medecinId)) {
-            throw new CabinetInvalideException("Un medecin ne peut pas se rattacher lui-meme comme secretaire.");
+            throw new CabinetInvalideException("Un médecin ne peut pas se rattacher lui-même comme secrétaire.");
         }
         return new Rattachement(UUID.randomUUID(), medecinId, secretaireId, quand);
     }

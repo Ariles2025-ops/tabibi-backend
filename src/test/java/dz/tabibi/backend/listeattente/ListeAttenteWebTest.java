@@ -92,11 +92,11 @@ class ListeAttenteWebTest {
     @Test
     void inscrire_deux_fois_repond_409() throws Exception {
         when(service.inscrire(PATIENT, MEDECIN))
-                .thenThrow(new TransitionInvalideException("Vous etes deja inscrit sur la liste d'attente de ce medecin."));
+                .thenThrow(new TransitionInvalideException("Vous êtes déjà inscrit sur la liste d'attente de ce médecin."));
 
         mvc.perform(post("/api/medecins/{id}/liste-attente", MEDECIN).with(patient()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Vous etes deja inscrit sur la liste d'attente de ce medecin."));
+           .andExpect(jsonPath("$.erreur").value("Vous êtes déjà inscrit sur la liste d'attente de ce médecin."));
     }
 
     @Test

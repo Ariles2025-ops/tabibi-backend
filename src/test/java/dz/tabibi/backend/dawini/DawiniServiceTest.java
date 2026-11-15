@@ -159,8 +159,8 @@ class DawiniServiceTest {
         assertThat(service.reponsesPourPatient(PATIENT, b.id())).containsExactly(r);
         assertThat(service.reponsesPourPharmacie(b.id())).containsExactly(r);
         assertThat(notifieur.appels).hasSize(1);
-        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Reponse d'une pharmacie");
-        assertThat(notifieur.pour(PATIENT).get(0).message()).isEqualTo("Une pharmacie a repondu a votre demande de medicament.");
+        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Réponse d'une pharmacie");
+        assertThat(notifieur.pour(PATIENT).get(0).message()).isEqualTo("Une pharmacie a répondu à votre demande de médicament.");
         assertThat(notifieur.pour(PATIENT).get(0).message()).doesNotContain("El Amel");
     }
 

@@ -46,10 +46,10 @@ public class CreneauService {
      */
     public Creneau ouvrir(UUID medecinId, Instant debut, int dureeMinutes) {
         if (debut == null || !debut.isAfter(Instant.now())) {
-            throw new CreneauInvalideException("Le debut du creneau doit etre dans le futur.");
+            throw new CreneauInvalideException("Le début du créneau doit être dans le futur.");
         }
         if (dureeMinutes < DUREE_MIN_MINUTES || dureeMinutes > DUREE_MAX_MINUTES) {
-            throw new CreneauInvalideException("La duree doit etre comprise entre "
+            throw new CreneauInvalideException("La durée doit être comprise entre "
                     + DUREE_MIN_MINUTES + " et " + DUREE_MAX_MINUTES + " minutes.");
         }
         Instant fin = debut.plusSeconds(60L * dureeMinutes);

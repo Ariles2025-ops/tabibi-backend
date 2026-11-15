@@ -47,7 +47,7 @@ public class RendezVousService {
      */
     public RendezVous reserver(UUID patientId, UUID medecinId, Instant debut) {
         if (!repository.creneauEstLibre(medecinId, debut)) {
-            throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
+            throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
         }
         RendezVous rdv = repository.enregistrer(RendezVous.confirmer(patientId, medecinId, debut));
         alerteCreneau.patientAReserve(rdv.patientId(), rdv.medecinId());
@@ -66,7 +66,7 @@ public class RendezVousService {
         Creneau creneau = creneaux.parId(creneauId)
                 .orElseThrow(() -> new CreneauIntrouvableException(creneauId));
         if (!creneau.disponible()) {
-            throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
+            throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
         }
         if (!creneau.debut().isAfter(Instant.now())) {
             throw new CreneauDejaReserveException("Ce créneau est déjà passé.");
@@ -117,16 +117,16 @@ public class RendezVousService {
             return rdv;
         }
         if (rdv.statut() == StatutRdv.HONORE) {
-            throw new TransitionInvalideException("Ce rendez-vous a deja eu lieu : il ne peut plus etre annule.");
+            throw new TransitionInvalideException("Ce rendez-vous a déjà eu lieu : il ne peut plus être annulé.");
         }
         if (!rdv.debut().isAfter(Instant.now())) {
-            throw new TransitionInvalideException("Ce rendez-vous est deja passe : il ne peut plus etre annule.");
+            throw new TransitionInvalideException("Ce rendez-vous est déjà passe : il ne peut plus être annulé.");
         }
         rdv.annuler();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
-        notifieur.notifier(annule.medecinId(), "Rendez-vous annule",
-                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a ete annule par le patient.", "/medecin/agenda");
+        notifieur.notifier(annule.medecinId(), "Rendez-vous annulé",
+                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a été annulé par le patient.", "/medecin/agenda");
         return annule;
     }
 
@@ -198,9 +198,9 @@ public class RendezVousService {
         rdv.annulerParCabinet();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
-        notifieur.notifier(annule.patientId(), "Rendez-vous annule par le cabinet",
+        notifieur.notifier(annule.patientId(), "Rendez-vous annulé par le cabinet",
                 "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                        + " a ete annule par le cabinet. Vous pouvez reserver un autre creneau.", "/medecins/" + annule.medecinId());
+                        + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
         return annule;
     }
 
@@ -221,9 +221,9 @@ public class RendezVousService {
     /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */
     private void notifierReservation(RendezVous rdv) {
         String date = FormatDate.lisible(rdv.debut());
-        notifieur.notifier(rdv.patientId(), "Rendez-vous confirme",
-                "Votre rendez-vous du " + date + " est confirme.", "/mes-rendez-vous");
+        notifieur.notifier(rdv.patientId(), "Rendez-vous confirmé",
+                "Votre rendez-vous du " + date + " est confirmé.", "/mes-rendez-vous");
         notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous",
-                "Un patient a reserve un rendez-vous le " + date + ".", "/medecin/agenda");
+                "Un patient a réservé un rendez-vous le " + date + ".", "/medecin/agenda");
     }
 }

@@ -31,10 +31,10 @@ class NotificationServiceTest {
 
     @Test
     void mes_notifications_liste_celles_du_destinataire_les_plus_recentes_d_abord() {
-        Notification ancienne = deposee(PATIENT, "Rendez-vous confirme", "2026-01-10T09:00:00Z");
-        Notification recente = deposee(PATIENT, "Rendez-vous annule", "2026-03-01T09:00:00Z");
+        Notification ancienne = deposee(PATIENT, "Rendez-vous confirmé", "2026-01-10T09:00:00Z");
+        Notification recente = deposee(PATIENT, "Rendez-vous annulé", "2026-03-01T09:00:00Z");
         Notification milieu = deposee(PATIENT, "Nouveau rendez-vous", "2026-02-01T09:00:00Z");
-        deposee(AUTRE, "Rendez-vous confirme", "2026-02-15T09:00:00Z");
+        deposee(AUTRE, "Rendez-vous confirmé", "2026-02-15T09:00:00Z");
 
         List<Notification> mes = service.mesNotifications(PATIENT);
 
@@ -57,7 +57,7 @@ class NotificationServiceTest {
 
     @Test
     void marque_une_notification_lue() {
-        Notification n = deposee(PATIENT, "Rendez-vous confirme", "2026-01-10T09:00:00Z");
+        Notification n = deposee(PATIENT, "Rendez-vous confirmé", "2026-01-10T09:00:00Z");
 
         Notification lue = service.marquerLue(PATIENT, n.id());
 
@@ -72,7 +72,7 @@ class NotificationServiceTest {
 
     @Test
     void marquer_lue_deux_fois_ne_change_rien() {
-        Notification n = deposee(PATIENT, "Rendez-vous confirme", "2026-01-10T09:00:00Z");
+        Notification n = deposee(PATIENT, "Rendez-vous confirmé", "2026-01-10T09:00:00Z");
         Notification premiere = service.marquerLue(PATIENT, n.id());
 
         Notification seconde = service.marquerLue(PATIENT, n.id());
@@ -83,7 +83,7 @@ class NotificationServiceTest {
 
     @Test
     void refuse_de_marquer_lue_la_notification_d_un_tiers() {
-        Notification n = deposee(PATIENT, "Rendez-vous confirme", "2026-01-10T09:00:00Z");
+        Notification n = deposee(PATIENT, "Rendez-vous confirmé", "2026-01-10T09:00:00Z");
 
         assertThatThrownBy(() -> service.marquerLue(AUTRE, n.id()))
                 .isInstanceOf(AccesRefuseException.class);

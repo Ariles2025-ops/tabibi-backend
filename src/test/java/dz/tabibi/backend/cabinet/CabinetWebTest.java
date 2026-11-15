@@ -153,18 +153,18 @@ class CabinetWebTest {
     @Test
     void rattacher_soi_meme_repond_400_et_une_secretaire_deja_rattachee_409() throws Exception {
         when(service.rattacher(MEDECIN, MEDECIN))
-                .thenThrow(new CabinetInvalideException("Un medecin ne peut pas se rattacher lui-meme comme secretaire."));
+                .thenThrow(new CabinetInvalideException("Un médecin ne peut pas se rattacher lui-même comme secrétaire."));
         when(service.rattacher(MEDECIN, SECRETAIRE))
-                .thenThrow(new TransitionInvalideException("Cette secretaire est deja rattachee a votre cabinet."));
+                .thenThrow(new TransitionInvalideException("Cette secrétaire est déjà rattachée à votre cabinet."));
 
         mvc.perform(post("/api/medecin/secretaires").with(medecin())
                     .contentType(MediaType.APPLICATION_JSON).content("{\"secretaireId\": \"" + MEDECIN + "\"}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("Un medecin ne peut pas se rattacher lui-meme comme secretaire."));
+           .andExpect(jsonPath("$.erreur").value("Un médecin ne peut pas se rattacher lui-même comme secrétaire."));
         mvc.perform(post("/api/medecin/secretaires").with(medecin())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS_RATTACHEMENT))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Cette secretaire est deja rattachee a votre cabinet."));
+           .andExpect(jsonPath("$.erreur").value("Cette secrétaire est déjà rattachée à votre cabinet."));
     }
 
     @Test
@@ -221,7 +221,7 @@ class CabinetWebTest {
         UUID autreMedecin = UUID.randomUUID();
         when(service.agendaPour(SECRETAIRE, MEDECIN)).thenReturn(List.of(rdv));
         when(service.agendaPour(SECRETAIRE, autreMedecin))
-                .thenThrow(new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin."));
+                .thenThrow(new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin."));
 
         mvc.perform(get("/api/secretaire/medecins/{medecinId}/rendezvous", MEDECIN).with(secretaire()))
            .andExpect(status().isOk())
@@ -232,7 +232,7 @@ class CabinetWebTest {
            .andExpect(jsonPath("$[0].statut").value("CONFIRME"));
         mvc.perform(get("/api/secretaire/medecins/{medecinId}/rendezvous", autreMedecin).with(secretaire()))
            .andExpect(status().isForbidden())
-           .andExpect(jsonPath("$.erreur").value("Vous n'etes pas rattachee au cabinet de ce medecin."));
+           .andExpect(jsonPath("$.erreur").value("Vous n'êtes pas rattachée au cabinet de ce médecin."));
     }
 
     @Test
@@ -253,14 +253,14 @@ class CabinetWebTest {
     void ouvrir_un_creneau_invalide_repond_400_et_sans_rattachement_403() throws Exception {
         UUID autreMedecin = UUID.randomUUID();
         when(service.ouvrirCreneauPour(eq(SECRETAIRE), eq(MEDECIN), any(), anyInt()))
-                .thenThrow(new CreneauInvalideException("Le debut du creneau doit etre dans le futur."));
+                .thenThrow(new CreneauInvalideException("Le début du créneau doit être dans le futur."));
         when(service.ouvrirCreneauPour(eq(SECRETAIRE), eq(autreMedecin), any(), anyInt()))
-                .thenThrow(new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin."));
+                .thenThrow(new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin."));
 
         mvc.perform(post("/api/secretaire/medecins/{medecinId}/creneaux", MEDECIN).with(secretaire())
                     .contentType(MediaType.APPLICATION_JSON).content("{\"debut\": \"2020-01-01T09:00:00Z\", \"dureeMinutes\": 20}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("Le debut du creneau doit etre dans le futur."));
+           .andExpect(jsonPath("$.erreur").value("Le début du créneau doit être dans le futur."));
         mvc.perform(post("/api/secretaire/medecins/{medecinId}/creneaux", autreMedecin).with(secretaire())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS_CRENEAU))
            .andExpect(status().isForbidden());
@@ -274,7 +274,7 @@ class CabinetWebTest {
         UUID annule = UUID.randomUUID();
         when(service.honorerPour(SECRETAIRE, rdv.id())).thenReturn(rdv);
         when(service.honorerPour(SECRETAIRE, annule))
-                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirme peut etre honore (statut actuel : ANNULE)."));
+                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirmé peut être honoré (statut actuel : Annulé)."));
 
         mvc.perform(post("/api/secretaire/rendezvous/{id}/honorer", rdv.id()).with(secretaire()))
            .andExpect(status().isOk())
@@ -294,9 +294,9 @@ class CabinetWebTest {
         UUID inconnu = UUID.randomUUID();
         when(service.annulerPour(SECRETAIRE, rdv.id())).thenReturn(rdv);
         when(service.annulerPour(SECRETAIRE, dejaAnnule))
-                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : ANNULE)."));
+                .thenThrow(new TransitionInvalideException("Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : Annulé)."));
         when(service.annulerPour(SECRETAIRE, dUnAutreCabinet))
-                .thenThrow(new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin."));
+                .thenThrow(new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin."));
         when(service.annulerPour(SECRETAIRE, inconnu)).thenThrow(new RendezVousIntrouvableException(inconnu));
 
         mvc.perform(post("/api/secretaire/rendezvous/{id}/annuler", rdv.id()).with(secretaire()))
@@ -308,7 +308,7 @@ class CabinetWebTest {
            .andExpect(jsonPath("$.erreur").exists());
         mvc.perform(post("/api/secretaire/rendezvous/{id}/annuler", dUnAutreCabinet).with(secretaire()))
            .andExpect(status().isForbidden())
-           .andExpect(jsonPath("$.erreur").value("Vous n'etes pas rattachee au cabinet de ce medecin."));
+           .andExpect(jsonPath("$.erreur").value("Vous n'êtes pas rattachée au cabinet de ce médecin."));
         mvc.perform(post("/api/secretaire/rendezvous/{id}/annuler", inconnu).with(secretaire()))
            .andExpect(status().isNotFound())
            .andExpect(jsonPath("$.erreur").exists());

@@ -138,9 +138,9 @@ class ListeAttenteServiceTest {
 
         assertThat(notifieur.appels).hasSize(2);
         assertThat(notifieur.pour(PATIENT)).hasSize(1);
-        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Creneau disponible");
+        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Créneau disponible");
         assertThat(notifieur.pour(PATIENT).get(0).message())
-                .isEqualTo("Un creneau vient de se liberer chez votre medecin le 07/12/2026 a 10:00. Reservez vite.");
+                .isEqualTo("Un créneau vient de se libérer chez votre médecin le 07/12/2026 à 10:00. Réservez vite.");
         assertThat(notifieur.pour(autrePatient)).hasSize(1);
         assertThat(notifieur.pour(patientDUnAutreMedecin)).isEmpty();
     }

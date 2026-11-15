@@ -83,15 +83,15 @@ public class DawiniService {
     public ReponsePharmacie repondre(UUID pharmacieId, UUID besoinId, DemandeReponse demande) {
         BesoinMedicament besoin = charger(besoinId);
         if (!besoin.estOuvert()) {
-            throw new TransitionInvalideException("Ce besoin est cloture : il n'accepte plus de reponse.");
+            throw new TransitionInvalideException("Ce besoin est clôturé : il n'accepte plus de réponse.");
         }
         if (reponses.parBesoinEtPharmacie(besoinId, pharmacieId).isPresent()) {
-            throw new TransitionInvalideException("Votre pharmacie a deja repondu a ce besoin.");
+            throw new TransitionInvalideException("Votre pharmacie a déjà répondu à ce besoin.");
         }
         ReponsePharmacie reponse = reponses.enregistrer(
                 ReponsePharmacie.repondre(besoin.id(), pharmacieId, demande, Instant.now()));
-        notifieur.notifier(besoin.patientId(), "Reponse d'une pharmacie",
-                "Une pharmacie a repondu a votre demande de medicament.", "/dawini/" + besoin.id());
+        notifieur.notifier(besoin.patientId(), "Réponse d'une pharmacie",
+                "Une pharmacie a répondu à votre demande de médicament.", "/dawini/" + besoin.id());
         return reponse;
     }
 

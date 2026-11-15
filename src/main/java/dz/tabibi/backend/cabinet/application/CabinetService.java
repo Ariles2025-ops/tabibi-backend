@@ -52,11 +52,11 @@ public class CabinetService {
     public Rattachement rattacher(UUID medecinId, UUID secretaireId) {
         Rattachement rattachement = Rattachement.rattacher(medecinId, secretaireId, Instant.now());
         if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isPresent()) {
-            throw new TransitionInvalideException("Cette secretaire est deja rattachee a votre cabinet.");
+            throw new TransitionInvalideException("Cette secrétaire est déjà rattachée à votre cabinet.");
         }
         Rattachement enregistre = rattachements.enregistrer(rattachement);
-        notifieur.notifier(secretaireId, "Rattachement a un cabinet",
-                "Un medecin vous a rattachee a son cabinet : vous pouvez desormais gerer son agenda.", "/secretaire");
+        notifieur.notifier(secretaireId, "Rattachement à un cabinet",
+                "Un médecin vous a rattachée à son cabinet : vous pouvez désormais gérer son agenda.", "/secretaire");
         return enregistre;
     }
 
@@ -78,8 +78,8 @@ public class CabinetService {
             throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.");
         }
         rattachements.supprimer(rattachement.id());
-        notifieur.notifier(rattachement.secretaireId(), "Rattachement retire",
-                "Un medecin a retire votre rattachement a son cabinet.");
+        notifieur.notifier(rattachement.secretaireId(), "Rattachement retiré",
+                "Un médecin a retiré votre rattachement à son cabinet.");
     }
 
     /** Cabinets auxquels la secretaire est rattachee, les plus anciens rattachements d'abord. */
@@ -93,7 +93,7 @@ public class CabinetService {
      */
     public void verifierAcces(UUID secretaireId, UUID medecinId) {
         if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isEmpty()) {
-            throw new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin.");
+            throw new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin.");
         }
     }
 

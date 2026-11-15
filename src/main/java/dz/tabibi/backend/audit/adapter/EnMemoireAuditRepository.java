@@ -37,7 +37,7 @@ public class EnMemoireAuditRepository implements AuditRepository {
 
     public EnMemoireAuditRepository(int capacite) {
         if (capacite < 1) {
-            throw new IllegalArgumentException("La capacite du journal doit etre d'au moins une entree.");
+            throw new IllegalArgumentException("La capacité du journal doit être d'au moins une entrée.");
         }
         this.capacite = capacite;
     }

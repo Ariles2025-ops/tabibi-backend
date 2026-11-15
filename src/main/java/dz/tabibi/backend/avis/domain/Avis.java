@@ -34,12 +34,12 @@ public record Avis(
     public static Avis deposer(UUID rendezVousId, UUID patientId, UUID medecinId, int note, String commentaire,
                                Instant deposeLe) {
         if (note < NOTE_MIN || note > NOTE_MAX) {
-            throw new AvisInvalideException("La note doit etre comprise entre " + NOTE_MIN + " et " + NOTE_MAX + ".");
+            throw new AvisInvalideException("La note doit être comprise entre " + NOTE_MIN + " et " + NOTE_MAX + ".");
         }
         String texte = (commentaire == null || commentaire.isBlank()) ? null : commentaire.strip();
         if (texte != null && texte.length() > LONGUEUR_MAX_COMMENTAIRE) {
             throw new AvisInvalideException(
-                    "Le commentaire ne peut pas depasser " + LONGUEUR_MAX_COMMENTAIRE + " caracteres.");
+                    "Le commentaire ne peut pas dépasser " + LONGUEUR_MAX_COMMENTAIRE + " caractères.");
         }
         return new Avis(UUID.randomUUID(), rendezVousId, patientId, medecinId, note, texte, StatutAvis.PUBLIE, deposeLe);
     }
@@ -51,7 +51,7 @@ public record Avis(
     public Avis signaler() {
         if (statut != StatutAvis.PUBLIE) {
             throw new TransitionInvalideException(
-                    "Seul un avis publie peut etre signale (statut actuel : " + statut + ").");
+                    "Seul un avis publié peut être signalé (statut actuel : " + statut + ").");
         }
         return avecStatut(StatutAvis.SIGNALE);
     }
@@ -62,7 +62,7 @@ public record Avis(
      */
     public Avis masquer() {
         if (statut == StatutAvis.MASQUE) {
-            throw new TransitionInvalideException("Cet avis est deja masque.");
+            throw new TransitionInvalideException("Cet avis est déjà masqué.");
         }
         return avecStatut(StatutAvis.MASQUE);
     }
@@ -73,7 +73,7 @@ public record Avis(
      */
     public Avis retablir() {
         if (statut == StatutAvis.PUBLIE) {
-            throw new TransitionInvalideException("Cet avis est deja publie.");
+            throw new TransitionInvalideException("Cet avis est déjà publié.");
         }
         return avecStatut(StatutAvis.PUBLIE);
     }

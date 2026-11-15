@@ -33,7 +33,7 @@ public record CandidatureMedecin(
      */
     public static CandidatureMedecin deposer(UUID medecinId, DemandeCandidature demande, Instant deposeeLe) {
         if (medecinId == null) {
-            throw new CandidatureInvalideException("Le medecin est obligatoire.");
+            throw new CandidatureInvalideException("Le médecin est obligatoire.");
         }
         if (demande == null) {
             throw new CandidatureInvalideException("La candidature est vide.");
@@ -42,12 +42,12 @@ public record CandidatureMedecin(
                 UUID.randomUUID(),
                 medecinId,
                 obligatoire(demande.nomComplet(), "Le nom complet est obligatoire."),
-                obligatoire(demande.specialiteSlug(), "La specialite est obligatoire."),
+                obligatoire(demande.specialiteSlug(), "La spécialité est obligatoire."),
                 facultatif(demande.specialiteFr()),
                 obligatoire(demande.wilayaCode(), "La wilaya est obligatoire."),
                 facultatif(demande.wilayaFr()),
                 facultatif(demande.ville()),
-                obligatoire(demande.numeroOrdre(), "Le numero d'inscription a l'ordre est obligatoire."),
+                obligatoire(demande.numeroOrdre(), "Le numéro d'inscription à l'ordre est obligatoire."),
                 facultatif(demande.telephone()),
                 StatutCandidature.EN_ATTENTE,
                 null,
@@ -90,7 +90,7 @@ public record CandidatureMedecin(
     private void exigerEnAttente(String action) {
         if (!estEnAttente()) {
             throw new TransitionInvalideException(
-                    "Seule une candidature en attente peut etre " + action + " (statut actuel : " + statut + ").");
+                    "Seule une candidature en attente peut être " + action + " (statut actuel : " + statut + ").");
         }
     }
 

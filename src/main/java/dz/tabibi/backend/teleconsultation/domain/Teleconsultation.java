@@ -54,7 +54,7 @@ public class Teleconsultation {
     public void consentir(Instant quand) {
         if (statut == StatutTeleconsultation.TERMINEE || statut == StatutTeleconsultation.ANNULEE) {
             throw new TransitionInvalideException(
-                    "Impossible de consentir a une teleconsultation " + statut.name().toLowerCase(Locale.ROOT) + ".");
+                    "Impossible de consentir à une téléconsultation " + statut.name().toLowerCase(Locale.ROOT) + ".");
         }
         if (consentementPatientLe == null) {
             consentementPatientLe = quand;
@@ -68,10 +68,10 @@ public class Teleconsultation {
     public void demarrer(Instant quand) {
         if (statut != StatutTeleconsultation.PLANIFIEE) {
             throw new TransitionInvalideException(
-                    "Seule une teleconsultation planifiee peut etre demarree (statut actuel : " + statut + ").");
+                    "Seule une téléconsultation planifiée peut être démarrée (statut actuel : " + statut + ").");
         }
         if (!patientAConsenti()) {
-            throw new TransitionInvalideException("Le patient n'a pas encore consenti a la teleconsultation.");
+            throw new TransitionInvalideException("Le patient n'a pas encore consenti à la téléconsultation.");
         }
         this.statut = StatutTeleconsultation.EN_COURS;
         this.demarreeLe = quand;
@@ -84,7 +84,7 @@ public class Teleconsultation {
     public void terminer(Instant quand) {
         if (statut != StatutTeleconsultation.EN_COURS) {
             throw new TransitionInvalideException(
-                    "Seule une teleconsultation en cours peut etre terminee (statut actuel : " + statut + ").");
+                    "Seule une téléconsultation en cours peut être terminée (statut actuel : " + statut + ").");
         }
         this.statut = StatutTeleconsultation.TERMINEE;
         this.termineeLe = quand;
@@ -97,7 +97,7 @@ public class Teleconsultation {
     public void annuler() {
         if (statut != StatutTeleconsultation.PLANIFIEE) {
             throw new TransitionInvalideException(
-                    "Seule une teleconsultation planifiee peut etre annulee (statut actuel : " + statut + ").");
+                    "Seule une téléconsultation planifiée peut être annulée (statut actuel : " + statut + ").");
         }
         this.statut = StatutTeleconsultation.ANNULEE;
     }

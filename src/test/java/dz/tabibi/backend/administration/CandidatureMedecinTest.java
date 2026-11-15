@@ -101,10 +101,10 @@ class CandidatureMedecinTest {
 
     @Test
     void refuser_passe_la_candidature_a_refusee_avec_le_motif() {
-        CandidatureMedecin refusee = deposee().refuser("Numero d'ordre invalide.", TRAITEE_LE);
+        CandidatureMedecin refusee = deposee().refuser("Numéro d'ordre invalide.", TRAITEE_LE);
 
         assertThat(refusee.statut()).isEqualTo(StatutCandidature.REFUSEE);
-        assertThat(refusee.motifRefus()).isEqualTo("Numero d'ordre invalide.");
+        assertThat(refusee.motifRefus()).isEqualTo("Numéro d'ordre invalide.");
         assertThat(refusee.traiteeLe()).isEqualTo(TRAITEE_LE);
     }
 

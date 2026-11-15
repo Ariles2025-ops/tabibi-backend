@@ -72,7 +72,7 @@ public record Profil(
         String nom = valeur.strip();
         if (nom.length() < LONGUEUR_MIN_NOM || nom.length() > LONGUEUR_MAX_NOM) {
             throw new ProfilInvalideException("Le nom complet doit compter de " + LONGUEUR_MIN_NOM
-                    + " a " + LONGUEUR_MAX_NOM + " caracteres.");
+                    + " a " + LONGUEUR_MAX_NOM + " caractères.");
         }
         return nom;
     }
@@ -84,7 +84,7 @@ public record Profil(
         String chiffres = valeur.replaceAll("\\s+", "");
         if (!TELEPHONE.matcher(chiffres).matches()) {
             throw new ProfilInvalideException(
-                    "Le telephone doit etre un numero algerien de 9 a 10 chiffres commencant par 0 (ex. 0550123456).");
+                    "Le téléphone doit être un numéro algerien de 9 a 10 chiffres commencant par 0 (ex. 0550123456).");
         }
         return chiffres;
     }
@@ -94,10 +94,10 @@ public record Profil(
             return null;
         }
         if (!valeur.isBefore(aujourdHui)) {
-            throw new ProfilInvalideException("La date de naissance doit etre dans le passe.");
+            throw new ProfilInvalideException("La date de naissance doit être dans le passe.");
         }
         if (valeur.getYear() <= ANNEE_NAISSANCE_MIN) {
-            throw new ProfilInvalideException("La date de naissance doit etre posterieure a " + ANNEE_NAISSANCE_MIN + ".");
+            throw new ProfilInvalideException("La date de naissance doit être posterieure a " + ANNEE_NAISSANCE_MIN + ".");
         }
         return valeur;
     }
@@ -108,7 +108,7 @@ public record Profil(
         }
         String code = valeur.strip();
         if (code.length() > LONGUEUR_MAX_WILAYA) {
-            throw new ProfilInvalideException("Le code de wilaya ne peut pas depasser " + LONGUEUR_MAX_WILAYA + " caracteres.");
+            throw new ProfilInvalideException("Le code de wilaya ne peut pas dépasser " + LONGUEUR_MAX_WILAYA + " caractères.");
         }
         return code;
     }
@@ -119,7 +119,7 @@ public record Profil(
         }
         String langue = valeur.strip().toLowerCase(Locale.ROOT);
         if (!LANGUES.contains(langue)) {
-            throw new ProfilInvalideException("La langue doit etre l'une de : " + String.join(", ", LANGUES) + ".");
+            throw new ProfilInvalideException("La langue doit être l'une de : " + String.join(", ", LANGUES) + ".");
         }
         return langue;
     }

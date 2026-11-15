@@ -32,7 +32,7 @@ public record Message(
         String texte = contenu.strip();
         if (texte.length() > LONGUEUR_MAX) {
             throw new MessageInvalideException(
-                    "Le message ne peut pas depasser " + LONGUEUR_MAX + " caracteres.");
+                    "Le message ne peut pas dépasser " + LONGUEUR_MAX + " caractères.");
         }
         return new Message(UUID.randomUUID(), conversationId, auteurId, texte, quand, null);
     }

@@ -62,7 +62,7 @@ public class RendezVous {
     public void annulerParCabinet() {
         if (statut != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : " + statut + ").");
+                    "Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : " + statut + ").");
         }
         this.statut = StatutRdv.ANNULE;
     }
@@ -74,10 +74,10 @@ public class RendezVous {
     public void honorer() {
         if (statut != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirme peut etre honore (statut actuel : " + statut + ").");
+                    "Seul un rendez-vous confirmé peut être honoré (statut actuel : " + statut + ").");
         }
         if (debut.isAfter(Instant.now())) {
-            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : il ne peut pas etre marque comme honore.");
+            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : il ne peut pas être marque comme honoré.");
         }
         this.statut = StatutRdv.HONORE;
     }

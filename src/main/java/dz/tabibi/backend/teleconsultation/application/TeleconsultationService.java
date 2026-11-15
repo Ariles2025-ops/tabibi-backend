@@ -63,20 +63,20 @@ public class TeleconsultationService {
         }
         if (rdv.statut() != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirme peut donner lieu a une teleconsultation (statut actuel : "
+                    "Seul un rendez-vous confirmé peut donner lieu à une téléconsultation (statut actuel : "
                             + rdv.statut() + ").");
         }
         if (!rdv.debut().isAfter(Instant.now())) {
             throw new TransitionInvalideException("Ce rendez-vous est déjà passé : la téléconsultation ne peut plus être proposée.");
         }
         if (repository.parRendezVous(rendezVousId).isPresent()) {
-            throw new TransitionInvalideException("Une teleconsultation existe deja pour ce rendez-vous.");
+            throw new TransitionInvalideException("Une téléconsultation existe déjà pour ce rendez-vous.");
         }
         Teleconsultation teleconsultation = repository.enregistrer(
                 Teleconsultation.planifier(rendezVousId, rdv.patientId(), medecinId, generateurSalle.generer()));
-        notifieur.notifier(rdv.patientId(), "Teleconsultation proposee",
-                "Votre medecin vous propose une teleconsultation pour votre rendez-vous du "
-                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est necessaire pour y acceder.", "/teleconsultations");
+        notifieur.notifier(rdv.patientId(), "Téléconsultation proposée",
+                "Votre médecin vous propose une téléconsultation pour votre rendez-vous du "
+                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est nécessaire pour y accéder.", "/teleconsultations");
         return teleconsultation;
     }
 
@@ -98,7 +98,7 @@ public class TeleconsultationService {
     public Teleconsultation detail(UUID sujet, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(sujet) && !teleconsultation.estAvec(sujet)) {
-            throw new AccesRefuseException("Cette teleconsultation ne vous concerne pas.");
+            throw new AccesRefuseException("Cette téléconsultation ne vous concerne pas.");
         }
         return teleconsultation;
     }
@@ -112,12 +112,12 @@ public class TeleconsultationService {
     public Teleconsultation consentir(UUID patientId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(patientId)) {
-            throw new AccesRefuseException("Cette teleconsultation ne vous est pas destinee.");
+            throw new AccesRefuseException("Cette téléconsultation ne vous est pas destinee.");
         }
         teleconsultation.consentir(Instant.now());
         Teleconsultation acceptee = repository.enregistrer(teleconsultation);
-        notifieur.notifier(acceptee.medecinId(), "Teleconsultation acceptee",
-                "Le patient a accepte la teleconsultation : vous pourrez la demarrer a l'heure du rendez-vous.", "/medecin/teleconsultations");
+        notifieur.notifier(acceptee.medecinId(), "Téléconsultation acceptée",
+                "Le patient a accepté la téléconsultation : vous pourrez la démarrer à l'heure du rendez-vous.", "/medecin/teleconsultations");
         return acceptee;
     }
 
@@ -131,8 +131,8 @@ public class TeleconsultationService {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
-        notifieur.notifier(demarree.patientId(), "Teleconsultation demarree",
-                "Votre medecin a demarre la teleconsultation : rejoignez la salle depuis votre espace Tabibi.", "/teleconsultations");
+        notifieur.notifier(demarree.patientId(), "Téléconsultation démarrée",
+                "Votre médecin a démarré la téléconsultation : rejoignez la salle depuis votre espace Tabibi.", "/teleconsultations");
         return demarree;
     }
 
@@ -204,7 +204,7 @@ public class TeleconsultationService {
     private Teleconsultation chargerPourLeMedecin(UUID medecinId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.estAvec(medecinId)) {
-            throw new AccesRefuseException("Cette teleconsultation n'est pas dans votre agenda.");
+            throw new AccesRefuseException("Cette téléconsultation n'est pas dans votre agenda.");
         }
         return teleconsultation;
     }

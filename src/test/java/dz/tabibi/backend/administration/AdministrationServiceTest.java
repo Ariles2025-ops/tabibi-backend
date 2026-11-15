@@ -89,7 +89,7 @@ class AdministrationServiceTest {
     @Test
     void permet_de_redeposer_apres_un_refus() {
         CandidatureMedecin premiere = service.deposer(MEDECIN, DEMANDE);
-        service.refuser(premiere.id(), "Numero d'ordre illisible.");
+        service.refuser(premiere.id(), "Numéro d'ordre illisible.");
 
         CandidatureMedecin seconde = service.deposer(MEDECIN, DEMANDE);
 
@@ -118,7 +118,7 @@ class AdministrationServiceTest {
         assertThat(publie).isEqualTo(new Medecin(MEDECIN, "Dr Nadia Bensalem", "cardiologue", "Cardiologue", "16", "Alger", "Hydra"));
         assertThat(medecins.rechercher(CritereRecherche.de("cardiologue", "16", "nadia"))).containsExactly(publie);
         assertThat(notificationsDe(MEDECIN)).hasSize(1);
-        assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature validee");
+        assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature validée");
         assertThat(comptesMedecins).containsExactly(MEDECIN);
     }
 
@@ -150,15 +150,15 @@ class AdministrationServiceTest {
     void refuser_avec_motif_previent_le_medecin_du_motif() {
         CandidatureMedecin c = service.deposer(MEDECIN, DEMANDE);
 
-        CandidatureMedecin refusee = service.refuser(c.id(), "Numero d'ordre illisible.");
+        CandidatureMedecin refusee = service.refuser(c.id(), "Numéro d'ordre illisible.");
 
         assertThat(refusee.statut()).isEqualTo(StatutCandidature.REFUSEE);
-        assertThat(refusee.motifRefus()).isEqualTo("Numero d'ordre illisible.");
+        assertThat(refusee.motifRefus()).isEqualTo("Numéro d'ordre illisible.");
         assertThat(refusee.traiteeLe()).isNotNull();
         assertThat(medecins.parId(MEDECIN)).isEmpty();
         assertThat(notificationsDe(MEDECIN)).hasSize(1);
-        assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature refusee");
-        assertThat(notificationsDe(MEDECIN).get(0).message()).contains("Numero d'ordre illisible.");
+        assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature refusée");
+        assertThat(notificationsDe(MEDECIN).get(0).message()).contains("Numéro d'ordre illisible.");
     }
 
     @Test

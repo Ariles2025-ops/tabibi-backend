@@ -55,10 +55,10 @@ public class AvisService {
         }
         if (rdv.statut() != StatutRdv.HONORE) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous honore peut recevoir un avis (statut actuel : " + rdv.statut() + ").");
+                    "Seul un rendez-vous honoré peut recevoir un avis (statut actuel : " + rdv.statut() + ").");
         }
         if (avis.parRendezVous(rendezVousId).isPresent()) {
-            throw new TransitionInvalideException("Un avis a deja ete depose pour ce rendez-vous.");
+            throw new TransitionInvalideException("Un avis a déjà été déposé pour ce rendez-vous.");
         }
         return avis.enregistrer(Avis.deposer(rendezVousId, patientId, rdv.medecinId(), note, commentaire, Instant.now()));
     }

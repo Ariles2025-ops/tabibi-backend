@@ -106,7 +106,7 @@ class CabinetServiceTest {
         assertThat(service.secretairesDuMedecin(MEDECIN)).containsExactly(r);
         assertThat(service.medecinsDeLaSecretaire(SECRETAIRE)).containsExactly(r);
         assertThat(notifieur.pour(SECRETAIRE)).hasSize(1);
-        assertThat(notifieur.pour(SECRETAIRE).get(0).sujet()).isEqualTo("Rattachement a un cabinet");
+        assertThat(notifieur.pour(SECRETAIRE).get(0).sujet()).isEqualTo("Rattachement à un cabinet");
     }
 
     @Test
@@ -148,7 +148,7 @@ class CabinetServiceTest {
         assertThat(service.secretairesDuMedecin(MEDECIN)).isEmpty();
         assertThat(service.medecinsDeLaSecretaire(SECRETAIRE)).isEmpty();
         assertThat(notifieur.pour(SECRETAIRE)).hasSize(2);
-        assertThat(notifieur.pour(SECRETAIRE).get(1).sujet()).isEqualTo("Rattachement retire");
+        assertThat(notifieur.pour(SECRETAIRE).get(1).sujet()).isEqualTo("Rattachement retiré");
         assertThatThrownBy(() -> service.verifierAcces(SECRETAIRE, MEDECIN)).isInstanceOf(AccesRefuseException.class);
         assertThat(service.rattacher(MEDECIN, SECRETAIRE).secretaireId()).isEqualTo(SECRETAIRE);
     }
@@ -249,7 +249,7 @@ class CabinetServiceTest {
         assertThat(alerte.alertes).hasSize(alertesAvant + 1);
         assertThat(alerte.alertes.get(alertesAvant)).isEqualTo(new FausseAlerteCreneau.Alerte(MEDECIN, rdv.debut()));
         assertThat(notifieur.pour(rdv.patientId())).hasSize(2); // confirmation, puis annulation par le cabinet
-        assertThat(notifieur.pour(rdv.patientId()).get(1).sujet()).isEqualTo("Rendez-vous annule par le cabinet");
+        assertThat(notifieur.pour(rdv.patientId()).get(1).sujet()).isEqualTo("Rendez-vous annulé par le cabinet");
         assertThat(notifieur.pour(rdv.patientId()).get(1).message()).contains("07/12/2026");
         assertThat(notifieur.pour(MEDECIN)).hasSize(1); // seule la reservation : le cabinet n'est pas prevenu de sa propre annulation
     }
