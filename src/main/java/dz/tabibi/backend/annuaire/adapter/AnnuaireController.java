@@ -60,11 +60,17 @@ public class AnnuaireController {
 
     /** Plan de toutes les fiches, page par page (plan du site pour les moteurs de recherche). */
     @GetMapping("/api/medecins/plan")
-    public PagePlan plan(@RequestParam(defaultValue = "0") int page) {
+    public ResponseEntity<PagePlan> plan(@RequestParam(defaultValue = "0") int page,
+                                         jakarta.servlet.http.HttpServletRequest requete) {
+        // Liste complete des fiches : reservee au reseau interne (le serveur du site qui fabrique le plan du site).
+        // Depuis Internet : 404, pour ne pas offrir les 75 000 noms en quelques requetes.
+        if (!dz.tabibi.backend.config.LimiteLectureFiltre.estInterneAdresse(requete.getRemoteAddr())) {
+            return ResponseEntity.notFound().build();
+        }
         int numero = Math.max(0, page);
         List<EntreePlan> entrees = service.page(numero, TAILLE_PLAN).stream()
                 .map(m -> new EntreePlan(m.id(), m.nomComplet())).toList();
-        return new PagePlan(service.nombre(), numero, TAILLE_PLAN, entrees);
+        return ResponseEntity.ok(new PagePlan(service.nombre(), numero, TAILLE_PLAN, entrees));
     }
 
     /** Fiche d'un praticien ; 404 s'il est inconnu. */

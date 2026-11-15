@@ -31,7 +31,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource,
-                                           @Value("${tabibi.limite.actions-par-minute:60}") int actionsParMinute) throws Exception {
+                                           @Value("${tabibi.limite.actions-par-minute:60}") int actionsParMinute,
+                                           @Value("${tabibi.limite.lectures-annuaire-par-minute:60}") int lecturesParMinute) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
@@ -50,7 +51,9 @@ public class SecurityConfig {
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter())))
             // Au plus N actions (ecritures) par minute et par compte, 429 au-dela.
-            .addFilterAfter(new LimiteDebitFiltre(actionsParMinute), BearerTokenAuthenticationFilter.class);
+            .addFilterAfter(new LimiteDebitFiltre(actionsParMinute), BearerTokenAuthenticationFilter.class)
+            // Anti-copie : au plus N lectures de l'annuaire par IP et par minute (reseau interne exempte).
+            .addFilterBefore(new LimiteLectureFiltre(lecturesParMinute), BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
