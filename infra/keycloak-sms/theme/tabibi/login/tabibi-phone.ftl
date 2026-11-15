@@ -2,7 +2,9 @@
 <@layout.registrationLayout displayMessage=true; section>
   <#-- On affiche d'abord le choix (telephone / e-mail). Si une erreur revient ou qu'un numero est deja saisi,
        on ouvre directement l'ecran du numero pour ne pas perdre le contexte. -->
-  <#assign startPhone = (message?? && message.summary?has_content) || ((phone)!'')?has_content>
+  <#-- Seule une erreur/alerte ouvre l'ecran du numero : un message de succes ou d'info (ex. « vous allez recevoir
+       un courriel » apres mot de passe oublie) garde l'ecran de choix, pour revenir naturellement vers l'e-mail. -->
+  <#assign startPhone = (message?? && message.summary?has_content && message.type != 'success' && message.type != 'info') || ((phone)!'')?has_content>
   <#if section = "header">
   <#elseif section = "form">
     <div id="choice-screen"<#if startPhone> hidden</#if>>
