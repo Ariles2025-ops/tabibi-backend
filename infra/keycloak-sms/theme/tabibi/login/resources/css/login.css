@@ -63,7 +63,8 @@ html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app);
 .kc-choicebtn__tx small { font-weight:400; opacity:.85; font-size:.8rem; }
 .kc-choicebtn--ghost { background:var(--n-color-bg-surface); color:var(--n-color-text-brand); border:var(--n-size-border-strong) solid var(--n-color-border-brand); }
 .kc-choicebtn--ghost .kc-choicebtn__tx small { color:var(--n-color-text-muted); opacity:1; }
-.kc-back, a.kc-back { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; min-block-size:36px; padding-inline:14px; margin-block-end:var(--n-space-4, 16px); border-radius:var(--n-radius-full); border:var(--n-size-border) solid var(--n-color-border-strong); background:var(--n-color-bg-surface); color:var(--n-color-text-primary); font:inherit; font-size:var(--n-type-small-size); text-decoration:none; cursor:pointer; }
+.kc-back, a.kc-back { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; min-block-size:34px; padding-inline:12px; margin:0; border-radius:var(--n-radius-full); border:var(--n-size-border) solid var(--n-color-border-strong); background:var(--n-color-bg-surface); color:var(--n-color-text-primary); font:inherit; font-size:var(--n-type-small-size); text-decoration:none; cursor:pointer; }
+#choice-screen:not([hidden]), #phone-screen:not([hidden]) { display:flex; flex-direction:column; gap:var(--n-space-5); }
 .kc-back:hover { border-color:var(--n-color-border-brand); color:var(--n-color-text-brand); }
 
 /* Correctif : titre + sous-texte empiles et alignes a gauche (prime sur le style .n-btn). */
