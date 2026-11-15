@@ -104,9 +104,41 @@ class CabinetServiceTest {
         assertThat(r.creeLe()).isNotNull();
         assertThat(rattachements.parId(r.id())).contains(r);
         assertThat(service.secretairesDuMedecin(MEDECIN)).containsExactly(r);
-        assertThat(service.medecinsDeLaSecretaire(SECRETAIRE)).containsExactly(r);
         assertThat(notifieur.pour(SECRETAIRE)).hasSize(1);
-        assertThat(notifieur.pour(SECRETAIRE).get(0).sujet()).isEqualTo("Rattachement à un cabinet");
+        assertThat(notifieur.pour(SECRETAIRE).get(0).sujet()).isEqualTo("Invitation à rejoindre un cabinet");
+
+        // simple invitation : aucun acces tant qu'elle n'a pas accepte
+        assertThat(r.accepte()).isFalse();
+        assertThat(service.medecinsDeLaSecretaire(SECRETAIRE)).isEmpty();
+        assertThat(service.invitationsDe(SECRETAIRE)).containsExactly(r);
+        assertThatThrownBy(() -> service.verifierAcces(SECRETAIRE, MEDECIN)).isInstanceOf(AccesRefuseException.class);
+
+        // un autre compte ne peut ni accepter ni refuser a sa place
+        assertThatThrownBy(() -> service.accepterInvitation(UUID.randomUUID(), r.id())).isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.refuserInvitation(UUID.randomUUID(), r.id())).isInstanceOf(AccesRefuseException.class);
+
+        Rattachement accepte = service.accepterInvitation(SECRETAIRE, r.id());
+        assertThat(accepte.accepte()).isTrue();
+        assertThat(service.medecinsDeLaSecretaire(SECRETAIRE)).containsExactly(accepte);
+        assertThat(service.invitationsDe(SECRETAIRE)).isEmpty();
+        service.verifierAcces(SECRETAIRE, MEDECIN);
+        assertThat(notifieur.pour(MEDECIN)).extracting("sujet").contains("Invitation acceptée");
+    }
+
+    @Test
+    void l_invitee_peut_refuser_et_le_medecin_est_prevenu() {
+        Rattachement r = service.rattacher(MEDECIN, SECRETAIRE);
+        service.refuserInvitation(SECRETAIRE, r.id());
+
+        assertThat(service.secretairesDuMedecin(MEDECIN)).isEmpty();
+        assertThat(notifieur.pour(MEDECIN)).extracting("sujet").contains("Invitation refusée");
+        assertThatThrownBy(() -> service.verifierAcces(SECRETAIRE, MEDECIN)).isInstanceOf(AccesRefuseException.class);
+    }
+
+    /** Invitation puis acceptation : la secretaire a acces au cabinet. */
+    private Rattachement lier(UUID medecin, UUID secretaire) {
+        Rattachement r = service.rattacher(medecin, secretaire);
+        return service.accepterInvitation(secretaire, r.id());
     }
 
     @Test
@@ -128,9 +160,9 @@ class CabinetServiceTest {
 
     @Test
     void une_secretaire_peut_etre_rattachee_a_plusieurs_cabinets_les_plus_anciens_d_abord() {
-        Rattachement premier = service.rattacher(MEDECIN, SECRETAIRE);
-        Rattachement second = service.rattacher(AUTRE_MEDECIN, SECRETAIRE);
-        Rattachement autre = service.rattacher(MEDECIN, UUID.randomUUID());
+        Rattachement premier = lier(MEDECIN, SECRETAIRE);
+        Rattachement second = lier(AUTRE_MEDECIN, SECRETAIRE);
+        Rattachement autre = lier(MEDECIN, UUID.randomUUID());
 
         assertThat(service.medecinsDeLaSecretaire(SECRETAIRE)).containsExactly(premier, second);
         assertThat(service.secretairesDuMedecin(MEDECIN)).containsExactly(premier, autre);
@@ -140,7 +172,7 @@ class CabinetServiceTest {
 
     @Test
     void retire_une_secretaire_du_cabinet_et_la_previent() {
-        Rattachement r = service.rattacher(MEDECIN, SECRETAIRE);
+        Rattachement r = lier(MEDECIN, SECRETAIRE);
 
         service.retirer(MEDECIN, r.id());
 
@@ -150,12 +182,12 @@ class CabinetServiceTest {
         assertThat(notifieur.pour(SECRETAIRE)).hasSize(2);
         assertThat(notifieur.pour(SECRETAIRE).get(1).sujet()).isEqualTo("Rattachement retiré");
         assertThatThrownBy(() -> service.verifierAcces(SECRETAIRE, MEDECIN)).isInstanceOf(AccesRefuseException.class);
-        assertThat(service.rattacher(MEDECIN, SECRETAIRE).secretaireId()).isEqualTo(SECRETAIRE);
+        assertThat(lier(MEDECIN, SECRETAIRE).secretaireId()).isEqualTo(SECRETAIRE);
     }
 
     @Test
     void retirer_est_refuse_a_un_autre_medecin_et_pour_un_rattachement_inconnu() {
-        Rattachement r = service.rattacher(MEDECIN, SECRETAIRE);
+        Rattachement r = lier(MEDECIN, SECRETAIRE);
 
         assertThatThrownBy(() -> service.retirer(AUTRE_MEDECIN, r.id())).isInstanceOf(AccesRefuseException.class);
         assertThat(rattachements.parId(r.id())).contains(r);
@@ -164,7 +196,7 @@ class CabinetServiceTest {
 
     @Test
     void l_acces_est_refuse_a_une_secretaire_non_rattachee() {
-        service.rattacher(AUTRE_MEDECIN, SECRETAIRE);
+        lier(AUTRE_MEDECIN, SECRETAIRE);
 
         assertThatThrownBy(() -> service.verifierAcces(SECRETAIRE, MEDECIN)).isInstanceOf(AccesRefuseException.class);
         assertThatThrownBy(() -> service.verifierAcces(UUID.randomUUID(), AUTRE_MEDECIN)).isInstanceOf(AccesRefuseException.class);
@@ -175,7 +207,7 @@ class CabinetServiceTest {
     void agenda_pour_une_secretaire_rattachee_et_refuse_sinon() {
         RendezVous rdv = rendezVousChez(MEDECIN);
         rendezVousChez(AUTRE_MEDECIN);
-        service.rattacher(MEDECIN, SECRETAIRE);
+        lier(MEDECIN, SECRETAIRE);
 
         List<RendezVous> agenda = service.agendaPour(SECRETAIRE, MEDECIN);
 
@@ -186,7 +218,7 @@ class CabinetServiceTest {
 
     @Test
     void ouvre_un_creneau_pour_le_medecin_et_alerte_sa_liste_d_attente() {
-        service.rattacher(MEDECIN, SECRETAIRE);
+        lier(MEDECIN, SECRETAIRE);
         Instant debut = Instant.now().plus(2, ChronoUnit.DAYS);
 
         Creneau creneau = service.ouvrirCreneauPour(SECRETAIRE, MEDECIN, debut, 30);
@@ -201,7 +233,7 @@ class CabinetServiceTest {
 
     @Test
     void ouvrir_un_creneau_est_refuse_sans_rattachement_et_pour_un_creneau_invalide() {
-        service.rattacher(MEDECIN, SECRETAIRE);
+        lier(MEDECIN, SECRETAIRE);
         Instant futur = Instant.now().plus(2, ChronoUnit.DAYS);
         int nombreAvant = creneaux.disponiblesPour(AUTRE_MEDECIN).size();
 
@@ -216,7 +248,7 @@ class CabinetServiceTest {
     @Test
     void honore_un_rendezvous_pour_le_medecin_rattache() {
         RendezVous rdv = rdvPasseChez(MEDECIN);
-        service.rattacher(MEDECIN, SECRETAIRE);
+        lier(MEDECIN, SECRETAIRE);
 
         RendezVous honore = service.honorerPour(SECRETAIRE, rdv.id());
 
@@ -228,7 +260,7 @@ class CabinetServiceTest {
     @Test
     void honorer_est_refuse_a_une_secretaire_non_rattachee_au_medecin_du_rendezvous_et_pour_un_inconnu() {
         RendezVous rdv = rendezVousChez(MEDECIN);
-        service.rattacher(AUTRE_MEDECIN, SECRETAIRE);
+        lier(AUTRE_MEDECIN, SECRETAIRE);
 
         assertThatThrownBy(() -> service.honorerPour(SECRETAIRE, rdv.id())).isInstanceOf(AccesRefuseException.class);
         assertThat(rdv.statut()).isEqualTo(StatutRdv.CONFIRME);
@@ -238,7 +270,7 @@ class CabinetServiceTest {
     @Test
     void annule_un_rendezvous_pour_le_cabinet_libere_le_creneau_alerte_la_liste_et_previent_le_patient() {
         RendezVous rdv = rendezVousChez(MEDECIN);
-        service.rattacher(MEDECIN, SECRETAIRE);
+        lier(MEDECIN, SECRETAIRE);
         int alertesAvant = alerte.alertes.size();
 
         RendezVous annule = service.annulerPour(SECRETAIRE, rdv.id());
@@ -251,14 +283,14 @@ class CabinetServiceTest {
         assertThat(notifieur.pour(rdv.patientId())).hasSize(2); // confirmation, puis annulation par le cabinet
         assertThat(notifieur.pour(rdv.patientId()).get(1).sujet()).isEqualTo("Rendez-vous annulé par le cabinet");
         assertThat(notifieur.pour(rdv.patientId()).get(1).message()).contains("07/12/2026");
-        assertThat(notifieur.pour(MEDECIN)).hasSize(1); // seule la reservation : le cabinet n'est pas prevenu de sa propre annulation
+        assertThat(notifieur.pour(MEDECIN)).extracting("sujet").doesNotContain("Rendez-vous annulé"); // le cabinet n est pas prevenu de sa propre annulation
     }
 
     @Test
     void annuler_pour_le_cabinet_est_refuse_sans_rattachement_deux_fois_et_apres_un_rendezvous_honore() {
         RendezVous rdv = rendezVousChez(MEDECIN);
         RendezVous honore = rdvPasseChez(MEDECIN);
-        service.rattacher(MEDECIN, SECRETAIRE);
+        lier(MEDECIN, SECRETAIRE);
         service.honorerPour(SECRETAIRE, honore.id());
 
         assertThatThrownBy(() -> service.annulerPour(UUID.randomUUID(), rdv.id())).isInstanceOf(AccesRefuseException.class);

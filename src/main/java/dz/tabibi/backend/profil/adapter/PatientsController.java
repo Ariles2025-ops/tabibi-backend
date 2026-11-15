@@ -36,7 +36,8 @@ public class PatientsController {
     @GetMapping("/api/secretaire/medecins/{medecinId}/patients")
     @PreAuthorize("hasRole('SECRETAIRE')")
     public List<PatientResume> patientsDuCabinet(@PathVariable UUID medecinId, @AuthenticationPrincipal Jwt jwt) {
-        if (rattachements.parMedecinEtSecretaire(medecinId, UUID.fromString(jwt.getSubject())).isEmpty()) {
+        if (rattachements.parMedecinEtSecretaire(medecinId, UUID.fromString(jwt.getSubject()))
+                .filter(dz.tabibi.backend.cabinet.domain.Rattachement::accepte).isEmpty()) {
             throw new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin.");
         }
         return service.patientsDuMedecin(medecinId);

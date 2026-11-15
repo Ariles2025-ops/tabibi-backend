@@ -46,14 +46,15 @@ public class CabinetController {
 
     /** Vue d'un rattachement telle que renvoyee par l'API (au medecin comme a la secretaire). */
     public record RattachementVue(UUID id, UUID medecinId, UUID secretaireId, Instant creeLe,
-                                  String secretaireNom, String secretaireEmail) {
+                                  String secretaireNom, String secretaireEmail, boolean accepte) {
         static RattachementVue de(Rattachement r) {
-            return new RattachementVue(r.id(), r.medecinId(), r.secretaireId(), r.creeLe(), null, null);
+            return new RattachementVue(r.id(), r.medecinId(), r.secretaireId(), r.creeLe(), null, null, r.accepte());
         }
 
         RattachementVue avec(ComptesUtilisateurs comptes) {
             return comptes.infos(secretaireId)
-                    .map(c -> new RattachementVue(id, medecinId, secretaireId, creeLe, c.nomComplet(), c.email()))
+                    // Le nom n'est montre au medecin qu'une fois l'invitation acceptee (sinon, seulement l'e-mail qu'il a saisi).
+                    .map(c -> new RattachementVue(id, medecinId, secretaireId, creeLe, accepte ? c.nomComplet() : null, c.email(), accepte))
                     .orElse(this);
         }
     }
@@ -70,10 +71,34 @@ public class CabinetController {
         } else if (secretaireId != null && comptes.disponible() && comptes.infos(secretaireId).isEmpty()) {
             throw new CabinetInvalideException("Aucun compte Tabibi ne correspond à cet identifiant.");
         }
+        // Simple invitation : aucun role ni acces tant que la personne n'a pas accepte.
         Rattachement rattachement = service.rattacher(identifiant(jwt), secretaireId);
-        // La secretaire recoit son role : elle accede a l'espace secretaire a sa prochaine connexion.
-        comptes.accorderRole(rattachement.secretaireId(), "SECRETAIRE");
         return ResponseEntity.status(HttpStatus.CREATED).body(RattachementVue.de(rattachement).avec(comptes));
+    }
+
+    /** Vue d'une invitation recue : le medecin qui invite (nom, specialite et ville renseignes par le web via l'annuaire). */
+    public record InvitationVue(UUID id, UUID medecinId, Instant creeLe) {}
+
+    /** Invitations a rejoindre un cabinet, en attente, adressees au compte connecte (quel que soit son role). */
+    @GetMapping("/api/moi/invitations-cabinet")
+    public List<InvitationVue> mesInvitations(@AuthenticationPrincipal Jwt jwt) {
+        return service.invitationsDe(identifiant(jwt)).stream()
+                .map(r -> new InvitationVue(r.id(), r.medecinId(), r.creeLe())).toList();
+    }
+
+    /** Accepter : le rattachement devient actif et le compte recoit le role SECRETAIRE (403 si pas pour lui). */
+    @PostMapping("/api/moi/invitations-cabinet/{id}/accepter")
+    public RattachementVue accepterInvitation(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        Rattachement r = service.accepterInvitation(identifiant(jwt), id);
+        comptes.accorderRole(r.secretaireId(), "SECRETAIRE");
+        return RattachementVue.de(r);
+    }
+
+    /** Refuser : l'invitation disparait, le medecin est prevenu (204). */
+    @PostMapping("/api/moi/invitations-cabinet/{id}/refuser")
+    public ResponseEntity<Void> refuserInvitation(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        service.refuserInvitation(identifiant(jwt), id);
+        return ResponseEntity.noContent().build();
     }
 
     /** Secretaires rattachees au cabinet du medecin connecte, les plus anciens rattachements d'abord. */

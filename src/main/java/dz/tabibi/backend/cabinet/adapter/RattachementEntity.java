@@ -30,6 +30,9 @@ class RattachementEntity {
     @Column(name = "cree_le", nullable = false)
     private Instant creeLe;
 
+    @Column(name = "accepte", nullable = false)
+    private boolean accepte;
+
     protected RattachementEntity() { }
 
     static RattachementEntity de(Rattachement r) {
@@ -38,10 +41,11 @@ class RattachementEntity {
         e.medecinId = r.medecinId();
         e.secretaireId = r.secretaireId();
         e.creeLe = r.creeLe();
+        e.accepte = r.accepte();
         return e;
     }
 
     Rattachement versDomaine() {
-        return new Rattachement(id, medecinId, secretaireId, creeLe);
+        return new Rattachement(id, medecinId, secretaireId, creeLe, accepte);
     }
 }

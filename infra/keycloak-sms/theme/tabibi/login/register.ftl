@@ -4,6 +4,7 @@
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayMessage=messagesPerField.exists('global') displayRequiredFields=true; section>
   <#if section = "header">
+    <a class="kc-back" href="${url.loginUrl}">${msg("auth.choose.back")}</a>
     <div class="kc-heading">
       <h1>${msg("registerTitle")}</h1>
     </div>

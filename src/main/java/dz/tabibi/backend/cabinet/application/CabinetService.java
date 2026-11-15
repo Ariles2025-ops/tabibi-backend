@@ -44,7 +44,8 @@ public class CabinetService {
     }
 
     /**
-     * Rattache une secretaire au cabinet du medecin connecte ; la secretaire est prevenue.
+     * Invite une secretaire au cabinet du medecin connecte ; elle est prevenue et doit accepter
+     * (aucun acces ni role tant qu'elle n'a pas accepte).
      * @throws CabinetInvalideException si la secretaire manque ou si le medecin se designe lui-meme.
      * @throws TransitionInvalideException si elle est deja rattachee a ce cabinet.
      */
@@ -52,12 +53,55 @@ public class CabinetService {
     public Rattachement rattacher(UUID medecinId, UUID secretaireId) {
         Rattachement rattachement = Rattachement.rattacher(medecinId, secretaireId, Instant.now());
         if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isPresent()) {
-            throw new TransitionInvalideException("Cette secrétaire est déjà rattachée à votre cabinet.");
+            throw new TransitionInvalideException("Cette secrétaire est déjà invitée ou rattachée à votre cabinet.");
         }
         Rattachement enregistre = rattachements.enregistrer(rattachement);
-        notifieur.notifier(secretaireId, "Rattachement à un cabinet",
-                "Un médecin vous a rattachée à son cabinet : vous pouvez désormais gérer son agenda.", "/secretaire");
+        notifieur.notifier(secretaireId, "Invitation à rejoindre un cabinet",
+                "Un médecin vous invite à gérer l'agenda de son cabinet. Acceptez ou refusez l'invitation.", "/invitations");
         return enregistre;
+    }
+
+    /** Invitations en attente adressees a ce compte. */
+    public List<Rattachement> invitationsDe(UUID secretaireId) {
+        return rattachements.parSecretaire(secretaireId).stream().filter(r -> !r.accepte()).toList();
+    }
+
+    /**
+     * La personne invitee accepte : le rattachement devient actif (l'appelant lui donne alors le role SECRETAIRE).
+     * @throws RattachementIntrouvableException si l'invitation n'existe pas.
+     * @throws AccesRefuseException si elle est adressee a quelqu'un d'autre.
+     */
+    @Transactional
+    public Rattachement accepterInvitation(UUID secretaireId, UUID rattachementId) {
+        Rattachement r = invitationPour(secretaireId, rattachementId);
+        if (r.accepte()) {
+            return r;
+        }
+        Rattachement accepte = rattachements.enregistrer(r.accepter());
+        notifieur.notifier(r.medecinId(), "Invitation acceptée",
+                "Votre secrétaire a accepté l'invitation : elle peut maintenant gérer votre agenda.", "/medecin/secretaires");
+        return accepte;
+    }
+
+    /** La personne invitee refuse : l'invitation est supprimee et le medecin prevenu. */
+    @Transactional
+    public void refuserInvitation(UUID secretaireId, UUID rattachementId) {
+        Rattachement r = invitationPour(secretaireId, rattachementId);
+        if (r.accepte()) {
+            throw new TransitionInvalideException("Cette invitation a déjà été acceptée.");
+        }
+        rattachements.supprimer(r.id());
+        notifieur.notifier(r.medecinId(), "Invitation refusée",
+                "La personne invitée a refusé de rejoindre votre cabinet.", "/medecin/secretaires");
+    }
+
+    private Rattachement invitationPour(UUID secretaireId, UUID rattachementId) {
+        Rattachement r = rattachements.parId(rattachementId)
+                .orElseThrow(() -> new RattachementIntrouvableException(rattachementId));
+        if (!r.concerneSecretaire(secretaireId)) {
+            throw new AccesRefuseException("Cette invitation ne vous est pas adressée.");
+        }
+        return r;
     }
 
     /** Secretaires rattachees au cabinet du medecin, les plus anciens rattachements d'abord. */
@@ -85,7 +129,7 @@ public class CabinetService {
 
     /** Cabinets auxquels la secretaire est rattachee, les plus anciens rattachements d'abord. */
     public List<Rattachement> medecinsDeLaSecretaire(UUID secretaireId) {
-        return rattachements.parSecretaire(secretaireId);
+        return rattachements.parSecretaire(secretaireId).stream().filter(Rattachement::accepte).toList();
     }
 
     /**
@@ -93,7 +137,7 @@ public class CabinetService {
      * @throws AccesRefuseException si la secretaire n'est pas rattachee a ce medecin.
      */
     public void verifierAcces(UUID secretaireId, UUID medecinId) {
-        if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isEmpty()) {
+        if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).filter(Rattachement::accepte).isEmpty()) {
             throw new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin.");
         }
     }

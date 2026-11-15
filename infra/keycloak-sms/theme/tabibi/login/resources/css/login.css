@@ -71,3 +71,9 @@ html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app);
 .kc-choicebtn.kc-choicebtn { justify-content:flex-start; text-align:start; height:auto; min-block-size:var(--n-size-touch-min); padding-block:12px; }
 .kc-choicebtn .kc-choicebtn__tx { display:flex !important; flex-direction:column; align-items:flex-start; gap:2px; }
 .kc-choicebtn .kc-choicebtn__tx small { display:block; }
+
+/* Boutons-liens pleine largeur : la bordure et le padding restent dans la largeur du formulaire. */
+.kc-card a.n-btn { box-sizing: border-box; inline-size: 100%; }
+/* Liens du formulaire (mot de passe oublie, retour) aux couleurs Tabibi, pas le bleu par defaut. */
+.kc-links a, .kc-muted a { color: var(--n-color-text-brand); font-weight: var(--n-weight-semibold); text-decoration: none; }
+.kc-links a:hover, .kc-muted a:hover { text-decoration: underline; }

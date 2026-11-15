@@ -257,7 +257,15 @@ class ParcoursCompletsTest {
     @Test
     void secretaire_gere_l_agenda_du_medecin() throws Exception {
         UUID medecin = UUID.randomUUID(), secretaire = UUID.randomUUID(), patient = UUID.randomUUID();
-        ok(post("/api/medecin/secretaires"), compte(medecin, "MEDECIN"), "{\"secretaireId\":\"" + secretaire + "\"}");
+        String invitation = lire(ok(post("/api/medecin/secretaires"), compte(medecin, "MEDECIN"), "{\"secretaireId\":\"" + secretaire + "\"}"), "$.id");
+        // invitation non acceptee : aucun acces
+        assertThat((List<?>) lire(ok(get("/api/secretaire/medecins"), compte(secretaire, "SECRETAIRE"), null), "$")).isEmpty();
+        assertThat(statut(get("/api/secretaire/medecins/" + medecin + "/rendezvous"), compte(secretaire, "SECRETAIRE"), null)).isEqualTo(403);
+        // un autre compte ne peut pas l'accepter ; la personne invitee la voit et l'accepte (sans role SECRETAIRE encore)
+        assertThat(statut(post("/api/moi/invitations-cabinet/" + invitation + "/accepter"), compte(UUID.randomUUID(), "PATIENT"), null)).isEqualTo(403);
+        assertThat((List<?>) lire(ok(get("/api/moi/invitations-cabinet"), compte(secretaire, "PATIENT"), null), "$")).hasSize(1);
+        ok(post("/api/moi/invitations-cabinet/" + invitation + "/accepter"), compte(secretaire, "PATIENT"), null);
+        assertThat((List<?>) lire(ok(get("/api/moi/invitations-cabinet"), compte(secretaire, "PATIENT"), null), "$")).isEmpty();
         assertThat((List<?>) lire(ok(get("/api/secretaire/medecins"), compte(secretaire, "SECRETAIRE"), null), "$")).hasSize(1);
 
         String creneau = lire(ok(post("/api/secretaire/medecins/" + medecin + "/creneaux"), compte(secretaire, "SECRETAIRE"),
@@ -329,7 +337,9 @@ class ParcoursCompletsTest {
         // un autre medecin ne voit pas ce patient
         assertThat((List<?>) lire(ok(get("/api/medecin/patients"), compte(UUID.randomUUID(), "MEDECIN"), null), "$")).isEmpty();
         // la secretaire rattachee le voit, pas une autre
-        ok(post("/api/medecin/secretaires"), compte(medecin, "MEDECIN"), "{\"secretaireId\":\"" + secretaire + "\"}");
+        String invitation = lire(ok(post("/api/medecin/secretaires"), compte(medecin, "MEDECIN"), "{\"secretaireId\":\"" + secretaire + "\"}"), "$.id");
+        assertThat(statut(get("/api/secretaire/medecins/" + medecin + "/patients"), compte(secretaire, "SECRETAIRE"), null)).isEqualTo(403);
+        ok(post("/api/moi/invitations-cabinet/" + invitation + "/accepter"), compte(secretaire, "PATIENT"), null);
         assertThat((List<?>) lire(ok(get("/api/secretaire/medecins/" + medecin + "/patients"), compte(secretaire, "SECRETAIRE"), null), "$")).hasSize(1);
         assertThat(statut(get("/api/secretaire/medecins/" + medecin + "/patients"), compte(UUID.randomUUID(), "SECRETAIRE"), null)).isEqualTo(403);
         assertThat((List<?>) lire(ok(get("/api/secretaire/medecins/" + medecin + "/creneaux"), compte(secretaire, "SECRETAIRE"), null), "$")).hasSize(1);

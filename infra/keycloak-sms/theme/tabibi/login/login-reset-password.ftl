@@ -3,6 +3,7 @@
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayInfo=true displayMessage=!messagesPerField.existsError('username'); section>
   <#if section = "header">
+    <a class="kc-back" href="${url.loginUrl}">${msg("auth.choose.back")}</a>
     <div class="kc-heading">
       <h1>${msg("emailForgotTitle")}</h1>
     </div>

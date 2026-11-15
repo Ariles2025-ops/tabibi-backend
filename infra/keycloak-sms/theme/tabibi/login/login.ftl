@@ -2,6 +2,8 @@
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') displayInfo=false; section>
   <#if section = "header">
+    <#-- Retour : redemarre le parcours de connexion (ecran de choix telephone / e-mail). -->
+    <a class="kc-back" href="${url.loginRestartFlowUrl}">${msg("auth.choose.back")}</a>
     <div class="kc-heading">
       <h1>${msg("loginAccountTitle")}</h1>
     </div>
