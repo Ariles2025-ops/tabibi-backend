@@ -50,6 +50,42 @@ public class AdministrationController {
         }
     }
 
+    /** Vue d'administration : la candidature plus de quoi la verifier avant de la valider. */
+    public record CandidatureAdminVue(UUID id, UUID medecinId, String nomComplet, String specialiteSlug, String specialiteFr,
+                                      String wilayaCode, String wilayaFr, String ville, String numeroOrdre, String telephone,
+                                      String statut, String motifRefus, Instant deposeeLe, Instant traiteeLe,
+                                      UUID ficheReclamee, String compteEmail, String ficheReclameeNom,
+                                      long doublonsNumeroOrdre) {
+    }
+
+    private dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes;
+    private dz.tabibi.backend.annuaire.domain.MedecinRepository medecins;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setComptes(dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes) {
+        this.comptes = comptes;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setMedecins(dz.tabibi.backend.annuaire.domain.MedecinRepository medecins) {
+        this.medecins = medecins;
+    }
+
+    private CandidatureAdminVue pourAdmin(CandidatureMedecin c, List<CandidatureMedecin> toutes) {
+        String email = comptes == null ? null
+                : comptes.infos(c.medecinId()).map(dz.tabibi.backend.commun.domain.ComptesUtilisateurs.InfosCompte::email).orElse(null);
+        String fiche = c.ficheReclamee() == null || medecins == null ? null
+                : medecins.parId(c.ficheReclamee()).map(m -> m.nomComplet() + " (" + m.specialiteFr() + ", " + m.wilayaFr() + ")").orElse(null);
+        String numero = c.numeroOrdre() == null ? "" : c.numeroOrdre().trim();
+        long doublons = numero.isEmpty() ? 0 : toutes.stream()
+                .filter(o -> !o.id().equals(c.id()) && o.statut() != StatutCandidature.REFUSEE
+                        && o.numeroOrdre() != null && o.numeroOrdre().trim().equalsIgnoreCase(numero))
+                .count();
+        return new CandidatureAdminVue(c.id(), c.medecinId(), c.nomComplet(), c.specialiteSlug(), c.specialiteFr(),
+                c.wilayaCode(), c.wilayaFr(), c.ville(), c.numeroOrdre(), c.telephone(), c.statut().name(), c.motifRefus(),
+                c.deposeeLe(), c.traiteeLe(), c.ficheReclamee(), email, fiche, doublons);
+    }
+
     /** Indique si la fiche peut encore etre reclamee par son praticien (public : affiche le bouton sur la fiche). */
     public record Reclamable(boolean reclamable) {}
 
@@ -77,8 +113,9 @@ public class AdministrationController {
     /** Candidatures, filtrees par statut si demande, de la plus ancienne a la plus recente. */
     @GetMapping("/api/admin/candidatures")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<CandidatureVue> lister(@RequestParam(required = false) StatutCandidature statut) {
-        return service.lister(Optional.ofNullable(statut)).stream().map(CandidatureVue::de).toList();
+    public List<CandidatureAdminVue> lister(@RequestParam(required = false) StatutCandidature statut) {
+        List<CandidatureMedecin> toutes = service.lister(Optional.empty());
+        return service.lister(Optional.ofNullable(statut)).stream().map(c -> pourAdmin(c, toutes)).toList();
     }
 
     /** Validation : le medecin est publie dans l'annuaire (409 si la candidature n'est pas en attente). */

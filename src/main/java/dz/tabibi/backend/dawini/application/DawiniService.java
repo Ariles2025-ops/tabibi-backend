@@ -128,4 +128,9 @@ public class DawiniService {
         }
         return besoin;
     }
+
+    /** Vrai si cette pharmacie a deja repondu a ce besoin. */
+    public boolean aRepondu(UUID besoinId, UUID pharmacieId) {
+        return reponses.parBesoinEtPharmacie(besoinId, pharmacieId).isPresent();
+    }
 }

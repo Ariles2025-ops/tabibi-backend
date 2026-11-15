@@ -18,16 +18,36 @@ public class AnnuaireController {
 
     private final AnnuaireService service;
 
+    private dz.tabibi.backend.creneaux.application.CreneauService creneaux;
+
+    /** Un medecin de l'annuaire, avec l'indication « reservable en ligne » (il a des creneaux libres a venir). */
+    public record MedecinVue(java.util.UUID id, String nomComplet, String specialiteSlug, String specialiteFr,
+                             String wilayaCode, String wilayaFr, String ville, boolean reservable) {
+        static MedecinVue de(Medecin m, boolean reservable) {
+            return new MedecinVue(m.id(), m.nomComplet(), m.specialiteSlug(), m.specialiteFr(),
+                    m.wilayaCode(), m.wilayaFr(), m.ville(), reservable);
+        }
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setCreneaux(dz.tabibi.backend.creneaux.application.CreneauService creneaux) {
+        this.creneaux = creneaux;
+    }
+
     public AnnuaireController(AnnuaireService service) {
         this.service = service;
     }
 
     @GetMapping("/api/medecins")
-    public List<Medecin> rechercher(
+    public List<MedecinVue> rechercher(
             @RequestParam(required = false) String specialite,
             @RequestParam(required = false) String wilaya,
             @RequestParam(required = false) String q) {
-        return service.rechercher(CritereRecherche.de(specialite, wilaya, q));
+        // Les medecins reservables en ligne passent en tete (ordre d'origine conserve dans chaque groupe).
+        return service.rechercher(CritereRecherche.de(specialite, wilaya, q)).stream()
+                .map(m -> MedecinVue.de(m, creneaux != null && !creneaux.disponiblesPour(m.id()).isEmpty()))
+                .sorted(java.util.Comparator.comparing((MedecinVue v) -> !v.reservable()))
+                .toList();
     }
 
     /** Fiche d'un praticien ; 404 s'il est inconnu. */

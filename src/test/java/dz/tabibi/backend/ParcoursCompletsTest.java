@@ -379,4 +379,34 @@ class ParcoursCompletsTest {
         String notifs = ok(get("/api/notifications/mes"), compte(patient, "PATIENT"), null);
         assertThat((List<?>) lire(notifs, "$[?(@.lien=='/mes-rendez-vous')]")).isNotEmpty();
     }
+
+    @Test
+    void recherche_reservable_en_tete_et_pharmacie_avec_profil() throws Exception {
+        UUID pharmacie = UUID.randomUUID(), patient = UUID.randomUUID();
+        // la recherche publique expose « reservable »
+        String res = ok(get("/api/medecins"), null, null);
+        assertThat(res).contains("\"reservable\"");
+
+        // la pharmacie renseigne son profil puis repond sans retaper son nom
+        ok(put("/api/moi/profil"), compte(pharmacie, "PHARMACIE"),
+                "{\"nomComplet\":\"Pharmacie El Amel\",\"telephone\":\"023000000\",\"wilayaCode\":\"16\",\"langue\":\"fr\"}");
+        String besoin = lire(ok(post("/api/dawini/besoins"), compte(patient, "PATIENT"),
+                "{\"medicament\":\"Doliprane\",\"wilayaCode\":\"16\"}"), "$.id");
+        ok(post("/api/dawini/besoins/" + besoin + "/reponses"), compte(pharmacie, "PHARMACIE"), "{\"disponible\":true,\"prixDa\":200}");
+        assertThat((String) lire(ok(get("/api/dawini/besoins/" + besoin + "/reponses"), compte(patient, "PATIENT"), null), "$[0].nomPharmacie"))
+                .isEqualTo("Pharmacie El Amel");
+        assertThat((List<?>) lire(ok(get("/api/dawini/besoins?wilaya=16"), compte(pharmacie, "PHARMACIE"), null),
+                "$[?(@.id=='" + besoin + "' && @.dejaRepondu==true)]")).hasSize(1);
+    }
+
+    @Test
+    void l_admin_voit_les_doublons_de_numero_d_ordre() throws Exception {
+        UUID a = UUID.randomUUID(), b = UUID.randomUUID(), admin = UUID.randomUUID();
+        String corps = "{\"nomComplet\":\"Dr Test\",\"specialiteSlug\":\"dentiste\",\"specialiteFr\":\"Dentiste\","
+                + "\"wilayaCode\":\"31\",\"wilayaFr\":\"Oran\",\"ville\":\"Oran\",\"numeroOrdre\":\"ORD-777\",\"telephone\":\"0550000000\"}";
+        String ca = lire(ok(post("/api/medecin/candidature"), compte(a, "PATIENT"), corps), "$.id");
+        ok(post("/api/medecin/candidature"), compte(b, "PATIENT"), corps);
+        String liste = ok(get("/api/admin/candidatures"), compte(admin, "ADMIN"), null);
+        assertThat((List<Integer>) lire(liste, "$[?(@.id=='" + ca + "')].doublonsNumeroOrdre")).containsExactly(1);
+    }
 }
