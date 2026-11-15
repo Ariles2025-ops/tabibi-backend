@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-reclamation
+      author: tabibi
+      comment: Une candidature peut reclamer une fiche importee de l'annuaire au lieu d'en creer une.
+      changes:
+        - addColumn:
+            tableName: candidature_medecin
+            columns:
+              - column: { name: fiche_reclamee, type: uuid }

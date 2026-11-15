@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-nom-tri
+      author: tabibi
+      comment: Cle de tri de l'annuaire, sans la ponctuation de tete des noms importes (guillemets, tirets...).
+      changes:
+        - addColumn:
+            tableName: medecin
+            columns:
+              - column: { name: nom_tri, type: varchar(160) }
+        - createIndex:
+            tableName: medecin
+            indexName: idx_medecin_nom_tri
+            columns:
+              - column: { name: nom_tri }
+  - changeSet:
+      id: 018-nom-tri-remplissage
+      author: tabibi
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: update medecin set nom_tri = lower(regexp_replace(nom_complet, '^[^[:alnum:]]+', ''))
+  - changeSet:
+      id: 018-nom-tri-lettres
+      author: tabibi
+      dbms: postgresql
+      comment: La cle commence a la premiere lettre (les numeros de tete ne comptent plus).
+      changes:
+        - sql:
+            sql: update medecin set nom_tri = lower(regexp_replace(nom_complet, '^[^[:alpha:]]+', ''))

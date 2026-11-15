@@ -1,8 +1,6 @@
 package dz.tabibi.backend.dawini;
 
-import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.dawini.adapter.EnMemoireBesoinRepository;
 import dz.tabibi.backend.dawini.adapter.EnMemoireReponseRepository;
@@ -42,13 +40,10 @@ class DawiniServiceTest {
         record Appel(UUID destinataireId, String sujet, String message) {}
 
         final List<Appel> appels = new ArrayList<>();
-        private final Messages messages = Messages.partagees();
 
-        /** Rend les cles avec le vrai catalogue, en francais : les textes verifies ici sont ceux servis. */
         @Override
-        public void notifier(UUID destinataireId, String cleSujet, String cleMessage, Object... params) {
-            appels.add(new Appel(destinataireId,
-                    messages.message(Langue.FR, cleSujet), messages.message(Langue.FR, cleMessage, params)));
+        public void notifier(UUID destinataireId, String sujet, String message) {
+            appels.add(new Appel(destinataireId, sujet, message));
         }
 
         List<Appel> pour(UUID destinataireId) {
@@ -164,8 +159,8 @@ class DawiniServiceTest {
         assertThat(service.reponsesPourPatient(PATIENT, b.id())).containsExactly(r);
         assertThat(service.reponsesPourPharmacie(b.id())).containsExactly(r);
         assertThat(notifieur.appels).hasSize(1);
-        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Reponse d'une pharmacie");
-        assertThat(notifieur.pour(PATIENT).get(0).message()).isEqualTo("Une pharmacie a repondu a votre demande de medicament.");
+        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Réponse d'une pharmacie");
+        assertThat(notifieur.pour(PATIENT).get(0).message()).isEqualTo("Une pharmacie a répondu à votre demande de médicament.");
         assertThat(notifieur.pour(PATIENT).get(0).message()).doesNotContain("El Amel");
     }
 

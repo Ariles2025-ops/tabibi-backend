@@ -1,29 +1,22 @@
 package dz.tabibi.backend.ordonnances;
 
-import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
-import dz.tabibi.backend.annuaire.domain.Medecin;
-import dz.tabibi.backend.annuaire.domain.MedecinRepository;
-import dz.tabibi.backend.commun.CompteursEnregistres;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.ordonnances.adapter.EnMemoireOrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
-import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
-import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
 import dz.tabibi.backend.ordonnances.domain.StatutOrdonnance;
-import dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository;
-import dz.tabibi.backend.profil.domain.DemandeProfil;
-import dz.tabibi.backend.profil.domain.Profil;
-import dz.tabibi.backend.profil.domain.ProfilRepository;
+import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
+import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -42,32 +35,17 @@ class OrdonnanceServiceTest {
             new LigneOrdonnance("Paracetamol 1 g", "1 comprime matin et soir", "5 jours"),
             new LigneOrdonnance("Amoxicilline 500 mg", "1 gelule toutes les 8 heures", "7 jours"));
 
-    /** Faux port de generation : garde ce qu'on lui demande et rend un contenu reconnaissable. */
-    static class FauxGenerateur implements GenerateurPdfOrdonnance {
-        Ordonnance ordonnance;
-        String nomMedecin;
-        String nomPatient;
-        String urlVerification;
-        int appels;
-
-        @Override
-        public byte[] generer(Ordonnance ordonnance, String nomMedecin, String nomPatient, String urlVerification) {
-            this.ordonnance = ordonnance;
-            this.nomMedecin = nomMedecin;
-            this.nomPatient = nomPatient;
-            this.urlVerification = urlVerification;
-            appels++;
-            return ("%PDF-faux " + ordonnance.codeVerification()).getBytes(StandardCharsets.UTF_8);
-        }
-    }
-
     private final OrdonnanceRepository repository = new EnMemoireOrdonnanceRepository();
-    private final FauxGenerateur generateur = new FauxGenerateur();
-    private final ProfilRepository profils = new EnMemoireProfilRepository();
-    private final MedecinRepository medecins = new EnMemoireMedecinRepository();
-    private final CompteursEnregistres compteurs = new CompteursEnregistres();
-    private final OrdonnanceService service =
-            new OrdonnanceService(repository, generateur, profils, medecins, compteurs, "https://tabibi.example/");
+    private final RendezVousRepository rendezVous = new EnMemoireRendezVousRepository();
+    private final OrdonnanceService service = new OrdonnanceService(repository, rendezVous, (destinataire, sujet, message) -> { });
+    /** Rendez-vous qui fait de PATIENT un patient de MEDECIN. */
+    private RendezVous rdvCommun;
+
+    @BeforeEach
+    void patientDuMedecin() {
+        rdvCommun = rendezVous.enregistrer(new RendezVous(
+                UUID.randomUUID(), PATIENT, MEDECIN, Instant.parse("2026-01-10T09:00:00Z"), StatutRdv.HONORE));
+    }
 
     /** Ordonnance emise a une date choisie, enregistree directement (sans passer par le service). */
     private Ordonnance emiseLe(UUID patient, String date, StatutOrdonnance statut, String code) {
@@ -92,11 +70,28 @@ class OrdonnanceServiceTest {
 
     @Test
     void rattache_l_ordonnance_au_rendezvous_indique() {
-        UUID rendezVous = UUID.randomUUID();
+        Ordonnance o = service.emettre(MEDECIN, PATIENT, rdvCommun.id(), LIGNES);
 
-        Ordonnance o = service.emettre(MEDECIN, PATIENT, rendezVous, LIGNES);
+        assertThat(o.rendezVousId()).isEqualTo(rdvCommun.id());
+    }
 
-        assertThat(o.rendezVousId()).isEqualTo(rendezVous);
+    @Test
+    void refuse_une_ordonnance_pour_un_patient_qui_n_est_pas_celui_du_medecin() {
+        UUID inconnu = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.emettre(MEDECIN, inconnu, null, LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.emettre(UUID.randomUUID(), PATIENT, null, LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThat(service.mesOrdonnances(inconnu)).isEmpty();
+    }
+
+    @Test
+    void refuse_un_rendezvous_d_un_autre_medecin_ou_inexistant() {
+        assertThatThrownBy(() -> service.emettre(UUID.randomUUID(), PATIENT, rdvCommun.id(), LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.emettre(MEDECIN, PATIENT, UUID.randomUUID(), LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
     }
 
     @Test
@@ -207,68 +202,5 @@ class OrdonnanceServiceTest {
     void verifier_un_code_inconnu_est_introuvable() {
         assertThatThrownBy(() -> service.verifier("ZZZZZZZZ"))
                 .isInstanceOf(OrdonnanceIntrouvableException.class);
-    }
-
-    @Test
-    void pdf_delegue_au_generateur_avec_les_noms_et_l_url_de_verification() {
-        medecins.enregistrer(new Medecin(MEDECIN, "Dr Amina Belkacem", "cardiologue", "Cardiologue", "16", "Alger", "Alger-Centre"));
-        profils.enregistrer(Profil.renseigner(PATIENT, new DemandeProfil("Nadia Saidi", null, null, "16", "fr"),
-                Instant.parse("2026-03-01T09:00:00Z")));
-        Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES);
-
-        OrdonnanceImprimable imprimable = service.pdf(PATIENT, o.id());
-
-        assertThat(generateur.appels).isEqualTo(1);
-        assertThat(generateur.ordonnance).isEqualTo(o);
-        assertThat(generateur.nomMedecin).isEqualTo("Dr Amina Belkacem");
-        assertThat(generateur.nomPatient).isEqualTo("Nadia Saidi");
-        assertThat(generateur.urlVerification).isEqualTo("https://tabibi.example/verifier?code=" + o.codeVerification());
-        assertThat(imprimable.codeVerification()).isEqualTo(o.codeVerification());
-        assertThat(imprimable.nomFichier()).isEqualTo("ordonnance-" + o.codeVerification() + ".pdf");
-        assertThat(new String(imprimable.contenu(), StandardCharsets.UTF_8)).isEqualTo("%PDF-faux " + o.codeVerification());
-    }
-
-    @Test
-    void pdf_sans_profil_ni_fiche_d_annuaire_utilise_des_noms_generiques() {
-        Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES); // MEDECIN aleatoire : absent de l'annuaire
-
-        service.pdf(MEDECIN, o.id());
-
-        assertThat(generateur.nomMedecin).isEqualTo("Medecin");
-        assertThat(generateur.nomPatient).isEqualTo("Patient");
-    }
-
-    @Test
-    void pdf_est_accessible_au_patient_et_au_medecin_auteur_seulement() {
-        Ordonnance o = service.emettre(MEDECIN, PATIENT, null, LIGNES);
-
-        assertThat(service.pdf(PATIENT, o.id()).contenu()).isNotNull();
-        assertThat(service.pdf(MEDECIN, o.id()).contenu()).isNotNull();
-        assertThatThrownBy(() -> service.pdf(UUID.randomUUID(), o.id()))
-                .isInstanceOf(AccesRefuseException.class);
-        assertThat(generateur.appels).isEqualTo(2); // rien n'est genere pour un tiers
-    }
-
-    @Test
-    void pdf_d_une_ordonnance_inconnue_est_introuvable() {
-        assertThatThrownBy(() -> service.pdf(PATIENT, UUID.randomUUID()))
-                .isInstanceOf(OrdonnanceIntrouvableException.class);
-        assertThat(generateur.appels).isZero();
-    }
-
-    @Test
-    void compte_les_ordonnances_emises_pour_la_supervision() {
-        service.emettre(MEDECIN, PATIENT, null, LIGNES);
-        service.emettre(MEDECIN, PATIENT, null, LIGNES);
-
-        assertThat(compteurs.compte(Compteurs.ORDONNANCES_EMISES)).isEqualTo(2);
-    }
-
-    @Test
-    void ne_compte_pas_une_ordonnance_refusee() {
-        assertThatThrownBy(() -> service.emettre(MEDECIN, PATIENT, null, List.of()))
-                .isInstanceOf(OrdonnanceInvalideException.class);
-
-        assertThat(compteurs.compte(Compteurs.ORDONNANCES_EMISES)).isZero();
     }
 }

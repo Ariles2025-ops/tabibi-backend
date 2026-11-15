@@ -1,11 +1,7 @@
 package dz.tabibi.backend.rendezvous;
 
 import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
-import dz.tabibi.backend.commun.CompteursEnregistres;
-import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Compteurs;
-import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -39,13 +35,10 @@ class RendezVousServiceTest {
         record Appel(UUID destinataireId, String sujet, String message) {}
 
         final List<Appel> appels = new ArrayList<>();
-        private final Messages messages = Messages.partagees();
 
-        /** Rend les cles avec le vrai catalogue, en francais : les textes verifies ici sont ceux servis. */
         @Override
-        public void notifier(UUID destinataireId, String cleSujet, String cleMessage, Object... params) {
-            appels.add(new Appel(destinataireId,
-                    messages.message(Langue.FR, cleSujet), messages.message(Langue.FR, cleMessage, params)));
+        public void notifier(UUID destinataireId, String sujet, String message) {
+            appels.add(new Appel(destinataireId, sujet, message));
         }
 
         List<Appel> pour(UUID destinataireId) {
@@ -67,10 +60,15 @@ class RendezVousServiceTest {
 
     private final CreneauRepository creneaux = new EnMemoireCreneauRepository();
     private final FauxNotifieur notifieur = new FauxNotifieur();
-    private final CompteursEnregistres compteurs = new CompteursEnregistres();
     private final FausseAlerteCreneau alerte = new FausseAlerteCreneau();
-    private final RendezVousService service =
-            new RendezVousService(new EnMemoireRendezVousRepository(), creneaux, notifieur, alerte, compteurs);
+    private final EnMemoireRendezVousRepository depotRdv = new EnMemoireRendezVousRepository();
+    private final RendezVousService service = new RendezVousService(depotRdv, creneaux, notifieur, alerte);
+
+    /** Rendez-vous confirme deja commence (seul un rendez-vous passe peut etre honore). */
+    private RendezVous rdvPasse(UUID medecin) {
+        return depotRdv.enregistrer(new RendezVous(UUID.randomUUID(), UUID.randomUUID(), medecin,
+                Instant.now().minusSeconds(3600), StatutRdv.CONFIRME));
+    }
 
     private Creneau premierCreneauDisponible() {
         return creneaux.disponiblesPour(MEDECIN_DEMO).get(0);
@@ -93,7 +91,7 @@ class RendezVousServiceTest {
         assertThat(rdv.medecinId()).isEqualTo(medecin);
         assertThat(rdv.creneauId()).isNull();
         assertThat(notifieur.pour(patient)).hasSize(1);
-        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirme");
+        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirmé");
         assertThat(notifieur.pour(patient).get(0).message()).contains("04/12/2026");
         assertThat(notifieur.pour(medecin)).hasSize(1);
         assertThat(notifieur.pour(medecin).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
@@ -128,7 +126,7 @@ class RendezVousServiceTest {
         assertThat(creneaux.disponiblesPour(MEDECIN_DEMO)).noneMatch(c -> c.id().equals(creneau.id()));
         assertThat(notifieur.appels).hasSize(2);
         assertThat(notifieur.pour(patient)).hasSize(1);
-        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirme");
+        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirmé");
         assertThat(notifieur.pour(patient).get(0).message()).contains("07/12/2026");
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1);
         assertThat(notifieur.pour(MEDECIN_DEMO).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
@@ -153,8 +151,10 @@ class RendezVousServiceTest {
     @Test
     void liste_les_rendezvous_du_patient_par_date() {
         UUID patient = UUID.randomUUID();
+        // Un rendez-vous a venir par medecin : le patient reserve chez deux praticiens de demonstration.
+        UUID autreMedecin = dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository.MEDECINS_DEMO.get(1).id();
         List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
-        service.reserverCreneau(patient, disponibles.get(1).id());
+        service.reserverCreneau(patient, creneaux.disponiblesPour(autreMedecin).get(1).id());
         service.reserverCreneau(patient, disponibles.get(0).id());
         service.reserverCreneau(UUID.randomUUID(), disponibles.get(2).id());
 
@@ -179,7 +179,7 @@ class RendezVousServiceTest {
         assertThat(creneaux.disponiblesPour(MEDECIN_DEMO)).anyMatch(c -> c.id().equals(creneau.id()));
         assertThat(service.mesRendezVous(patient)).allMatch(r -> r.statut() == StatutRdv.ANNULE);
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(2);
-        assertThat(notifieur.pour(MEDECIN_DEMO).get(1).sujet()).isEqualTo("Rendez-vous annule");
+        assertThat(notifieur.pour(MEDECIN_DEMO).get(1).sujet()).isEqualTo("Rendez-vous annulé");
         assertThat(notifieur.pour(MEDECIN_DEMO).get(1).message()).contains("07/12/2026");
         assertThat(notifieur.pour(patient)).hasSize(1); // seule la confirmation initiale
         assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(MEDECIN_DEMO, creneau.debut()));
@@ -242,7 +242,7 @@ class RendezVousServiceTest {
 
     @Test
     void honore_un_rendezvous_confirme() {
-        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+        RendezVous rdv = rdvPasse(MEDECIN_DEMO);
 
         RendezVous honore = service.honorer(MEDECIN_DEMO, rdv.id());
 
@@ -265,7 +265,7 @@ class RendezVousServiceTest {
 
     @Test
     void refuse_d_honorer_deux_fois() {
-        RendezVous rdv = service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
+        RendezVous rdv = rdvPasse(MEDECIN_DEMO);
         service.honorer(MEDECIN_DEMO, rdv.id());
 
         assertThatThrownBy(() -> service.honorer(MEDECIN_DEMO, rdv.id()))
@@ -308,7 +308,7 @@ class RendezVousServiceTest {
         assertThat(estDisponible(creneau.id())).isTrue();
         assertThat(alerte.alertes).containsExactly(new FausseAlerteCreneau.Alerte(MEDECIN_DEMO, creneau.debut()));
         assertThat(notifieur.pour(patient)).hasSize(2);
-        assertThat(notifieur.pour(patient).get(1).sujet()).isEqualTo("Rendez-vous annule par le cabinet");
+        assertThat(notifieur.pour(patient).get(1).sujet()).isEqualTo("Rendez-vous annulé par le cabinet");
         assertThat(notifieur.pour(patient).get(1).message()).contains("07/12/2026");
         assertThat(notifieur.pour(MEDECIN_DEMO)).hasSize(1); // le cabinet n'est pas prevenu de sa propre annulation
     }
@@ -319,7 +319,7 @@ class RendezVousServiceTest {
         List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
         RendezVous annuleParLePatient = service.reserverCreneau(patient, disponibles.get(0).id());
         service.annuler(patient, annuleParLePatient.id());
-        RendezVous honore = service.reserverCreneau(UUID.randomUUID(), disponibles.get(1).id());
+        RendezVous honore = rdvPasse(MEDECIN_DEMO);
         service.honorer(MEDECIN_DEMO, honore.id());
         RendezVous confirme = service.reserverCreneau(UUID.randomUUID(), disponibles.get(2).id());
         int notificationsAvant = notifieur.appels.size();
@@ -362,30 +362,39 @@ class RendezVousServiceTest {
     }
 
     @Test
-    void compte_les_reservations_et_les_annulations_pour_la_supervision() {
-        UUID patient = UUID.randomUUID();
-        Creneau creneau = premierCreneauDisponible();
-        RendezVous rdv = service.reserverCreneau(patient, creneau.id());
-        service.reserver(patient, UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z"));
+    void refuse_de_reserver_un_creneau_deja_passe() {
+        Creneau passe = creneaux.enregistrer(new Creneau(UUID.randomUUID(), UUID.randomUUID(),
+                Instant.now().minusSeconds(3600), 30, true));
 
-        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_RESERVES)).isEqualTo(2);
-        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_ANNULES)).isZero();
-
-        service.annuler(patient, rdv.id());
-        service.annuler(patient, rdv.id()); // deja annule : rien de neuf a compter
-
-        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_ANNULES)).isEqualTo(1);
+        assertThatThrownBy(() -> service.reserverCreneau(UUID.randomUUID(), passe.id()))
+                .isInstanceOf(CreneauDejaReserveException.class);
+        assertThat(estDisponible(passe.id())).isTrue();
     }
 
     @Test
-    void ne_compte_rien_quand_la_reservation_echoue() {
-        UUID medecin = UUID.randomUUID();
-        Instant debut = Instant.parse("2026-12-04T09:00:00Z");
-        service.reserver(UUID.randomUUID(), medecin, debut);
+    void le_patient_ne_peut_annuler_ni_un_rendezvous_passe_ni_un_rendezvous_honore() {
+        EnMemoireRendezVousRepository rdvs = new EnMemoireRendezVousRepository();
+        RendezVousService avecRdvs = new RendezVousService(rdvs, creneaux, notifieur, alerte);
+        UUID patient = UUID.randomUUID();
+        RendezVous passe = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), patient, UUID.randomUUID(),
+                Instant.now().minusSeconds(7200), StatutRdv.CONFIRME));
+        RendezVous honore = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), patient, UUID.randomUUID(),
+                Instant.now().plusSeconds(7200), StatutRdv.HONORE));
 
-        assertThatThrownBy(() -> service.reserver(UUID.randomUUID(), medecin, debut))
+        assertThatThrownBy(() -> avecRdvs.annuler(patient, passe.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> avecRdvs.annuler(patient, honore.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThat(alerte.alertes).isEmpty();
+    }
+
+    @Test
+    void un_patient_ne_garde_qu_un_rendezvous_a_venir_par_medecin() {
+        UUID patient = UUID.randomUUID();
+        List<Creneau> disponibles = creneaux.disponiblesPour(MEDECIN_DEMO);
+        RendezVous premier = service.reserverCreneau(patient, disponibles.get(0).id());
+
+        assertThatThrownBy(() -> service.reserverCreneau(patient, disponibles.get(1).id()))
                 .isInstanceOf(CreneauDejaReserveException.class);
-
-        assertThat(compteurs.compte(Compteurs.RENDEZVOUS_RESERVES)).isEqualTo(1);
+        service.annuler(patient, premier.id());
+        assertThat(service.reserverCreneau(patient, disponibles.get(1).id()).statut()).isEqualTo(StatutRdv.CONFIRME);
     }
 }

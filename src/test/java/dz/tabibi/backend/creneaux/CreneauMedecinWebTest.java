@@ -78,11 +78,11 @@ class CreneauMedecinWebTest {
     @Test
     void creneau_invalide_repond_400() throws Exception {
         when(service.ouvrir(any(), any(), anyInt()))
-                .thenThrow(new CreneauInvalideException("Le debut du creneau doit etre dans le futur."));
+                .thenThrow(new CreneauInvalideException("Le début du créneau doit être dans le futur."));
 
         mvc.perform(post("/api/medecin/creneaux").with(medecin()).contentType(MediaType.APPLICATION_JSON)
                     .content("{\"debut\": \"2020-01-01T09:00:00Z\", \"dureeMinutes\": 20}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("Le debut du creneau doit etre dans le futur."));
+           .andExpect(jsonPath("$.erreur").value("Le début du créneau doit être dans le futur."));
     }
 }

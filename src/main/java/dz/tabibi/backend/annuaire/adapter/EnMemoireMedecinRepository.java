@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * des candidatures validees par l'administrateur.
  */
 @Repository
-@Profile("!postgres & !supabase")
+@Profile("!postgres")
 public class EnMemoireMedecinRepository implements MedecinRepository {
 
     /**
@@ -28,14 +28,14 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
      */
     public static final List<Medecin> MEDECINS_DEMO = List.of(
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000001"), "Dr Amina Belkacem", "cardiologue", "Cardiologue", "16", "Alger", "Alger-Centre"),
-            new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Dr Karim Haddad", "generaliste", "Medecin generaliste", "16", "Alger", "Bab Ezzouar"),
+            new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Dr Karim Haddad", "generaliste", "Médecin généraliste", "16", "Alger", "Bab Ezzouar"),
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000003"), "Dr Yacine Meziane", "dermatologue", "Dermatologue", "31", "Oran", "Oran"),
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000004"), "Dr Lila Cherif", "pediatre", "Pediatre", "25", "Constantine", "Constantine"),
             new Medecin(UUID.fromString("00000000-0000-0000-0000-000000000005"), "Dr Sofiane Brahimi", "cardiologue", "Cardiologue", "31", "Oran", "Es Senia")
     );
 
     /** Meme ordre que la requete JPQL de l'adaptateur JPA. */
-    private static final Comparator<Medecin> PAR_NOM = Comparator.comparing(Medecin::nomComplet);
+    private static final Comparator<Medecin> PAR_NOM = Comparator.comparing((Medecin m) -> m.cleDeTri().isEmpty()).thenComparing(Medecin::cleDeTri);
 
     private final Map<UUID, Medecin> parId = new ConcurrentHashMap<>();
 
@@ -48,7 +48,8 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
         return parId.values().stream()
                 .filter(m -> c.specialite() == null || m.specialiteSlug().equalsIgnoreCase(c.specialite()))
                 .filter(m -> c.wilaya() == null || m.wilayaCode().equals(c.wilaya()))
-                .filter(m -> c.texte() == null || correspond(m, c.texte()))
+                .filter(m -> c.texte() == null
+                        || m.nomComplet().toLowerCase(Locale.ROOT).contains(c.texte().toLowerCase(Locale.ROOT)))
                 .sorted(PAR_NOM)
                 .toList();
     }
@@ -63,11 +64,20 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
         parId.put(medecin.id(), medecin);
         return medecin;
     }
-/** Recherche libre : le texte correspond au nom, a la specialite, a la ville ou a la wilaya. */
-    private static boolean correspond(Medecin m, String texte) {
-        String t = texte.toLowerCase(Locale.ROOT);
-        return java.util.stream.Stream.of(m.nomComplet(), m.specialiteFr(), m.specialiteSlug(), m.ville(), m.wilayaFr())
-                .filter(java.util.Objects::nonNull)
-                .anyMatch(v -> v.toLowerCase(Locale.ROOT).contains(t));
+
+    @Override
+    public void supprimer(UUID id) {
+        parId.remove(id);
+    }
+
+    @Override
+    public List<Medecin> page(int numero, int taille) {
+        return parId.values().stream().sorted(java.util.Comparator.comparing(Medecin::id))
+                .skip((long) numero * taille).limit(taille).toList();
+    }
+
+    @Override
+    public long nombre() {
+        return parId.size();
     }
 }

@@ -4,15 +4,11 @@ import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 
 import java.time.Instant;
 import java.util.UUID;
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 /**
  * Un rendez-vous entre un patient et un medecin, sur un creneau donne.
  * Le comportement metier (confirmer, annuler, honorer, rappeler) vit dans l'entite.
  */
-// Export RGPD : Jackson serialise les champs de l'entite (ses accesseurs "fluent" id()/statut()
-// ne suivent pas la convention getX et ne sont donc pas detectes comme proprietes).
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class RendezVous {
 
     private final UUID id;
@@ -66,7 +62,7 @@ public class RendezVous {
     public void annulerParCabinet() {
         if (statut != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirme peut etre annule par le cabinet (statut actuel : " + statut + ").");
+                    "Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : " + statut + ").");
         }
         this.statut = StatutRdv.ANNULE;
     }
@@ -78,12 +74,29 @@ public class RendezVous {
     public void honorer() {
         if (statut != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirme peut etre honore (statut actuel : " + statut + ").");
+                    "Seul un rendez-vous confirmé peut être honoré (statut actuel : " + statut + ").");
+        }
+        if (debut.isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : il ne peut pas être marque comme honoré.");
         }
         this.statut = StatutRdv.HONORE;
     }
 
     /** Vrai si le rendez-vous a ete pris par ce patient. */
+    /**
+     * Le patient n'est pas venu : le cabinet le constate une fois l'heure passee.
+     * @throws TransitionInvalideException s'il n'est pas confirme ou n'a pas encore commence.
+     */
+    public void marquerAbsent() {
+        if (statut != StatutRdv.CONFIRME) {
+            throw new TransitionInvalideException("Seul un rendez-vous confirmé peut être marqué « absent ».");
+        }
+        if (debut.isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : le patient ne peut pas être marqué absent.");
+        }
+        this.statut = StatutRdv.ABSENT;
+    }
+
     public boolean appartientA(UUID unPatientId) {
         return patientId.equals(unPatientId);
     }

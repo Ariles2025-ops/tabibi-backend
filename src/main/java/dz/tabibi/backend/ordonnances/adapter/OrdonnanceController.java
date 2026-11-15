@@ -3,13 +3,10 @@ package dz.tabibi.backend.ordonnances.adapter;
 import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
-import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,8 +22,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Point d'entree REST des ordonnances : redaction par le medecin, consultation et version
- * imprimable (PDF) par le patient ou le medecin auteur, verification publique par code. Les erreurs metier
+ * Point d'entree REST des ordonnances : redaction par le medecin, consultation par le
+ * patient ou le medecin auteur, verification publique par code. Les erreurs metier
  * (contenu invalide, introuvable, acces refuse) sont traduites par GestionErreursApi.
  */
 @RestController
@@ -46,17 +43,17 @@ public class OrdonnanceController {
     /** Vue d'une ordonnance telle que renvoyee par l'API (a son patient ou a son medecin). */
     public record OrdonnanceVue(UUID id, UUID medecinId, UUID patientId, UUID rendezVousId,
                                 List<LigneOrdonnance> lignes, Instant emiseLe,
-                                String codeVerification, String statut) {
+                                String codeVerification, String statut, String motifAnnulation, Instant delivreeLe) {
         static OrdonnanceVue de(Ordonnance o) {
             return new OrdonnanceVue(o.id(), o.medecinId(), o.patientId(), o.rendezVousId(),
-                    o.lignes(), o.emiseLe(), o.codeVerification(), o.statut().name());
+                    o.lignes(), o.emiseLe(), o.codeVerification(), o.statut().name(), o.motifAnnulation(), o.delivreeLe());
         }
     }
 
     /** Reponse publique de verification : aucune donnee personnelle. */
-    public record VerificationVue(boolean valide, Instant emiseLe, String statut) {
+    public record VerificationVue(boolean valide, Instant emiseLe, String statut, Instant delivreeLe) {
         static VerificationVue de(ResultatVerification r) {
-            return new VerificationVue(r.valide(), r.emiseLe(), r.statut().name());
+            return new VerificationVue(r.valide(), r.emiseLe(), r.statut().name(), r.delivreeLe());
         }
     }
 
@@ -90,22 +87,24 @@ public class OrdonnanceController {
         return OrdonnanceVue.de(service.parIdPour(identifiant(jwt), id));
     }
 
-    /**
-     * Version imprimable d'une ordonnance (PDF avec QR code de verification), aux memes conditions
-     * que la consultation : son patient ou son medecin auteur (403 sinon, 404 si absente). Le
-     * document s'affiche dans le navigateur (Content-Disposition inline) sous le nom ordonnance-<code>.pdf.
-     */
-    @GetMapping("/api/ordonnances/{id}/pdf")
-    @PreAuthorize("hasAnyRole('PATIENT', 'MEDECIN')")
-    public ResponseEntity<byte[]> pdf(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        OrdonnanceImprimable imprimable = service.pdf(identifiant(jwt), id);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + imprimable.nomFichier() + "\"")
-                .body(imprimable.contenu());
+    /** Verification publique par un pharmacien (sans jeton, voir SecurityConfig) ; 404 si le code est inconnu. */
+    public record DemandeAnnulation(String motif) {}
+
+    /** Le medecin annule une ordonnance qu'il a redigee (409 si deja annulee ou delivree, 403 sinon). */
+    @PostMapping("/api/medecin/ordonnances/{id}/annuler")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public OrdonnanceVue annuler(@PathVariable UUID id, @RequestBody(required = false) DemandeAnnulation demande,
+                                 @AuthenticationPrincipal Jwt jwt) {
+        return OrdonnanceVue.de(service.annuler(identifiant(jwt), id, demande == null ? null : demande.motif()));
     }
 
-    /** Verification publique par un pharmacien (sans jeton, voir SecurityConfig) ; 404 si le code est inconnu. */
+    /** Une pharmacie marque l'ordonnance delivree (409 si deja delivree ou annulee, 404 si code inconnu). */
+    @PostMapping("/api/pharmacie/ordonnances/{code}/delivrer")
+    @PreAuthorize("hasRole('PHARMACIE')")
+    public VerificationVue delivrer(@PathVariable String code) {
+        return VerificationVue.de(service.delivrer(code));
+    }
+
     @GetMapping("/api/ordonnances/verifier/{code}")
     public VerificationVue verifier(@PathVariable String code) {
         return VerificationVue.de(service.verifier(code));

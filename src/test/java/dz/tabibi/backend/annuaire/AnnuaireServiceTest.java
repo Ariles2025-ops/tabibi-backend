@@ -50,4 +50,15 @@ class AnnuaireServiceTest {
     void identifiant_inconnu_retourne_vide() {
         assertThat(service.parId(UUID.randomUUID())).isEmpty();
     }
+
+    @Test
+    void la_ponctuation_en_tete_du_nom_ne_compte_pas_dans_le_tri() {
+        Medecin guillemets = new Medecin(UUID.randomUUID(), "\"Dr Rekrak\"", "dentiste", "Dentiste", "20", "Saida", null);
+        Medecin tiret = new Medecin(UUID.randomUUID(), "- Cabinet Benali", "dentiste", "Dentiste", "20", "Saida", null);
+        assertThat(guillemets.cleDeTri()).isEqualTo("dr rekrak\"");
+        assertThat(tiret.cleDeTri()).isEqualTo("cabinet benali");
+        assertThat(new Medecin(UUID.randomUUID(), "(عيادة) أم", "x", "X", "1", "A", null).cleDeTri()).startsWith("عيادة");
+        assertThat(new Medecin(UUID.randomUUID(), "01 EPSP Mila", "x", "X", "1", "A", null).cleDeTri()).isEqualTo("epsp mila");
+        assertThat(new Medecin(UUID.randomUUID(), "...", "x", "X", "1", "A", null).cleDeTri()).isEmpty();
+    }
 }

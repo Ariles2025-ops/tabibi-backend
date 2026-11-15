@@ -135,12 +135,12 @@ class TeleconsultationWebTest {
     @Test
     void planifier_deux_fois_le_meme_rendezvous_repond_409() throws Exception {
         when(service.planifier(any(), any()))
-                .thenThrow(new TransitionInvalideException("Une teleconsultation existe deja pour ce rendez-vous."));
+                .thenThrow(new TransitionInvalideException("Une téléconsultation existe déjà pour ce rendez-vous."));
 
         mvc.perform(post("/api/medecin/teleconsultations").with(medecin())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Une teleconsultation existe deja pour ce rendez-vous."));
+           .andExpect(jsonPath("$.erreur").value("Une téléconsultation existe déjà pour ce rendez-vous."));
     }
 
     @Test
@@ -198,11 +198,11 @@ class TeleconsultationWebTest {
     @Test
     void detail_d_un_tiers_repond_403() throws Exception {
         when(service.detail(any(), any()))
-                .thenThrow(new AccesRefuseException("Cette teleconsultation ne vous concerne pas."));
+                .thenThrow(new AccesRefuseException("Cette téléconsultation ne vous concerne pas."));
 
         mvc.perform(get("/api/teleconsultations/{id}", UUID.randomUUID()).with(patient()))
            .andExpect(status().isForbidden())
-           .andExpect(jsonPath("$.erreur").value("Cette teleconsultation ne vous concerne pas."));
+           .andExpect(jsonPath("$.erreur").value("Cette téléconsultation ne vous concerne pas."));
     }
 
     @Test
@@ -262,11 +262,11 @@ class TeleconsultationWebTest {
     @Test
     void demarrer_sans_consentement_repond_409() throws Exception {
         when(service.demarrer(eq(MEDECIN), any()))
-                .thenThrow(new TransitionInvalideException("Le patient n'a pas encore consenti a la teleconsultation."));
+                .thenThrow(new TransitionInvalideException("Le patient n'a pas encore consenti à la téléconsultation."));
 
         mvc.perform(post("/api/teleconsultations/{id}/demarrer", UUID.randomUUID()).with(medecin()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Le patient n'a pas encore consenti a la teleconsultation."));
+           .andExpect(jsonPath("$.erreur").value("Le patient n'a pas encore consenti à la téléconsultation."));
     }
 
     @Test

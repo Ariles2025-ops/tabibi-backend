@@ -14,11 +14,12 @@ public interface MedecinRepository {
     /** Publie ou met a jour la fiche d'un praticien (meme identifiant = meme fiche). */
     Medecin enregistrer(Medecin medecin);
 
-    /**
-     * Statistiques publiques de l'annuaire. Par defaut derivees d'une recherche large
-     * (suffit pour la demo en memoire) ; l'adaptateur Supabase les lit dans la base reelle.
-     */
-    default StatsAnnuaire stats() {
-        return new StatsAnnuaire(rechercher(CritereRecherche.de(null, null, null)).size(), 58);
-    }
+    /** Retire une fiche de l'annuaire (fiche importee remplacee par celle du praticien qui l'a reclamee). */
+    void supprimer(UUID id);
+
+    /** Toutes les fiches, page par page, dans un ordre stable (plan du site). */
+    List<Medecin> page(int numero, int taille);
+
+    /** Nombre total de fiches. */
+    long nombre();
 }

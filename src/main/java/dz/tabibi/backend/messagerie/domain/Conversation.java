@@ -38,7 +38,7 @@ public record Conversation(
      */
     public UUID autreParticipant(UUID utilisateurId) {
         if (!participe(utilisateurId)) {
-            throw new IllegalArgumentException("Cet utilisateur ne participe pas a la conversation.");
+            throw new IllegalArgumentException("Cet utilisateur ne participe pas à la conversation.");
         }
         return patientId.equals(utilisateurId) ? medecinId : patientId;
     }

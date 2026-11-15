@@ -39,4 +39,15 @@ public class JpaCreneauRepository implements CreneauRepository {
         jpa.save(CreneauEntity.de(creneau));
         return creneau;
     }
+
+    @Override
+    public List<Creneau> aVenirPour(UUID medecinId, java.time.Instant depuis) {
+        return jpa.findByMedecinIdAndDebutAfterOrderByDebut(medecinId, depuis)
+                .stream().map(CreneauEntity::versDomaine).toList();
+    }
+
+    @Override
+    public void supprimer(UUID id) {
+        jpa.deleteById(id);
+    }
 }

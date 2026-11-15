@@ -1,6 +1,5 @@
 package dz.tabibi.backend.messagerie.domain;
 
-import dz.tabibi.backend.commun.domain.Cles;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -28,13 +27,12 @@ public record Message(
      */
     public static Message envoyer(UUID conversationId, UUID auteurId, String contenu, Instant quand) {
         if (contenu == null || contenu.isBlank()) {
-            throw new MessageInvalideException("Le contenu du message est obligatoire.", Cles.MESSAGE_CONTENU_OBLIGATOIRE);
+            throw new MessageInvalideException("Le contenu du message est obligatoire.");
         }
         String texte = contenu.strip();
         if (texte.length() > LONGUEUR_MAX) {
             throw new MessageInvalideException(
-                    "Le message ne peut pas depasser " + LONGUEUR_MAX + " caracteres.",
-                    Cles.MESSAGE_TROP_LONG, LONGUEUR_MAX);
+                    "Le message ne peut pas dépasser " + LONGUEUR_MAX + " caractères.");
         }
         return new Message(UUID.randomUUID(), conversationId, auteurId, texte, quand, null);
     }

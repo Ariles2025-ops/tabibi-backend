@@ -1,7 +1,8 @@
 package dz.tabibi.backend.annuaire.domain;
 
-import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /** Fiche publique d'un praticien dans l'annuaire. */
 public record Medecin(
@@ -11,25 +12,15 @@ public record Medecin(
         String specialiteFr,
         String wilayaCode,
         String wilayaFr,
-        String ville,
-        Double note,
-        int nombreAvis,
-        List<String> langues,
-        boolean accepteCarte,
-        boolean accepteEspeces,
-        boolean accepteChifa,
-        boolean teleconsultation,
-        boolean verifie,
-        String typeEntite,
-        String bio
+        String ville
 ) {
+    private static final Pattern PONCTUATION_INITIALE = Pattern.compile("^[^\\p{L}]+");
+
     /**
-     * Constructeur historique (7 champs) : les champs enrichis prennent des valeurs par
-     * defaut. Utilise par la demo en memoire et l'adaptateur JPA, inchanges.
+     * Cle de tri : le nom a partir de sa premiere lettre (sans guillemets, tirets, numeros...), en minuscules.
+     * Vide si le nom n'a aucune lettre : ces fiches passent en fin de liste.
      */
-    public Medecin(UUID id, String nomComplet, String specialiteSlug, String specialiteFr,
-                   String wilayaCode, String wilayaFr, String ville) {
-        this(id, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville,
-                null, 0, List.of(), false, true, false, false, false, "doctor", null);
+    public String cleDeTri() {
+        return PONCTUATION_INITIALE.matcher(nomComplet).replaceFirst("").toLowerCase(Locale.ROOT);
     }
 }

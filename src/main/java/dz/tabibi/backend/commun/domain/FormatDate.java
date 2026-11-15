@@ -14,7 +14,7 @@ public final class FormatDate {
     public static final ZoneId FUSEAU = ZoneId.of("Africa/Algiers");
 
     private static final DateTimeFormatter DATE_HEURE =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy 'a' HH:mm").withZone(FUSEAU);
+            DateTimeFormatter.ofPattern("dd/MM/yyyy 'à' HH:mm").withZone(FUSEAU);
 
     private FormatDate() { }
 

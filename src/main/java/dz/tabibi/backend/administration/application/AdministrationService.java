@@ -1,5 +1,6 @@
 package dz.tabibi.backend.administration.application;
 
+import dz.tabibi.backend.administration.domain.AttributionRoleMedecin;
 import dz.tabibi.backend.administration.domain.CandidatureIntrouvableException;
 import dz.tabibi.backend.administration.domain.CandidatureInvalideException;
 import dz.tabibi.backend.administration.domain.CandidatureMedecin;
@@ -9,7 +10,7 @@ import dz.tabibi.backend.administration.domain.StatistiquesAdministration;
 import dz.tabibi.backend.administration.domain.StatutCandidature;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
-import dz.tabibi.backend.commun.domain.Cles;
+import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import org.springframework.stereotype.Service;
@@ -31,11 +32,22 @@ public class AdministrationService {
     private final CandidatureRepository candidatures;
     private final MedecinRepository medecins;
     private final Notifieur notifieur;
+    private final AttributionRoleMedecin roles;
 
-    public AdministrationService(CandidatureRepository candidatures, MedecinRepository medecins, Notifieur notifieur) {
+    public AdministrationService(CandidatureRepository candidatures, MedecinRepository medecins, Notifieur notifieur,
+                                 AttributionRoleMedecin roles) {
         this.candidatures = candidatures;
         this.medecins = medecins;
         this.notifieur = notifieur;
+        this.roles = roles;
+    }
+
+    /** Annuaire des comptes : sert a prevenir les administrateurs d'une nouvelle candidature (P-79). */
+    private ComptesUtilisateurs comptes;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComptes(ComptesUtilisateurs comptes) {
+        this.comptes = comptes;
     }
 
     /**
@@ -49,10 +61,38 @@ public class AdministrationService {
                 .filter(c -> c.statut() != StatutCandidature.REFUSEE)
                 .ifPresent(c -> {
                     throw new TransitionInvalideException(c.estEnAttente()
-                            ? "Une candidature est deja en attente d'examen."
-                            : "Votre candidature a deja ete validee.");
+                            ? "Une candidature est déjà en attente d'examen."
+                            : "Votre candidature a déjà été validée.");
                 });
-        return candidatures.enregistrer(CandidatureMedecin.deposer(medecinId, demande, Instant.now()));
+        if (demande != null && demande.ficheReclamee() != null && !ficheReclamable(demande.ficheReclamee())) {
+            throw new TransitionInvalideException("Cette fiche a déjà été réclamée ou n'existe plus.");
+        }
+        CandidatureMedecin deposee = candidatures.enregistrer(CandidatureMedecin.deposer(medecinId, demande, Instant.now()));
+        prevenirLesAdministrateurs(deposee);
+        return deposee;
+    }
+
+    /** Chaque administrateur recoit une notification (lien vers la liste des candidatures). */
+    private void prevenirLesAdministrateurs(CandidatureMedecin c) {
+        if (comptes == null) {
+            return;
+        }
+        String quoi = c.ficheReclamee() != null ? "Réclamation de fiche" : "Nouvelle candidature médecin";
+        String message = c.nomComplet() + " — " + (c.specialiteFr() != null ? c.specialiteFr() : c.specialiteSlug())
+                + (c.wilayaFr() != null ? ", " + c.wilayaFr() : "") + " : à examiner.";
+        for (UUID admin : comptes.avecRole("ADMIN")) {
+            notifieur.notifier(admin, quoi, message, "/admin/candidatures");
+        }
+    }
+
+    /**
+     * Vrai si la fiche existe et n'appartient encore a aucun compte : une fiche creee ou reclamee
+     * porte l'identifiant du compte du praticien, qui a donc une candidature validee.
+     */
+    public boolean ficheReclamable(UUID ficheId) {
+        return medecins.parId(ficheId).isPresent()
+                && candidatures.derniereDuMedecin(ficheId)
+                        .filter(c -> c.statut() == StatutCandidature.VALIDEE).isEmpty();
     }
 
     /**
@@ -76,10 +116,20 @@ public class AdministrationService {
      */
     @Transactional
     public CandidatureMedecin valider(UUID candidatureId) {
-        CandidatureMedecin validee = candidatures.enregistrer(charger(candidatureId).valider(Instant.now()));
+        CandidatureMedecin candidature = charger(candidatureId);
+        if (candidature.estUneReclamation() && medecins.parId(candidature.ficheReclamee()).isEmpty()) {
+            throw new TransitionInvalideException("Cette fiche a déjà été réclamée ou n'existe plus.");
+        }
+        CandidatureMedecin validee = candidatures.enregistrer(candidature.valider(Instant.now()));
+        if (validee.estUneReclamation()) {
+            // La fiche importee est remplacee par celle du praticien, sous l'identifiant de son compte.
+            medecins.supprimer(validee.ficheReclamee());
+        }
         medecins.enregistrer(fichePublique(validee));
-        notifieur.notifier(validee.medecinId(), Cles.NOTIF_CANDIDATURE_VALIDEE_SUJET,
-                Cles.NOTIF_CANDIDATURE_VALIDEE_MESSAGE);
+        roles.accorder(validee.medecinId());
+        notifieur.notifier(validee.medecinId(), "Candidature validée",
+                "Votre candidature a été validée : vous figurez désormais dans l'annuaire Tabibi. "
+                        + "Reconnectez-vous pour ouvrir votre espace médecin.", "/medecin/agenda");
         return validee;
     }
 
@@ -92,8 +142,8 @@ public class AdministrationService {
     @Transactional
     public CandidatureMedecin refuser(UUID candidatureId, String motif) {
         CandidatureMedecin refusee = candidatures.enregistrer(charger(candidatureId).refuser(motif, Instant.now()));
-        notifieur.notifier(refusee.medecinId(), Cles.NOTIF_CANDIDATURE_REFUSEE_SUJET,
-                Cles.NOTIF_CANDIDATURE_REFUSEE_MESSAGE, refusee.motifRefus());
+        notifieur.notifier(refusee.medecinId(), "Candidature refusée",
+                "Votre candidature a été refusée. Motif : " + refusee.motifRefus(), "/medecin/candidature");
         return refusee;
     }
 

@@ -35,6 +35,13 @@ public class DawiniController {
 
     private final DawiniService service;
 
+    private dz.tabibi.backend.profil.domain.ProfilRepository profils;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setProfils(dz.tabibi.backend.profil.domain.ProfilRepository profils) {
+        this.profils = profils;
+    }
+
     public DawiniController(DawiniService service) {
         this.service = service;
     }
@@ -42,16 +49,16 @@ public class DawiniController {
     /** Vue d'un besoin ; patientId vaut null dans la vue remise aux pharmacies. */
     public record BesoinVue(UUID id, UUID patientId, String medicament, String wilayaCode, String commune,
                             String precision, String statut, Instant publieLe, Instant clotureLe,
-                            long nombreReponses) {
+                            long nombreReponses, boolean dejaRepondu) {
         static BesoinVue pourLePatient(BesoinMedicament b, long nombreReponses) {
             return new BesoinVue(b.id(), b.patientId(), b.medicament(), b.wilayaCode(), b.commune(), b.precision(),
-                    b.statut().name(), b.publieLe(), b.clotureLe(), nombreReponses);
+                    b.statut().name(), b.publieLe(), b.clotureLe(), nombreReponses, false);
         }
 
-        /** Sans l'identifiant du patient : une pharmacie n'a pas a le connaitre. */
-        static BesoinVue pourLaPharmacie(BesoinMedicament b, long nombreReponses) {
+        /** Sans l'identifiant du patient : une pharmacie n'a pas a le connaitre ; dejaRepondu la concerne elle. */
+        static BesoinVue pourLaPharmacie(BesoinMedicament b, long nombreReponses, boolean dejaRepondu) {
             return new BesoinVue(b.id(), null, b.medicament(), b.wilayaCode(), b.commune(), b.precision(),
-                    b.statut().name(), b.publieLe(), b.clotureLe(), nombreReponses);
+                    b.statut().name(), b.publieLe(), b.clotureLe(), nombreReponses, dejaRepondu);
         }
     }
 
@@ -92,9 +99,11 @@ public class DawiniController {
     /** Besoins ouverts d'une wilaya pour une pharmacie, sans identifiant de patient (400 sans wilaya). */
     @GetMapping("/api/dawini/besoins")
     @PreAuthorize("hasRole('PHARMACIE')")
-    public List<BesoinVue> besoinsOuverts(@RequestParam(required = false) String wilaya) {
+    public List<BesoinVue> besoinsOuverts(@RequestParam(required = false) String wilaya,
+                                          @AuthenticationPrincipal Jwt jwt) {
+        UUID pharmacie = identifiant(jwt);
         return service.besoinsOuverts(wilaya).stream()
-                .map(b -> BesoinVue.pourLaPharmacie(b, service.nombreReponses(b.id())))
+                .map(b -> BesoinVue.pourLaPharmacie(b, service.nombreReponses(b.id()), service.aRepondu(b.id(), pharmacie)))
                 .toList();
     }
 
@@ -103,7 +112,15 @@ public class DawiniController {
     @PreAuthorize("hasRole('PHARMACIE')")
     public ResponseEntity<ReponseVue> repondre(@PathVariable UUID id, @RequestBody DemandeReponse demande,
                                                @AuthenticationPrincipal Jwt jwt) {
-        ReponsePharmacie reponse = service.repondre(identifiant(jwt), id, demande);
+        UUID pharmacie = identifiant(jwt);
+        if (profils != null) {
+            // Le nom affiche au patient est TOUJOURS celui du profil de la pharmacie : une pharmacie ne peut pas
+            // repondre sous le nom d'une autre. Sans profil renseigne, la reponse est incomplete (400).
+            String nom = profils.parUtilisateur(pharmacie).map(p -> p.nomComplet())
+                    .filter(n -> n != null && !n.isBlank()).orElse(null);
+            demande = new DemandeReponse(nom, demande.disponible(), demande.prixDa(), demande.commentaire());
+        }
+        ReponsePharmacie reponse = service.repondre(pharmacie, id, demande);
         return ResponseEntity.status(HttpStatus.CREATED).body(ReponseVue.de(reponse));
     }
 

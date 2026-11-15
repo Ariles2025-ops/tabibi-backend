@@ -7,4 +7,6 @@ import java.util.UUID;
 
 interface CreneauJpa extends JpaRepository<CreneauEntity, UUID> {
     List<CreneauEntity> findByMedecinIdAndDisponibleTrueOrderByDebut(UUID medecinId);
+
+    List<CreneauEntity> findByMedecinIdAndDebutAfterOrderByDebut(UUID medecinId, java.time.Instant depuis);
 }

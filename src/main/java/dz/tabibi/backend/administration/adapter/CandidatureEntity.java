@@ -61,6 +61,9 @@ class CandidatureEntity {
     @Column(name = "traitee_le")
     private Instant traiteeLe;
 
+    @Column(name = "fiche_reclamee")
+    private UUID ficheReclamee;
+
     protected CandidatureEntity() { }
 
     static CandidatureEntity de(CandidatureMedecin c) {
@@ -79,11 +82,12 @@ class CandidatureEntity {
         e.motifRefus = c.motifRefus();
         e.deposeeLe = c.deposeeLe();
         e.traiteeLe = c.traiteeLe();
+        e.ficheReclamee = c.ficheReclamee();
         return e;
     }
 
     CandidatureMedecin versDomaine() {
         return new CandidatureMedecin(id, medecinId, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr,
-                ville, numeroOrdre, telephone, statut, motifRefus, deposeeLe, traiteeLe);
+                ville, numeroOrdre, telephone, statut, motifRefus, deposeeLe, traiteeLe, ficheReclamee);
     }
 }

@@ -11,9 +11,8 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 ## Securite
 
 - Chaque requete porte un **JWT** signe par **Keycloak** (realm `tabibi`) ; l'autorisation se fait par
-  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`, `PHARMACIE`) dans `SecurityConfig` (dont les verrous
-  `/api/admin/**` et `/actuator/prometheus` + `/actuator/metrics/**` reserves au role ADMIN ; seule la
-  sante reste publique) puis par `@PreAuthorize` sur chaque endpoint ; `KeycloakRoleConverter`
+  role (`PATIENT`, `MEDECIN`, `SECRETAIRE`, `ADMIN`, `PHARMACIE`) dans `SecurityConfig` (dont le verrou
+  `/api/admin/**` reserve au role ADMIN) puis par `@PreAuthorize` sur chaque endpoint ; `KeycloakRoleConverter`
   traduit tout role du realm en autorite `ROLE_*`.
 - Le sujet du jeton (`sub`) est l'identifiant de l'utilisateur : patient, medecin, secretaire ou pharmacie selon le role.
 - Les erreurs metier sont traduites par `GestionErreursApi` en `{ "erreur": "..." }` :
@@ -22,16 +21,6 @@ cas d'usage, aucune donnee personnelle dans les reponses publiques ni dans les j
 - **Journal des acces** : chaque requete `/api/**` est tracee (qui, quoi, quand, resultat, IP tronquee, duree ;
   jamais le corps ni les parametres) par le filtre `FiltreAudit`, consultable par l'administrateur
   (`GET /api/admin/audit`) ; voir la section « Journal des acces ».
-- **Limitation de debit** : un seau a jetons par adresse IP (`LimiteurDebit`, en memoire, sans dependance) protege
-  les routes publiques et les publications sensibles aux abus, par le filtre `FiltreLimiteDebit` place **avant** la chaine
-  de Spring Security (`LimiteDebitConfig`) : `GET /api/medecins/**` 120 req/min, `GET /api/ordonnances/verifier/**`
-  30 req/min (un code de verification ne se devine pas par force brute), `POST /api/dawini/besoins`,
-  `POST /api/conversations` et `POST /api/avis` 20 req/min chacun. Au-dela : `429 { "erreur": "Trop de requetes,
-  reessayez dans un instant." }` avec l'en-tete `Retry-After` (secondes). Derriere le reverse proxy (profil `postgres`,
-  `server.forward-headers-strategy` actif), l'adresse est le premier element de `X-Forwarded-For` ; en acces direct
-  l'en-tete est ignore (n'importe qui peut l'ecrire). Quotas dans `tabibi.limite-debit.*`, `TABIBI_LIMITE_DEBIT_ACTIF=false`
-  retire le filtre. Les seaux sont propres a chaque instance de l'API (pas de partage entre replicas) et les refus 429
-  ne figurent pas dans le journal des acces (ils sont refuses avant la securite).
 - **CORS** : le front web appelle l'API depuis une autre origine ; seules les origines listees dans
   `tabibi.cors.origines` (`CorsProprietes`, variable `TABIBI_CORS_ORIGINES`) sont acceptees, sur `/api/**`,
   methodes GET/POST/PUT/DELETE/OPTIONS, en-tetes `Authorization` et `Content-Type`, sans cookies
@@ -46,10 +35,8 @@ poste de developpement (`src/main/resources/application.yml`) :
 |---|---|---|
 | `TABIBI_KEYCLOAK_ISSUER` | `http://localhost:8081/realms/tabibi` | emetteur des jetons (realm Keycloak) |
 | `TABIBI_CORS_ORIGINES` | `http://localhost:4200` | origines autorisees a appeler l'API depuis un navigateur, separees par des virgules (ex. `https://tabibi.example,https://www.tabibi.example`) |
-| `TABIBI_WEB_BASE_URL` | `http://localhost:4200` | adresse publique du front web, vers laquelle renvoie le QR code d'une ordonnance imprimee (`/verifier?code=XXXX`) |
 | `TABIBI_TELECONSULTATION_BASE_URL` | `https://meet.jit.si` | instance Jitsi Meet des teleconsultations |
 | `TABIBI_RAPPELS_ACTIFS` | `true` | `false` coupe le planificateur des rappels |
-| `TABIBI_LIMITE_DEBIT_ACTIF` | `true` | `false` retire la limitation de debit par adresse IP (quotas dans `tabibi.limite-debit.*`) |
 | `SPRING_PROFILES_ACTIVE` | (aucun : en memoire) | `postgres` active JPA / Liquibase sur PostgreSQL |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | `jdbc:postgresql://localhost:5432/tabibi` / `tabibi` / `tabibi` | base PostgreSQL (profil `postgres`) |
 | `SERVER_FORWARD_HEADERS_STRATEGY` | `native` (profil `postgres`) | prise en compte des en-tetes `X-Forwarded-*` du reverse proxy ; `none` en acces direct |
@@ -77,8 +64,6 @@ Tout utilisateur authentifie :
 | GET | `/api/notifications/non-lues/nombre` | `{ "nombre": n }` |
 | POST | `/api/notifications/{id}/lue` | marque une notification lue (403 si elle n'est pas a moi, 404 si inconnue) |
 | POST | `/api/notifications/toutes-lues` | `{ "nombre": n }` notifications passees a lues |
-| GET | `/api/moi/donnees` | tout ce que la plateforme detient sur moi, en JSON telecharge (`Content-Disposition: attachment; filename="mes-donnees-tabibi.json"`) |
-| DELETE | `/api/moi/compte` | efface mon compte ; corps `{ "confirmation": "SUPPRIMER" }` obligatoire (400 sinon), renvoie `{ elementsEffaces, elementsConserves }` |
 
 Role PATIENT :
 
@@ -152,7 +137,6 @@ PATIENT ou MEDECIN (regle de proprietaire, 403 sinon) :
 | Methode | Chemin | Description |
 |---|---|---|
 | GET | `/api/ordonnances/{id}` | une ordonnance, pour son patient ou son medecin auteur |
-| GET | `/api/ordonnances/{id}/pdf` | la meme ordonnance imprimable (`application/pdf`, `Content-Disposition: inline; filename="ordonnance-<code>.pdf"`), voir « Ordonnance imprimable » |
 | GET | `/api/teleconsultations/{id}` | une teleconsultation, pour son patient ou son medecin |
 | GET | `/api/conversations` | mes conversations, la plus recente activite d'abord, avec `nonLus` |
 | GET | `/api/conversations/{id}/messages` | messages du plus ancien au plus recent ; les messages recus sont marques lus |
@@ -174,26 +158,6 @@ Role ADMIN (`/api/admin/**` est aussi verrouille par chemin dans `SecurityConfig
 | GET | `/api/admin/audit/sujet/{id}?limite=100` | les acces d'un utilisateur (sujet de son jeton), les plus recents d'abord |
 
 Documentation d'API : `/swagger-ui.html`.
-
-## Ordonnance imprimable
-
-`GET /api/ordonnances/{id}/pdf` remet au patient ou au medecin auteur (memes regles d'acces que la consultation :
-403 pour un tiers, 404 si absente) une page A4 produite en memoire par l'adaptateur `OpenPdfGenerateurOrdonnance`
-(port de domaine `GenerateurPdfOrdonnance`, bibliotheques **OpenPDF** et **ZXing**) : en-tete « Tabibi », nom du
-medecin (annuaire, `MedecinRepository.parId`, « Medecin » a defaut), nom du patient (profil, « Patient » s'il n'est
-pas renseigne), date d'emission a l'heure d'Algerie, tableau des lignes (medicament, posologie, duree), code de
-verification en gros caracteres et **QR code** (140 pt) encodant l'adresse publique de verification
-`tabibi.web.base-url/verifier?code=XXXX`, avec la mention « Verifiez cette ordonnance sur ... ». Un pharmacien
-scanne le code : la page du front interroge `GET /api/ordonnances/verifier/{code}`, qui ne revele aucune donnee
-personnelle. Le document n'est ni stocke ni journalise : il est regenere a chaque demande.
-
-Configuration (`application.yml`) :
-
-```yaml
-tabibi:
-  web:
-    base-url: ${TABIBI_WEB_BASE_URL:http://localhost:4200}   # origine publique du front en production
-```
 
 ## Teleconsultation
 
@@ -228,121 +192,6 @@ tabibi:
     actifs: ${TABIBI_RAPPELS_ACTIFS:true}   # false coupe le planificateur (tests, instances multiples) ; l'appel manuel reste possible
 ```
 
-## Supervision
-
-Ce que l'on surveille, et comment y acceder.
-
-**Points d'entree** (`management.endpoints.web.exposure.include: health,info,metrics,prometheus`) :
-
-| Chemin | Acces | Contenu |
-|---|---|---|
-| `/actuator/health`, `/actuator/health/**` | **public** | vivant / pret (sondes `liveness` et `readiness` sous le profil `postgres`) ; le detail des sondes n'apparait que pour un appelant authentifie (`show-details: when-authorized`) |
-| `/actuator/info` | authentifie | informations de build |
-| `/actuator/metrics`, `/actuator/metrics/**` | **role ADMIN** | catalogue des metriques et valeur de chacune |
-| `/actuator/prometheus` | **role ADMIN** | toutes les metriques au format texte de Prometheus |
-
-Les metriques ne portent aucune donnee personnelle : elles comptent des evenements, elles ne
-racontent pas qui a fait quoi (c'est le role du journal des acces). Elles restent neanmoins
-reservees a l'administrateur : elles decrivent la charge et l'activite de la plateforme.
-Toutes portent l'etiquette `application="tabibi-backend"`.
-
-**Metriques metier** — les cas d'usage comptent par le port de domaine `Compteurs`
-(`commun/domain`), realise par `CompteursMetier` (Micrometer, `commun/adapter`) ; `CompteursNeutres`
-ne compte rien, pour les tests et les cablages a la main.
-
-| Compteur | Incremente par |
-|---|---|
-| `tabibi.rendezvous.reserves` | `RendezVousService.reserver` et `reserverCreneau` |
-| `tabibi.rendezvous.annules` | `RendezVousService.annuler` et `annulerParCabinet` (pas une seconde annulation, sans effet) |
-| `tabibi.ordonnances.emises` | `OrdonnanceService.emettre` |
-| `tabibi.teleconsultations.demarrees` | `TeleconsultationService.demarrer` |
-| `tabibi.avis.deposes` | `AvisService.deposer` |
-| `tabibi.limite.depassements` | `FiltreLimiteDebit`, a chaque 429 |
-
-S'y ajoutent, gratuitement, les metriques de Spring Boot : `http.server.requests` (compte et
-duree par route, methode et statut), `jvm.memory.used`, `jvm.gc.pause`, `process.cpu.usage`,
-`hikaricp.connections.*` sous le profil `postgres`.
-
-**Brancher Prometheus et Grafana plus tard** — rien a changer dans l'application : il suffit de
-donner a Prometheus un jeton de service porteur du role `ADMIN` (client Keycloak dedie, flux
-`client_credentials`) et de le faire collecter `/actuator/prometheus` :
-
-```yaml
-scrape_configs:
-  - job_name: tabibi-backend
-    metrics_path: /actuator/prometheus
-    scrape_interval: 30s
-    authorization:                     # jeton de service Keycloak, role ADMIN
-      type: Bearer
-      credentials_file: /etc/prometheus/tabibi-token
-    static_configs:
-      - targets: ["backend:8080"]
-```
-
-Grafana se branche ensuite sur Prometheus ; un tableau de bord utile part de
-`rate(tabibi_rendezvous_reserves_total[5m])` (Prometheus remplace les points par des tires bas et
-suffixe les compteurs par `_total`), du taux d'erreurs de `http_server_requests_seconds_count` par
-`status`, et de `tabibi_limite_depassements_total` pour reperer un abus.
-
-**Journalisation** — `logback-spring.xml` : le format lisible de Spring Boot en developpement, et
-**une ligne JSON par evenement sous le profil `postgres`** (production), avec l'encodeur integre a
-Logback 1.5 (`ch.qos.logback.classic.encoder.JsonEncoder`, apporte par Spring Boot 3.4 : aucune
-dependance supplementaire), directement exploitable par un collecteur (Loki, Elastic...).
-Le MDC est inclus : `FiltreAudit` y pose un **identifiant de requete** (cle `requeteId`) pour toute
-la duree de l'appel et le renvoie dans l'en-tete `X-Request-Id` ; un identifiant fourni par le
-reverse proxy dans cet en-tete est repris s'il est raisonnable (au plus 64 caracteres, sans espace,
-pour qu'un client ne puisse pas forger une ligne de journal). Toutes les lignes d'une meme requete
-se recollent ainsi, et un utilisateur qui signale une erreur peut citer cet identifiant.
-Le sujet du jeton, lui, n'entre jamais dans le MDC : les journaux applicatifs ne designent pas
-d'utilisateur. Ni corps de requete, ni contenu de message, ni donnee de sante n'y figurent.
-
-## Donnees personnelles
-
-Exigence de la **loi algerienne 18-07** sur la protection des donnees a caractere personnel (et bonne
-pratique RGPD) : l'utilisateur peut recuperer ses donnees et faire effacer son compte, sans passer par
-le support. Module `donneespersonnelles`, deux points d'entree, chacun n'agissant que sur les donnees
-de l'appelant (le sujet de son jeton).
-
-**Export** — `GET /api/moi/donnees` renvoie un seul document JSON telecharge
-(`Content-Disposition: attachment; filename="mes-donnees-tabibi.json"`) qui rassemble **tout** ce que
-la plateforme detient : profil, rendez-vous (comme patient et comme medecin), ordonnances recues et
-redigees, avis deposes, notifications, conversations avec tous leurs messages, besoins Dawini,
-teleconsultations, inscriptions en liste d'attente et candidature de medecin. Les objets du domaine
-sont repris tels quels : c'est justement ce qui est stocke.
-
-**Effacement** — `DELETE /api/moi/compte`, avec le corps `{ "confirmation": "SUPPRIMER" }` (400 sans le
-mot exact : une suppression ne se rattrape pas). C'est une **anonymisation**, pas une suppression totale :
-
-| Efface | Conserve |
-|---|---|
-| le profil (nom, telephone, date de naissance, wilaya, langue) | les rendez-vous : obligation de tracabilite medicale, le medecin doit garder trace de ses consultations |
-| les notifications | les ordonnances et les teleconsultations, pour la meme raison |
-| les inscriptions en liste d'attente (elles n'existent que pour prevenir un compte qui n'existe plus) | les avis, devenus de fait anonymes : l'identifiant reste, mais plus aucun profil ne se trouve derriere |
-| le contenu des messages, remplace par « Message supprime » | les conversations et les messages de l'autre participant, qui a droit a son fil |
-| | les besoins Dawini et la candidature de medecin |
-
-La reponse (200) detaille ce qui s'est passe : `{ "elementsEffaces": { "profil": 1, "notifications": 12,
-"messages": 5, "inscriptionsListeAttente": 2 }, "elementsConserves": { "rendezVous": 3, ... } }`.
-L'operation est **idempotente** (la rejouer ne change plus rien) et elle est tracee dans le journal des
-acces sous le chemin `/api/moi/compte/effacement`, distinct de la trace de la requete elle-meme.
-
-**Le compte d'identite Keycloak n'est pas touche.** Le backend ne supprime rien dans Keycloak : il n'en
-est pas proprietaire, et un backend qui peut effacer des identites est une cible. Apres un effacement,
-l'utilisateur garde donc un compte capable de se connecter, mais sans aucune donnee : l'administrateur
-doit supprimer l'identite cote Keycloak, dans le realm `tabibi` :
-
-```bash
-# console d'administration : Users -> chercher l'utilisateur -> Delete
-# ou en ligne de commande, depuis le conteneur Keycloak :
-kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin
-kcadm.sh get users -r tabibi -q username=<identifiant>   # releve l'id
-kcadm.sh delete users/<id> -r tabibi
-```
-
-L'identifiant a supprimer est exactement le `sujet` renvoye par `GET /api/moi` (et present dans le
-journal des acces de l'effacement). Tant que Keycloak n'a pas ete purge, desactiver l'utilisateur
-(`Enabled = Off`) empeche deja toute connexion.
-
 ## Journal des acces
 
 Exigence de sante : savoir qui a accede a quoi. Le filtre servlet `FiltreAudit` (module `audit`,
@@ -356,8 +205,6 @@ pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete
   octet, `192.168.1.37` devient `192.168.1.0` ; IPv6 aux 64 premiers bits) ; le chemin est coupe a 512 caracteres.
 - **Jamais bloquant** : si le journal est indisponible, l'entree est perdue et un avertissement est
   journalise, la requete aboutit normalement.
-- **Identifiant de requete** : le meme filtre pose un `requeteId` dans le MDC pour la duree de l'appel et
-  le renvoie dans l'en-tete `X-Request-Id` (voir la section « Supervision ») ; il ne designe aucun utilisateur.
 - **Perimetre** : le filtre tourne apres la securite ; les requetes refusees par Spring Security
   lui-meme (401 sans jeton ou jeton invalide, 403 du verrou `/api/admin/**`) ne sont pas des acces et
   n'y figurent pas ; un refus de `@PreAuthorize` est trace avec le statut 403, une erreur imprevue avec 500.
@@ -367,40 +214,6 @@ pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete
 - **Derriere un reverse proxy**, l'adresse vue par le serveur est celle du proxy : le profil `postgres`
   active la prise en compte des en-tetes `X-Forwarded-*` (`server.forward-headers-strategy=native`, en
   provenance des proxys internes seulement ; `SERVER_FORWARD_HEADERS_STRATEGY=none` en acces direct).
-
-## Langues
-
-Le web et le mobile passent leur interface en francais, arabe ou anglais, mais les textes qui
-viennent du backend (messages d'erreur `{ "erreur": "..." }` et notifications) sont traduits ici.
-
-- **Catalogue** : `src/main/resources/messages/{fr,ar,en}.properties`, lus en UTF-8 au demarrage par
-  `commun/adapter/Messages` (@Component). Les trois fichiers portent exactement les memes cles, et
-  toutes les cles nommees dans `commun/domain/Cles` y figurent : `MessagesTest` le verifie. Les
-  reperes `{0}`, `{1}`... sont remplaces par les parametres, dans l'ordre (substitution simple, pas
-  `MessageFormat` : les apostrophes du francais n'ont rien a echapper).
-- **Langue d'une reponse** : l'en-tete HTTP `Accept-Language`, lu avec tolerance par
-  `commun/domain/Langue.depuisEntete` (qualites `q`, sous-etiquettes de region, langues inconnues
-  ignorees) et pose pour la duree de la requete par le filtre `FiltreLangue` (`LangueConfig`, en tete
-  de la chaine servlet) dans `ContexteLangue`. Tout ce qui n'est ni `fr`, ni `ar`, ni `en` (le kabyle
-  de l'interface par exemple) retombe sur le **francais**.
-- **Erreurs** : chaque exception metier derive de `commun/domain/ErreurMetier` et peut porter, en plus
-  de son message francais, une **cle de traduction** facultative et ses parametres
-  (`new AccesRefuseException("Ce rendez-vous ne vous appartient pas.", Cles.RENDEZVOUS_AUTRE_PATIENT)`).
-  `GestionErreursApi` traduit quand la cle est presente, sinon il renvoie le message brut : les
-  erreurs non encore traduites continuent de fonctionner. `GestionErreursApiTest` verifie que le
-  rendu francais est toujours exactement le message brut, pour que les deux ne divergent pas.
-- **Notifications** : le port `Notifieur` prend deux cles (sujet, message) et des parametres ; le texte
-  est rendu dans la langue du **profil du destinataire** (champ `langue`, francais par defaut), lue par
-  le port `LanguePreferee` du module `notifications`, realise par `profil/adapter/LanguePrefereeDuProfil`
-  (le port evite que les notifications dependent du profil). Chacun lit donc ses notifications dans sa
-  langue, quelle que soit celle de l'utilisateur dont l'action a declenche l'envoi.
-- **Limitation de debit** : le corps du 429 est traduit lui aussi (`erreur.limite.debit`).
-- **Non traduit** : les dates restent au format algerien `jj/mm/aaaa a hh:mm` (`FormatDate`) dans
-  toutes les langues, et les donnees saisies par les utilisateurs (commentaires d'avis, motifs de
-  refus, contenus de messages) sont evidemment rendues telles quelles.
-
-Ajouter une langue : un fichier `messages/<code>.properties` complet, une valeur dans l'enum `Langue`,
-et la langue devient disponible pour `Accept-Language` comme pour les profils.
 
 ## Notifications
 
@@ -416,9 +229,7 @@ cabinet ») ; au rattachement d'une secretaire et a son retrait, la secretaire ;
 patient (« Rappel de rendez-vous », une seule fois). Aujourd'hui l'adaptateur
 `NotifieurInterne` depose une notification dans la boite de reception de l'application (canal
 `INTERNE`) ; un adaptateur SMS ou e-mail (Brevo, fournisseur SMS) pourra s'y brancher sans toucher
-au domaine. Les sujets et messages cites ici sont les textes **francais** : ce sont des cles du
-catalogue (voir « Langues »), rendues dans la langue du profil du destinataire. Les messages ne sont
-jamais journalises (seule la cle du sujet l'est).
+au domaine. Les messages ne sont jamais journalises.
 
 ## Persistance
 
@@ -568,25 +379,9 @@ Le realm `tabibi` (`infra/keycloak/tabibi-realm.json`, verifie par `RealmKeycloa
 ## Tester
 
 ```bash
-mvn test                      # tests unitaires, web et scenario de bout en bout (aucun service externe requis)
+mvn test                      # tests unitaires + web (aucun service externe requis)
 mvn verify -Dit.docker=true   # + test d'integration PostgreSQL (Testcontainers, Docker requis)
-mvn test -Dtest=ScenarioApiTest   # le scenario seul
 ```
-
-Trois niveaux :
-
-- **unitaires** : domaine et cas d'usage sur les adaptateurs en memoire ou de faux ports (`*ServiceTest`, `*Test`) ;
-- **web** (`@WebMvcTest` + `@Import(SecurityConfig.class)`, service simule) : securite par role, codes HTTP, format des
-  reponses et des erreurs, sans filtre d'audit ni de limitation de debit ;
-- **scenario de bout en bout** (`ScenarioApiTest`, `@SpringBootTest` sur un port libre, `TestRestTemplate`) : l'application
-  complete demarre **sans base ni Keycloak** (profil par defaut, planificateur des rappels, filtres d'audit et de limitation
-  de debit, PDF reel) ; seul `JwtDecoder` est simule et traduit les jetons `patient`, `medecin` et `admin` en `Jwt` construits
-  a la main (sujet + `realm_access.roles`), tout autre jeton est refuse (401). Parcours : le medecin ouvre un creneau, le
-  patient le reserve (409 s'il le reserve deux fois), les deux sont prevenus, le medecin honore, le patient depose un avis
-  (un seul), la synthese publique montre un avis anonymise, le medecin redige une ordonnance, la verification publique du
-  code repond 200 sans donnee personnelle, le PDF est remis au patient et au medecin (401 sans jeton, 403 pour un tiers),
-  le journal des acces de l'administrateur a tout trace sans contenu ; une rafale sur `POST /api/conversations` finit en
-  429 avec `Retry-After`.
 
 ## Structure (hexagonale)
 
@@ -599,21 +394,20 @@ Trois niveaux :
 annuaire/        praticiens, recherche publique
 creneaux/        disponibilites et ouverture de creneaux
 rendezvous/      reservation, annulation, agenda, rendez-vous honores
-ordonnances/     redaction, consultation, verification publique par code, version imprimable (port GenerateurPdfOrdonnance, adaptateur OpenPDF + ZXing)
-notifications/   boite de reception, port Notifieur (a cles traduites) et notifieur interne, port LanguePreferee
+ordonnances/     redaction, consultation, verification publique par code
+notifications/   boite de reception, port Notifieur et notifieur interne
 teleconsultation/ sessions video Jitsi Meet avec consentement du patient
 administration/  candidatures des medecins, validation par l'administrateur, statistiques
 messagerie/      conversations patient-medecin (apres un rendez-vous) et messages
 avis/            avis verifies des patients (rendez-vous honore), synthese publique, moderation
 dawini/          besoins de medicaments des patients et reponses des pharmacies (role PHARMACIE)
-profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue), realisation du port LanguePreferee
+profil/          profil de l'utilisateur connecte (nom, telephone, date de naissance, wilaya, langue)
 listeattente/    liste d'attente par medecin, port AlerteCreneau alerte des inscrits quand un creneau se libere
 cabinet/         secretaires rattachees a un medecin : agenda, creneaux, rendez-vous honores ou annules pour lui
 rappels/         rappel de rendez-vous 24 h avant (RappelService a horloge injectee, planificateur horaire, declenchement admin)
-donneespersonnelles/ export de tout ce que la plateforme detient sur l'utilisateur et effacement de son compte (anonymisation)
 audit/           journal des acces : EntreeAudit, AdresseIp (troncature), port AuditRepository, FiltreAudit (servlet, apres la securite), AuditConfig, consultation ADMIN
 identite/        MoiController
-commun/          erreurs API (GestionErreursApi), exceptions partagees (ErreurMetier), format de date, langues (Langue, Cles, Messages, ContexteLangue, FiltreLangue, LangueConfig), limitation de debit (LimiteurDebit, FiltreLimiteDebit, LimiteDebitConfig), supervision (port Compteurs, CompteursMetier)
+commun/          erreurs API (GestionErreursApi), exceptions partagees, format de date
 config/          securite (JWT + roles Keycloak, CORS : CorsProprietes), horloge (Clock) et planification (@EnableScheduling)
 ```
 

@@ -5,7 +5,6 @@ import dz.tabibi.backend.cabinet.domain.Rattachement;
 import dz.tabibi.backend.cabinet.domain.RattachementIntrouvableException;
 import dz.tabibi.backend.cabinet.domain.RattachementRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.application.CreneauService;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -45,7 +44,8 @@ public class CabinetService {
     }
 
     /**
-     * Rattache une secretaire au cabinet du medecin connecte ; la secretaire est prevenue.
+     * Invite une secretaire au cabinet du medecin connecte ; elle est prevenue et doit accepter
+     * (aucun acces ni role tant qu'elle n'a pas accepte).
      * @throws CabinetInvalideException si la secretaire manque ou si le medecin se designe lui-meme.
      * @throws TransitionInvalideException si elle est deja rattachee a ce cabinet.
      */
@@ -53,12 +53,55 @@ public class CabinetService {
     public Rattachement rattacher(UUID medecinId, UUID secretaireId) {
         Rattachement rattachement = Rattachement.rattacher(medecinId, secretaireId, Instant.now());
         if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isPresent()) {
-            throw new TransitionInvalideException("Cette secretaire est deja rattachee a votre cabinet.", Cles.RATTACHEMENT_DEJA);
+            throw new TransitionInvalideException("Cette secrétaire est déjà invitée ou rattachée à votre cabinet.");
         }
         Rattachement enregistre = rattachements.enregistrer(rattachement);
-        notifieur.notifier(secretaireId, Cles.NOTIF_CABINET_RATTACHEMENT_SUJET,
-                Cles.NOTIF_CABINET_RATTACHEMENT_MESSAGE);
+        notifieur.notifier(secretaireId, "Invitation à rejoindre un cabinet",
+                "Un médecin vous invite à gérer l'agenda de son cabinet. Acceptez ou refusez l'invitation.", "/invitations");
         return enregistre;
+    }
+
+    /** Invitations en attente adressees a ce compte. */
+    public List<Rattachement> invitationsDe(UUID secretaireId) {
+        return rattachements.parSecretaire(secretaireId).stream().filter(r -> !r.accepte()).toList();
+    }
+
+    /**
+     * La personne invitee accepte : le rattachement devient actif (l'appelant lui donne alors le role SECRETAIRE).
+     * @throws RattachementIntrouvableException si l'invitation n'existe pas.
+     * @throws AccesRefuseException si elle est adressee a quelqu'un d'autre.
+     */
+    @Transactional
+    public Rattachement accepterInvitation(UUID secretaireId, UUID rattachementId) {
+        Rattachement r = invitationPour(secretaireId, rattachementId);
+        if (r.accepte()) {
+            return r;
+        }
+        Rattachement accepte = rattachements.enregistrer(r.accepter());
+        notifieur.notifier(r.medecinId(), "Invitation acceptée",
+                "Votre secrétaire a accepté l'invitation : elle peut maintenant gérer votre agenda.", "/medecin/secretaires");
+        return accepte;
+    }
+
+    /** La personne invitee refuse : l'invitation est supprimee et le medecin prevenu. */
+    @Transactional
+    public void refuserInvitation(UUID secretaireId, UUID rattachementId) {
+        Rattachement r = invitationPour(secretaireId, rattachementId);
+        if (r.accepte()) {
+            throw new TransitionInvalideException("Cette invitation a déjà été acceptée.");
+        }
+        rattachements.supprimer(r.id());
+        notifieur.notifier(r.medecinId(), "Invitation refusée",
+                "La personne invitée a refusé de rejoindre votre cabinet.", "/medecin/secretaires");
+    }
+
+    private Rattachement invitationPour(UUID secretaireId, UUID rattachementId) {
+        Rattachement r = rattachements.parId(rattachementId)
+                .orElseThrow(() -> new RattachementIntrouvableException(rattachementId));
+        if (!r.concerneSecretaire(secretaireId)) {
+            throw new AccesRefuseException("Cette invitation ne vous est pas adressée.");
+        }
+        return r;
     }
 
     /** Secretaires rattachees au cabinet du medecin, les plus anciens rattachements d'abord. */
@@ -72,20 +115,21 @@ public class CabinetService {
      * @throws AccesRefuseException s'il concerne le cabinet d'un autre medecin.
      */
     @Transactional
-    public void retirer(UUID medecinId, UUID rattachementId) {
+    public UUID retirer(UUID medecinId, UUID rattachementId) {
         Rattachement rattachement = rattachements.parId(rattachementId)
                 .orElseThrow(() -> new RattachementIntrouvableException(rattachementId));
         if (!rattachement.concerneMedecin(medecinId)) {
-            throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.", Cles.RATTACHEMENT_AUTRE);
+            throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.");
         }
         rattachements.supprimer(rattachement.id());
-        notifieur.notifier(rattachement.secretaireId(), Cles.NOTIF_CABINET_RETRAIT_SUJET,
-                Cles.NOTIF_CABINET_RETRAIT_MESSAGE);
+        notifieur.notifier(rattachement.secretaireId(), "Rattachement retiré",
+                "Un médecin a retiré votre rattachement à son cabinet.");
+        return rattachement.secretaireId();
     }
 
     /** Cabinets auxquels la secretaire est rattachee, les plus anciens rattachements d'abord. */
     public List<Rattachement> medecinsDeLaSecretaire(UUID secretaireId) {
-        return rattachements.parSecretaire(secretaireId);
+        return rattachements.parSecretaire(secretaireId).stream().filter(Rattachement::accepte).toList();
     }
 
     /**
@@ -93,8 +137,8 @@ public class CabinetService {
      * @throws AccesRefuseException si la secretaire n'est pas rattachee a ce medecin.
      */
     public void verifierAcces(UUID secretaireId, UUID medecinId) {
-        if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).isEmpty()) {
-            throw new AccesRefuseException("Vous n'etes pas rattachee au cabinet de ce medecin.", Cles.CABINET_NON_RATTACHEE);
+        if (rattachements.parMedecinEtSecretaire(medecinId, secretaireId).filter(Rattachement::accepte).isEmpty()) {
+            throw new AccesRefuseException("Vous n'êtes pas rattachée au cabinet de ce médecin.");
         }
     }
 
@@ -116,6 +160,27 @@ public class CabinetService {
     public Creneau ouvrirCreneauPour(UUID secretaireId, UUID medecinId, Instant debut, int dureeMinutes) {
         verifierAcces(secretaireId, medecinId);
         return creneaux.ouvrir(medecinId, debut, dureeMinutes);
+    }
+
+    /** Creneaux a venir d'un medecin, vus par une secretaire rattachee. */
+    public List<Creneau> creneauxPour(UUID secretaireId, UUID medecinId) {
+        verifierAcces(secretaireId, medecinId);
+        return creneaux.aVenirDu(medecinId);
+    }
+
+    /** Une secretaire rattachee supprime un creneau libre de l'agenda du medecin. */
+    @Transactional
+    public void supprimerCreneauPour(UUID secretaireId, UUID medecinId, UUID creneauId) {
+        verifierAcces(secretaireId, medecinId);
+        creneaux.supprimer(medecinId, creneauId);
+    }
+
+    /** Une secretaire rattachee constate l'absence du patient. */
+    @Transactional
+    public RendezVous absentPour(UUID secretaireId, UUID rendezVousId) {
+        RendezVous rdv = rendezVous.parId(rendezVousId);
+        verifierAcces(secretaireId, rdv.medecinId());
+        return rendezVous.marquerAbsent(rdv.medecinId(), rendezVousId);
     }
 
     /**

@@ -1,7 +1,6 @@
 package dz.tabibi.backend.messagerie.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.messagerie.domain.Conversation;
 import dz.tabibi.backend.messagerie.domain.ConversationAvecNonLus;
 import dz.tabibi.backend.messagerie.domain.ConversationIntrouvableException;
@@ -50,12 +49,11 @@ public class MessagerieService {
     @Transactional
     public ResultatOuverture ouvrir(UUID patientId, UUID medecinId) {
         if (medecinId == null) {
-            throw new MessageInvalideException("Le medecin est obligatoire.");
+            throw new MessageInvalideException("Le médecin est obligatoire.");
         }
         boolean rendezVousCommun = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
         if (!rendezVousCommun) {
-            throw new AccesRefuseException("Vous ne pouvez ecrire qu'a un medecin avec qui vous avez un rendez-vous.",
-                    Cles.CONVERSATION_SANS_RENDEZVOUS);
+            throw new AccesRefuseException("Vous ne pouvez écrire qu'a un médecin avec qui vous avez un rendez-vous.");
         }
         Optional<Conversation> existante = conversations.parParticipants(patientId, medecinId);
         if (existante.isPresent()) {
@@ -105,8 +103,8 @@ public class MessagerieService {
         Conversation conversation = chargerPour(sujet, conversationId);
         Message message = messages.enregistrer(Message.envoyer(conversation.id(), sujet, contenu, Instant.now()));
         conversations.enregistrer(conversation.avecDernierMessageLe(message.envoyeLe()));
-        notifieur.notifier(conversation.autreParticipant(sujet), Cles.NOTIF_MESSAGE_NOUVEAU_SUJET,
-                Cles.NOTIF_MESSAGE_NOUVEAU_MESSAGE);
+        notifieur.notifier(conversation.autreParticipant(sujet), "Nouveau message",
+                "Vous avez reçu un nouveau message.", "/messagerie/" + conversation.id());
         return message;
     }
 
@@ -114,7 +112,7 @@ public class MessagerieService {
         Conversation conversation = conversations.parId(conversationId)
                 .orElseThrow(() -> new ConversationIntrouvableException(conversationId));
         if (!conversation.participe(sujet)) {
-            throw new AccesRefuseException("Cette conversation ne vous concerne pas.", Cles.CONVERSATION_AUTRE);
+            throw new AccesRefuseException("Cette conversation ne vous concerne pas.");
         }
         return conversation;
     }

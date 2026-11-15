@@ -7,7 +7,6 @@ import dz.tabibi.backend.avis.domain.AvisRepository;
 import dz.tabibi.backend.avis.domain.StatutAvis;
 import dz.tabibi.backend.avis.domain.SyntheseAvis;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
@@ -31,12 +30,10 @@ public class AvisService {
 
     private final AvisRepository avis;
     private final RendezVousRepository rendezVous;
-    private final Compteurs compteurs;
 
-    public AvisService(AvisRepository avis, RendezVousRepository rendezVous, Compteurs compteurs) {
+    public AvisService(AvisRepository avis, RendezVousRepository rendezVous) {
         this.avis = avis;
         this.rendezVous = rendezVous;
-        this.compteurs = compteurs;
     }
 
     /**
@@ -58,15 +55,12 @@ public class AvisService {
         }
         if (rdv.statut() != StatutRdv.HONORE) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous honore peut recevoir un avis (statut actuel : " + rdv.statut() + ").");
+                    "Seul un rendez-vous honoré peut recevoir un avis (statut actuel : " + rdv.statut() + ").");
         }
         if (avis.parRendezVous(rendezVousId).isPresent()) {
-            throw new TransitionInvalideException("Un avis a deja ete depose pour ce rendez-vous.");
+            throw new TransitionInvalideException("Un avis a déjà été déposé pour ce rendez-vous.");
         }
-        Avis depose = avis.enregistrer(
-                Avis.deposer(rendezVousId, patientId, rdv.medecinId(), note, commentaire, Instant.now()));
-        compteurs.incrementer(Compteurs.AVIS_DEPOSES);
-        return depose;
+        return avis.enregistrer(Avis.deposer(rendezVousId, patientId, rdv.medecinId(), note, commentaire, Instant.now()));
     }
 
     /** Avis deposes par le patient, tous statuts, les plus recents d'abord. */
@@ -74,7 +68,10 @@ public class AvisService {
         return avis.parPatient(patientId);
     }
 
-    /** Synthese publique d'un medecin : seuls les avis publies comptent (ni signales, ni masques). */
+    /**
+     * Synthese publique d'un medecin : les avis publies et ceux signales par le medecin (ils restent visibles
+     * tant que l'administrateur ne les a pas masques), jamais les avis masques.
+     */
     public SyntheseAvis avisPublics(UUID medecinId) {
         return SyntheseAvis.de(avis.publiesPourMedecin(medecinId));
     }

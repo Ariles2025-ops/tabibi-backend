@@ -1,7 +1,6 @@
 package dz.tabibi.backend.dawini.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.dawini.domain.BesoinIntrouvableException;
 import dz.tabibi.backend.dawini.domain.BesoinInvalideException;
@@ -69,7 +68,7 @@ public class DawiniService {
      */
     public List<BesoinMedicament> besoinsOuverts(String wilayaCode) {
         if (wilayaCode == null || wilayaCode.isBlank()) {
-            throw new BesoinInvalideException("La wilaya est obligatoire.", Cles.BESOIN_WILAYA_OBLIGATOIRE);
+            throw new BesoinInvalideException("La wilaya est obligatoire.");
         }
         return besoins.ouvertsParWilaya(wilayaCode.strip());
     }
@@ -84,14 +83,15 @@ public class DawiniService {
     public ReponsePharmacie repondre(UUID pharmacieId, UUID besoinId, DemandeReponse demande) {
         BesoinMedicament besoin = charger(besoinId);
         if (!besoin.estOuvert()) {
-            throw new TransitionInvalideException("Ce besoin est cloture : il n'accepte plus de reponse.", Cles.BESOIN_CLOTURE);
+            throw new TransitionInvalideException("Ce besoin est clôturé : il n'accepte plus de réponse.");
         }
         if (reponses.parBesoinEtPharmacie(besoinId, pharmacieId).isPresent()) {
-            throw new TransitionInvalideException("Votre pharmacie a deja repondu a ce besoin.", Cles.BESOIN_DEJA_REPONDU);
+            throw new TransitionInvalideException("Votre pharmacie a déjà répondu à ce besoin.");
         }
         ReponsePharmacie reponse = reponses.enregistrer(
                 ReponsePharmacie.repondre(besoin.id(), pharmacieId, demande, Instant.now()));
-        notifieur.notifier(besoin.patientId(), Cles.NOTIF_DAWINI_REPONSE_SUJET, Cles.NOTIF_DAWINI_REPONSE_MESSAGE);
+        notifieur.notifier(besoin.patientId(), "Réponse d'une pharmacie",
+                "Une pharmacie a répondu à votre demande de médicament.", "/dawini/" + besoin.id());
         return reponse;
     }
 
@@ -124,8 +124,13 @@ public class DawiniService {
     private BesoinMedicament chargerPourLePatient(UUID patientId, UUID besoinId) {
         BesoinMedicament besoin = charger(besoinId);
         if (!besoin.estDe(patientId)) {
-            throw new AccesRefuseException("Ce besoin ne vous appartient pas.", Cles.BESOIN_AUTRE);
+            throw new AccesRefuseException("Ce besoin ne vous appartient pas.");
         }
         return besoin;
+    }
+
+    /** Vrai si cette pharmacie a deja repondu a ce besoin. */
+    public boolean aRepondu(UUID besoinId, UUID pharmacieId) {
+        return reponses.parBesoinEtPharmacie(besoinId, pharmacieId).isPresent();
     }
 }

@@ -1,8 +1,6 @@
 package dz.tabibi.backend.teleconsultation.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Cles;
-import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
@@ -11,6 +9,7 @@ import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.teleconsultation.domain.GenerateurSalle;
+import dz.tabibi.backend.teleconsultation.domain.StatutTeleconsultation;
 import dz.tabibi.backend.teleconsultation.domain.Teleconsultation;
 import dz.tabibi.backend.teleconsultation.domain.TeleconsultationIntrouvableException;
 import dz.tabibi.backend.teleconsultation.domain.TeleconsultationRepository;
@@ -35,20 +34,17 @@ public class TeleconsultationService {
     private final RendezVousRepository rendezVous;
     private final Notifieur notifieur;
     private final GenerateurSalle generateurSalle;
-    private final Compteurs compteurs;
     private final String baseUrl;
 
     public TeleconsultationService(TeleconsultationRepository repository,
                                    RendezVousRepository rendezVous,
                                    Notifieur notifieur,
                                    GenerateurSalle generateurSalle,
-                                   Compteurs compteurs,
                                    @Value("${tabibi.teleconsultation.base-url}") String baseUrl) {
         this.repository = repository;
         this.rendezVous = rendezVous;
         this.notifieur = notifieur;
         this.generateurSalle = generateurSalle;
-        this.compteurs = compteurs;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
@@ -63,31 +59,35 @@ public class TeleconsultationService {
         RendezVous rdv = rendezVous.parId(rendezVousId)
                 .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
         if (!rdv.estAvec(medecinId)) {
-            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.", Cles.RENDEZVOUS_AUTRE_AGENDA);
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
         }
         if (rdv.statut() != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirme peut donner lieu a une teleconsultation (statut actuel : "
+                    "Seul un rendez-vous confirmé peut donner lieu à une téléconsultation (statut actuel : "
                             + rdv.statut() + ").");
         }
+        if (!rdv.debut().isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous est déjà passé : la téléconsultation ne peut plus être proposée.");
+        }
         if (repository.parRendezVous(rendezVousId).isPresent()) {
-            throw new TransitionInvalideException("Une teleconsultation existe deja pour ce rendez-vous.");
+            throw new TransitionInvalideException("Une téléconsultation existe déjà pour ce rendez-vous.");
         }
         Teleconsultation teleconsultation = repository.enregistrer(
                 Teleconsultation.planifier(rendezVousId, rdv.patientId(), medecinId, generateurSalle.generer()));
-        notifieur.notifier(rdv.patientId(), Cles.NOTIF_TELECONSULTATION_PROPOSEE_SUJET,
-                Cles.NOTIF_TELECONSULTATION_PROPOSEE_MESSAGE, FormatDate.lisible(rdv.debut()));
+        notifieur.notifier(rdv.patientId(), "Téléconsultation proposée",
+                "Votre médecin vous propose une téléconsultation pour votre rendez-vous du "
+                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est nécessaire pour y accéder.", "/teleconsultations");
         return teleconsultation;
     }
 
     /** Teleconsultations d'un patient, de la plus recente a la plus ancienne. */
     public List<Teleconsultation> mesTeleconsultations(UUID patientId) {
-        return repository.parPatient(patientId);
+        return repository.parPatient(patientId).stream().map(this::synchroniser).toList();
     }
 
     /** Teleconsultations menees par un medecin, de la plus recente a la plus ancienne. */
     public List<Teleconsultation> teleconsultationsDuMedecin(UUID medecinId) {
-        return repository.parMedecin(medecinId);
+        return repository.parMedecin(medecinId).stream().map(this::synchroniser).toList();
     }
 
     /**
@@ -98,7 +98,7 @@ public class TeleconsultationService {
     public Teleconsultation detail(UUID sujet, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(sujet) && !teleconsultation.estAvec(sujet)) {
-            throw new AccesRefuseException("Cette teleconsultation ne vous concerne pas.", Cles.TELECONSULTATION_AUTRE);
+            throw new AccesRefuseException("Cette téléconsultation ne vous concerne pas.");
         }
         return teleconsultation;
     }
@@ -112,10 +112,13 @@ public class TeleconsultationService {
     public Teleconsultation consentir(UUID patientId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(patientId)) {
-            throw new AccesRefuseException("Cette teleconsultation ne vous est pas destinee.", Cles.TELECONSULTATION_NON_DESTINEE);
+            throw new AccesRefuseException("Cette téléconsultation ne vous est pas destinee.");
         }
         teleconsultation.consentir(Instant.now());
-        return repository.enregistrer(teleconsultation);
+        Teleconsultation acceptee = repository.enregistrer(teleconsultation);
+        notifieur.notifier(acceptee.medecinId(), "Téléconsultation acceptée",
+                "Le patient a accepté la téléconsultation : vous pourrez la démarrer à l'heure du rendez-vous.", "/medecin/teleconsultations");
+        return acceptee;
     }
 
     /**
@@ -128,9 +131,8 @@ public class TeleconsultationService {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
-        compteurs.incrementer(Compteurs.TELECONSULTATIONS_DEMARREES);
-        notifieur.notifier(demarree.patientId(), Cles.NOTIF_TELECONSULTATION_DEMARREE_SUJET,
-                Cles.NOTIF_TELECONSULTATION_DEMARREE_MESSAGE);
+        notifieur.notifier(demarree.patientId(), "Téléconsultation démarrée",
+                "Votre médecin a démarré la téléconsultation : rejoignez la salle depuis votre espace Tabibi.", "/teleconsultations");
         return demarree;
     }
 
@@ -143,7 +145,15 @@ public class TeleconsultationService {
     public Teleconsultation terminer(UUID medecinId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.terminer(Instant.now());
-        return repository.enregistrer(teleconsultation);
+        Teleconsultation terminee = repository.enregistrer(teleconsultation);
+        // La consultation a eu lieu : le rendez-vous passe a « honore » (le patient peut alors donner son avis).
+        rendezVous.parId(terminee.rendezVousId()).ifPresent(rdv -> {
+            if (rdv.statut() == StatutRdv.CONFIRME && !rdv.debut().isAfter(Instant.now())) {
+                rdv.honorer();
+                rendezVous.enregistrer(rdv);
+            }
+        });
+        return terminee;
     }
 
     /**
@@ -170,14 +180,31 @@ public class TeleconsultationService {
     }
 
     private Teleconsultation charger(UUID teleconsultationId) {
-        return repository.parId(teleconsultationId)
-                .orElseThrow(() -> new TeleconsultationIntrouvableException(teleconsultationId));
+        return synchroniser(repository.parId(teleconsultationId)
+                .orElseThrow(() -> new TeleconsultationIntrouvableException(teleconsultationId)));
+    }
+
+    /**
+     * Une teleconsultation encore planifiee dont le rendez-vous a ete annule (par le patient ou le cabinet)
+     * est annulee a son tour : on ne peut plus y consentir ni la demarrer.
+     */
+    private Teleconsultation synchroniser(Teleconsultation teleconsultation) {
+        if (teleconsultation.statut() != StatutTeleconsultation.PLANIFIEE) {
+            return teleconsultation;
+        }
+        boolean rendezVousAnnule = rendezVous.parId(teleconsultation.rendezVousId())
+                .map(RendezVous::estAnnule).orElse(false);
+        if (!rendezVousAnnule) {
+            return teleconsultation;
+        }
+        teleconsultation.annuler();
+        return repository.enregistrer(teleconsultation);
     }
 
     private Teleconsultation chargerPourLeMedecin(UUID medecinId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.estAvec(medecinId)) {
-            throw new AccesRefuseException("Cette teleconsultation n'est pas dans votre agenda.", Cles.TELECONSULTATION_AUTRE_AGENDA);
+            throw new AccesRefuseException("Cette téléconsultation n'est pas dans votre agenda.");
         }
         return teleconsultation;
     }

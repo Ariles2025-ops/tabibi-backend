@@ -1,10 +1,6 @@
 package dz.tabibi.backend.teleconsultation;
 
-import dz.tabibi.backend.commun.CompteursEnregistres;
-import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Compteurs;
-import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository;
 import dz.tabibi.backend.notifications.application.NotifieurInterne;
@@ -12,6 +8,7 @@ import dz.tabibi.backend.notifications.domain.Notification;
 import dz.tabibi.backend.notifications.domain.NotificationRepository;
 import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.teleconsultation.adapter.EnMemoireTeleconsultationRepository;
@@ -40,10 +37,8 @@ class TeleconsultationServiceTest {
     private final TeleconsultationRepository teleconsultations = new EnMemoireTeleconsultationRepository();
     private final RendezVousRepository rendezVous = new EnMemoireRendezVousRepository();
     private final NotificationRepository notifications = new EnMemoireNotificationRepository();
-    private final CompteursEnregistres compteurs = new CompteursEnregistres();
     private final TeleconsultationService service = new TeleconsultationService(
-            teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR),
-            new GenerateurSalle(), compteurs, BASE_URL);
+            teleconsultations, rendezVous, new NotifieurInterne(notifications), new GenerateurSalle(), BASE_URL);
 
     private RendezVous rendezVousConfirme() {
         return rendezVous.enregistrer(RendezVous.confirmer(PATIENT, MEDECIN, DEBUT));
@@ -79,7 +74,7 @@ class TeleconsultationServiceTest {
         assertThat(teleconsultations.parId(t.id())).isPresent();
         assertThat(teleconsultations.parRendezVous(rdv.id())).isPresent();
         assertThat(notificationsDe(PATIENT)).hasSize(1);
-        assertThat(notificationsDe(PATIENT).get(0).sujet()).isEqualTo("Teleconsultation proposee");
+        assertThat(notificationsDe(PATIENT).get(0).sujet()).isEqualTo("Téléconsultation proposée");
         assertThat(notificationsDe(PATIENT).get(0).message()).contains("07/12/2026");
         assertThat(notificationsDe(PATIENT).get(0).message()).doesNotContain(t.salleId());
     }
@@ -106,9 +101,7 @@ class TeleconsultationServiceTest {
         RendezVous annule = rendezVousConfirme();
         annule.annuler();
         rendezVous.enregistrer(annule);
-        RendezVous honore = rendezVous.enregistrer(RendezVous.confirmer(PATIENT, MEDECIN, DEBUT.plusSeconds(3600)));
-        honore.honorer();
-        rendezVous.enregistrer(honore);
+        RendezVous honore = rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN, DEBUT.plusSeconds(3600), StatutRdv.HONORE));
 
         assertThatThrownBy(() -> service.planifier(MEDECIN, annule.id())).isInstanceOf(TransitionInvalideException.class);
         assertThatThrownBy(() -> service.planifier(MEDECIN, honore.id())).isInstanceOf(TransitionInvalideException.class);
@@ -163,8 +156,7 @@ class TeleconsultationServiceTest {
     @Test
     void le_lien_ignore_la_barre_oblique_finale_de_la_base() {
         TeleconsultationService avecBarre = new TeleconsultationService(
-                teleconsultations, rendezVous, new NotifieurInterne(notifications, Messages.partagees(), utilisateur -> Langue.FR),
-                new GenerateurSalle(), compteurs, BASE_URL + "/");
+                teleconsultations, rendezVous, new NotifieurInterne(notifications), new GenerateurSalle(), BASE_URL + "/");
         Teleconsultation t = avecBarre.planifier(MEDECIN, rendezVousConfirme().id());
 
         assertThat(avecBarre.lienSalle(t, MEDECIN)).isEqualTo(BASE_URL + "/" + t.salleId());
@@ -210,7 +202,7 @@ class TeleconsultationServiceTest {
         assertThat(demarree.statut()).isEqualTo(StatutTeleconsultation.EN_COURS);
         assertThat(demarree.demarreeLe()).isNotNull();
         assertThat(notificationsDe(PATIENT)).hasSize(2);
-        assertThat(notificationsDe(PATIENT)).anyMatch(n -> n.sujet().equals("Teleconsultation demarree"));
+        assertThat(notificationsDe(PATIENT)).anyMatch(n -> n.sujet().equals("Téléconsultation démarrée"));
     }
 
     @Test
@@ -268,24 +260,15 @@ class TeleconsultationServiceTest {
     }
 
     @Test
-    void compte_les_teleconsultations_demarrees_pour_la_supervision() {
+    void une_teleconsultation_dont_le_rendezvous_est_annule_est_annulee_et_ne_peut_plus_etre_rejointe() {
         Teleconsultation t = planifiee();
+        RendezVous rdv = rendezVous.parId(t.rendezVousId()).orElseThrow();
+        rdv.annuler();
+        rendezVous.enregistrer(rdv);
 
-        assertThat(compteurs.compte(Compteurs.TELECONSULTATIONS_DEMARREES)).isZero();
-
-        service.consentir(PATIENT, t.id());
-        service.demarrer(MEDECIN, t.id());
-
-        assertThat(compteurs.compte(Compteurs.TELECONSULTATIONS_DEMARREES)).isEqualTo(1);
-    }
-
-    @Test
-    void ne_compte_pas_une_teleconsultation_qui_n_a_pas_pu_demarrer() {
-        Teleconsultation t = planifiee(); // sans consentement du patient
-
-        assertThatThrownBy(() -> service.demarrer(MEDECIN, t.id()))
-                .isInstanceOf(TransitionInvalideException.class);
-
-        assertThat(compteurs.compte(Compteurs.TELECONSULTATIONS_DEMARREES)).isZero();
+        assertThatThrownBy(() -> service.consentir(PATIENT, t.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.demarrer(MEDECIN, t.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThat(teleconsultations.parId(t.id()).orElseThrow().statut()).isEqualTo(StatutTeleconsultation.ANNULEE);
+        assertThat(service.mesTeleconsultations(PATIENT)).allMatch(x -> x.statut() == StatutTeleconsultation.ANNULEE);
     }
 }

@@ -10,17 +10,10 @@ import java.util.UUID;
  */
 public interface Notifieur {
 
-    /**
-     * Previent un utilisateur. Le sujet et le message sont deux <strong>cles</strong> du catalogue
-     * de messages, rendues dans la <strong>langue du profil du destinataire</strong> (port
-     * {@link LanguePreferee}, francais par defaut) : chacun lit ses notifications dans sa langue,
-     * quelle que soit celle de l'utilisateur dont l'action a declenche l'envoi. Les parametres
-     * remplacent les reperes {@code {0}}, {@code {1}}... du message ; le sujet n'en prend
-     * generalement pas.
-     * <p>
-     * Il n'existe volontairement pas de variante « texte deja redige » : une surcharge
-     * {@code notifier(UUID, String, String)} l'emporterait silencieusement sur celle-ci pour toute
-     * notification sans parametre, qui partirait alors non traduite.
-     */
-    void notifier(UUID destinataireId, String cleSujet, String cleMessage, Object... params);
+    void notifier(UUID destinataireId, String sujet, String message);
+
+    /** Comme {@link #notifier(UUID, String, String)}, avec la page de l'application ou mene la notification. */
+    default void notifier(UUID destinataireId, String sujet, String message, String lien) {
+        notifier(destinataireId, sujet, message);
+    }
 }

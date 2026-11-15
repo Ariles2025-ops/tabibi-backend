@@ -44,9 +44,4 @@ public class JpaNotificationRepository implements NotificationRepository {
     public long nombreNonLues(UUID destinataireId) {
         return jpa.countByDestinataireIdAndLueFalse(destinataireId);
     }
-
-    @Override
-    public long supprimerPourDestinataire(UUID destinataireId) {
-        return jpa.deleteByDestinataireId(destinataireId);
-    }
 }

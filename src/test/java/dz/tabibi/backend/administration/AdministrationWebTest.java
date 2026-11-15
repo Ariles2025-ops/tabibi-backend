@@ -51,7 +51,7 @@ class AdministrationWebTest {
             {"nomComplet": "Dr Nadia Bensalem", "specialiteSlug": "cardiologue", "specialiteFr": "Cardiologue",
              "wilayaCode": "16", "wilayaFr": "Alger", "ville": "Hydra", "numeroOrdre": "16-12345", "telephone": "0550000000"}
             """;
-    private static final String CORPS_REFUS = "{\"motif\": \"Numero d'ordre illisible.\"}";
+    private static final String CORPS_REFUS = "{\"motif\": \"Numéro d'ordre illisible.\"}";
 
     @Autowired MockMvc mvc;
     @MockBean JwtDecoder jwtDecoder; // requis par le resource server, non appele grace a jwt()
@@ -85,9 +85,11 @@ class AdministrationWebTest {
     }
 
     @Test
-    void deposer_interdit_a_un_patient() throws Exception {
+    void deposer_est_ouvert_a_un_patient_qui_devient_medecin_a_la_validation() throws Exception {
+        when(service.deposer(any(), any())).thenReturn(candidature());
+
         mvc.perform(post("/api/medecin/candidature").with(patient()).contentType(MediaType.APPLICATION_JSON).content(CORPS))
-           .andExpect(status().isForbidden());
+           .andExpect(status().isCreated());
     }
 
     @Test
@@ -116,22 +118,22 @@ class AdministrationWebTest {
     @Test
     void deposer_une_candidature_incomplete_repond_400() throws Exception {
         when(service.deposer(any(), any()))
-                .thenThrow(new CandidatureInvalideException("Le numero d'inscription a l'ordre est obligatoire."));
+                .thenThrow(new CandidatureInvalideException("Le numéro d'inscription à l'ordre est obligatoire."));
 
         mvc.perform(post("/api/medecin/candidature").with(medecin()).contentType(MediaType.APPLICATION_JSON)
                     .content("{\"nomComplet\": \"Dr X\", \"specialiteSlug\": \"cardiologue\", \"wilayaCode\": \"16\"}"))
            .andExpect(status().isBadRequest())
-           .andExpect(jsonPath("$.erreur").value("Le numero d'inscription a l'ordre est obligatoire."));
+           .andExpect(jsonPath("$.erreur").value("Le numéro d'inscription à l'ordre est obligatoire."));
     }
 
     @Test
     void deposer_deux_fois_repond_409() throws Exception {
         when(service.deposer(any(), any()))
-                .thenThrow(new TransitionInvalideException("Une candidature est deja en attente d'examen."));
+                .thenThrow(new TransitionInvalideException("Une candidature est déjà en attente d'examen."));
 
         mvc.perform(post("/api/medecin/candidature").with(medecin()).contentType(MediaType.APPLICATION_JSON).content(CORPS))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Une candidature est deja en attente d'examen."));
+           .andExpect(jsonPath("$.erreur").value("Une candidature est déjà en attente d'examen."));
     }
 
     @Test
@@ -151,12 +153,14 @@ class AdministrationWebTest {
 
         mvc.perform(get("/api/medecin/candidature").with(medecin()))
            .andExpect(status().isNotFound())
-           .andExpect(jsonPath("$.erreur").value("Aucune candidature deposee."));
+           .andExpect(jsonPath("$.erreur").value("Aucune candidature déposée."));
     }
 
     @Test
-    void ma_candidature_interdite_a_un_patient() throws Exception {
-        mvc.perform(get("/api/medecin/candidature").with(patient())).andExpect(status().isForbidden());
+    void ma_candidature_est_lisible_par_un_patient() throws Exception {
+        when(service.maCandidature(any())).thenReturn(candidature());
+
+        mvc.perform(get("/api/medecin/candidature").with(patient())).andExpect(status().isOk());
     }
 
     @Test
@@ -218,7 +222,7 @@ class AdministrationWebTest {
     @Test
     void valider_une_candidature_deja_traitee_repond_409() throws Exception {
         when(service.valider(any())).thenThrow(new TransitionInvalideException(
-                "Seule une candidature en attente peut etre validee (statut actuel : REFUSEE)."));
+                "Seule une candidature en attente peut être validée (statut actuel : Refusée)."));
 
         mvc.perform(post("/api/admin/candidatures/{id}/valider", UUID.randomUUID()).with(admin()))
            .andExpect(status().isConflict())
@@ -227,14 +231,14 @@ class AdministrationWebTest {
 
     @Test
     void refuser_par_l_admin_repond_200_avec_le_motif() throws Exception {
-        CandidatureMedecin refusee = candidature().refuser("Numero d'ordre illisible.", Instant.parse("2026-09-19T10:00:00Z"));
-        when(service.refuser(refusee.id(), "Numero d'ordre illisible.")).thenReturn(refusee);
+        CandidatureMedecin refusee = candidature().refuser("Numéro d'ordre illisible.", Instant.parse("2026-09-19T10:00:00Z"));
+        when(service.refuser(refusee.id(), "Numéro d'ordre illisible.")).thenReturn(refusee);
 
         mvc.perform(post("/api/admin/candidatures/{id}/refuser", refusee.id()).with(admin())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS_REFUS))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.statut").value("REFUSEE"))
-           .andExpect(jsonPath("$.motifRefus").value("Numero d'ordre illisible."));
+           .andExpect(jsonPath("$.motifRefus").value("Numéro d'ordre illisible."));
     }
 
     @Test

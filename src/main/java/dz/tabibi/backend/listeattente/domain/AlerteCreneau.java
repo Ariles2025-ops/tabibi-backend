@@ -12,4 +12,11 @@ import java.util.UUID;
 public interface AlerteCreneau {
 
     void creneauLibere(UUID medecinId, Instant debut);
+
+    /**
+     * Le patient vient d'obtenir un rendez-vous chez ce medecin : il n'a plus besoin d'etre alerte
+     * (sa place sur la liste d'attente est retiree). Sans effet par defaut.
+     */
+    default void patientAReserve(UUID patientId, UUID medecinId) {
+    }
 }

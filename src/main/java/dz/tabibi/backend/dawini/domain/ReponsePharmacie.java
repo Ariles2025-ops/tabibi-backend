@@ -29,26 +29,26 @@ public record ReponsePharmacie(
      */
     public static ReponsePharmacie repondre(UUID besoinId, UUID pharmacieId, DemandeReponse demande, Instant repondueLe) {
         if (demande == null) {
-            throw new ReponseInvalideException("La reponse est vide.");
+            throw new ReponseInvalideException("La réponse est vide.");
         }
         if (demande.nomPharmacie() == null || demande.nomPharmacie().isBlank()) {
-            throw new ReponseInvalideException("Le nom de la pharmacie est obligatoire.");
+            throw new ReponseInvalideException("Le nom de la pharmacie est obligatoire : renseignez-le dans votre profil.");
         }
         String nom = demande.nomPharmacie().strip();
         if (nom.length() > LONGUEUR_MAX_NOM) {
-            throw new ReponseInvalideException("Le nom de la pharmacie ne peut pas depasser " + LONGUEUR_MAX_NOM + " caracteres.");
+            throw new ReponseInvalideException("Le nom de la pharmacie ne peut pas dépasser " + LONGUEUR_MAX_NOM + " caractères.");
         }
         if (demande.disponible() == null) {
-            throw new ReponseInvalideException("La disponibilite est obligatoire.");
+            throw new ReponseInvalideException("La disponibilité est obligatoire.");
         }
         if (demande.prixDa() != null && demande.prixDa() < 0) {
-            throw new ReponseInvalideException("Le prix ne peut pas etre negatif.");
+            throw new ReponseInvalideException("Le prix ne peut pas être négatif.");
         }
         String commentaire = (demande.commentaire() == null || demande.commentaire().isBlank())
                 ? null : demande.commentaire().strip();
         if (commentaire != null && commentaire.length() > LONGUEUR_MAX_COMMENTAIRE) {
             throw new ReponseInvalideException(
-                    "Le commentaire ne peut pas depasser " + LONGUEUR_MAX_COMMENTAIRE + " caracteres.");
+                    "Le commentaire ne peut pas dépasser " + LONGUEUR_MAX_COMMENTAIRE + " caractères.");
         }
         return new ReponsePharmacie(UUID.randomUUID(), besoinId, pharmacieId, nom, demande.disponible(),
                 demande.prixDa(), commentaire, repondueLe);

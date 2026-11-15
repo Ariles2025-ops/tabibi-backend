@@ -1,0 +1,79 @@
+/* Mise en page de la connexion Tabibi : uniquement des tokens et des propriétés logiques (RTL). */
+html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app); }
+.kc-page { min-block-size: 100vh; display: flex; flex-direction: column; align-items: center; padding-block: var(--n-space-6); padding-inline: var(--n-space-4); box-sizing: border-box; }
+.kc-shell { inline-size: 100%; max-inline-size: 26rem; display: flex; flex-direction: column; gap: var(--n-space-6); flex: 1; }
+.kc-top { display: flex; align-items: center; justify-content: space-between; gap: var(--n-space-3); }
+.kc-logo:lang(fr) { text-transform: lowercase; }
+.kc-logo { font-size: var(--n-type-title-lg-size); font-weight: var(--n-weight-semibold); color: var(--n-color-text-brand); letter-spacing: -0.02em; text-decoration: none; }
+.kc-logo i { font-style: normal; color: var(--n-color-action-accent-bg); }
+.kc-lang { display: inline-flex; align-items: center; gap: var(--n-space-1); min-block-size: var(--n-size-touch-min); padding-inline: var(--n-space-4); border-radius: var(--n-radius-full); border: var(--n-size-border) solid var(--n-color-border-strong); background: var(--n-color-bg-surface); color: var(--n-color-text-primary); text-decoration: none; font-size: var(--n-type-small-size); }
+.kc-card { display: flex; flex-direction: column; gap: var(--n-space-5); }
+.kc-heading { display: flex; flex-direction: column; gap: var(--n-space-1); }
+.kc-heading h1 { margin: 0; font-size: var(--n-type-title-lg-size); line-height: var(--n-type-title-lg-line); font-weight: var(--n-weight-semibold); color: var(--n-color-text-primary); }
+.kc-heading p { margin: 0; color: var(--n-color-text-secondary); }
+.kc-form { display: flex; flex-direction: column; gap: var(--n-space-5); }
+.kc-input { inline-size: 100%; border: 0; outline: 0; background: transparent; font: inherit; font-size: var(--n-type-title-sm-size); color: var(--n-color-text-primary); min-block-size: var(--n-size-input); }
+.kc-input::placeholder { color: var(--n-color-text-muted); }
+.n-input:focus-within { border: var(--n-size-border-strong) solid var(--n-color-border-brand); box-shadow: 0 0 0 var(--n-size-focus-ring) var(--n-color-bg-accent-soft); }
+.kc-prefix { font-weight: var(--n-weight-semibold); color: var(--n-color-text-primary); }
+.kc-sep { inline-size: var(--n-size-border); block-size: 1.5rem; background: var(--n-color-border-strong); }
+.kc-code { letter-spacing: 0.4em; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--n-type-title-lg-size); }
+.kc-check { display: flex; gap: var(--n-space-3); align-items: flex-start; min-block-size: var(--n-size-touch-min); font-size: var(--n-type-small-size); color: var(--n-color-text-secondary); cursor: pointer; }
+.kc-check input { inline-size: var(--n-size-icon-md); block-size: var(--n-size-icon-md); margin: 0; accent-color: var(--n-color-action-primary-bg); flex: none; }
+.kc-check a { color: var(--n-color-text-link); }
+.kc-submit { display: flex; flex-direction: column; }
+.kc-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--n-space-2); }
+.kc-foot { margin-block-start: auto; position: sticky; inset-block-end: 0; padding-block: var(--n-space-4); background: var(--n-color-bg-app); }
+.kc-ltr { direction: ltr; unicode-bidi: isolate; }
+.kc-muted { color: var(--n-color-text-muted); font-size: var(--n-type-small-size); text-align: center; }
+
+/* Liens vers les conditions et la confidentialite, sous la case d'acceptation. */
+.kc-legal { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 0; font-size: .9rem; }
+.kc-legal a { color: var(--n-color-text-link, #0F7560); }
+
+/* ===== Desktop : mise en page 2 colonnes (panneau de marque + formulaire) ===== */
+.kc-brand { display: none; }
+@media (min-width: 900px) {
+  .kc-page { display: grid; grid-template-columns: 1.05fr 1fr; padding: 0; min-block-size: 100vh; }
+  .kc-brand {
+    display: flex; flex-direction: column; justify-content: space-between; gap: var(--n-space-6);
+    padding: 3rem; color: #fff; position: relative; overflow: hidden;
+    background: linear-gradient(155deg, var(--n-color-text-brand, #0F7560) 0%, #0a4d3e 100%);
+  }
+  .kc-brand__logo { font-size: var(--n-type-title-lg-size); font-weight: var(--n-weight-semibold); letter-spacing: -0.02em; }
+  .kc-brand__logo i { font-style: normal; color: #86efac; }
+  .kc-brand h2 { margin: 0 0 var(--n-space-3); font-size: clamp(1.6rem, 2.4vw, 2.4rem); line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
+  .kc-brand h2 .acc { color: #86efac; }
+  .kc-brand p { margin: 0; max-inline-size: 42ch; color: rgba(255,255,255,.85); line-height: 1.55; }
+  .kc-brand ul { list-style: none; margin: var(--n-space-5) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--n-space-3); }
+  .kc-brand li { display: flex; align-items: center; gap: var(--n-space-3); font-weight: 600; color: rgba(255,255,255,.95); }
+  .kc-brand li svg { flex: none; width: 1.25rem; height: 1.25rem; stroke: #86efac; stroke-width: 2.5; fill: none; }
+  .kc-brand__foot { font-size: var(--n-type-small-size); color: rgba(255,255,255,.7); }
+  .kc-shell { max-inline-size: 26rem; margin-inline: auto; align-self: center; flex: none; padding-block: 3rem; padding-inline: var(--n-space-6); }
+  .kc-foot { position: static; margin-block-start: var(--n-space-4); background: transparent; }
+}
+
+/* Ecran de choix de la methode de connexion (telephone / e-mail) */
+.kc-choice { display:flex; flex-direction:column; gap:12px; }
+.kc-or { display:flex; align-items:center; gap:12px; color:var(--n-color-text-muted); font-size:.9rem; }
+.kc-or::before, .kc-or::after { content:""; height:1px; flex:1; background:var(--n-color-border-strong); }
+.kc-choicebtn { display:flex; align-items:center; gap:12px; width:100%; text-align:start; }
+.kc-choicebtn__ic { font-size:18px; flex:none; }
+.kc-choicebtn__tx { display:flex; flex-direction:column; line-height:1.25; }
+.kc-choicebtn__tx small { font-weight:400; opacity:.85; font-size:.8rem; }
+.kc-choicebtn--ghost { background:var(--n-color-bg-surface); color:var(--n-color-text-brand); border:var(--n-size-border-strong) solid var(--n-color-border-brand); }
+.kc-choicebtn--ghost .kc-choicebtn__tx small { color:var(--n-color-text-muted); opacity:1; }
+.kc-back, a.kc-back { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; min-block-size:34px; padding-inline:12px; margin:0; border-radius:var(--n-radius-full); border:var(--n-size-border) solid var(--n-color-border-strong); background:var(--n-color-bg-surface); color:var(--n-color-text-primary); font:inherit; font-size:var(--n-type-small-size); text-decoration:none; cursor:pointer; }
+#choice-screen:not([hidden]), #phone-screen:not([hidden]) { display:flex; flex-direction:column; gap:var(--n-space-5); }
+.kc-back:hover { border-color:var(--n-color-border-brand); color:var(--n-color-text-brand); }
+
+/* Correctif : titre + sous-texte empiles et alignes a gauche (prime sur le style .n-btn). */
+.kc-choicebtn.kc-choicebtn { justify-content:flex-start; text-align:start; height:auto; min-block-size:var(--n-size-touch-min); padding-block:12px; }
+.kc-choicebtn .kc-choicebtn__tx { display:flex !important; flex-direction:column; align-items:flex-start; gap:2px; }
+.kc-choicebtn .kc-choicebtn__tx small { display:block; }
+
+/* Boutons-liens pleine largeur : la bordure et le padding restent dans la largeur du formulaire. */
+.kc-card a.n-btn { box-sizing: border-box; inline-size: 100%; }
+/* Liens du formulaire (mot de passe oublie, retour) aux couleurs Tabibi, pas le bleu par defaut. */
+.kc-links a, .kc-muted a { color: var(--n-color-text-brand); font-weight: var(--n-weight-semibold); text-decoration: none; }
+.kc-links a:hover, .kc-muted a:hover { text-decoration: underline; }

@@ -13,6 +13,7 @@ import java.util.UUID;
 class MedecinEntity {
     @Id private UUID id;
     @Column(name = "nom_complet", nullable = false) private String nomComplet;
+    @Column(name = "nom_tri") private String nomTri;
     @Column(name = "specialite_slug", nullable = false) private String specialiteSlug;
     @Column(name = "specialite_fr", nullable = false) private String specialiteFr;
     @Column(name = "wilaya_code", nullable = false) private String wilayaCode;
@@ -25,6 +26,7 @@ class MedecinEntity {
         MedecinEntity e = new MedecinEntity();
         e.id = m.id();
         e.nomComplet = m.nomComplet();
+        e.nomTri = m.cleDeTri();
         e.specialiteSlug = m.specialiteSlug();
         e.specialiteFr = m.specialiteFr();
         e.wilayaCode = m.wilayaCode();

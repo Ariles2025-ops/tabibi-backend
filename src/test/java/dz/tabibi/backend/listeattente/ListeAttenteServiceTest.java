@@ -1,8 +1,6 @@
 package dz.tabibi.backend.listeattente;
 
-import dz.tabibi.backend.commun.adapter.Messages;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.listeattente.adapter.EnMemoireListeAttenteRepository;
 import dz.tabibi.backend.listeattente.application.ListeAttenteService;
@@ -30,13 +28,10 @@ class ListeAttenteServiceTest {
         record Appel(UUID destinataireId, String sujet, String message) {}
 
         final List<Appel> appels = new ArrayList<>();
-        private final Messages messages = Messages.partagees();
 
-        /** Rend les cles avec le vrai catalogue, en francais : les textes verifies ici sont ceux servis. */
         @Override
-        public void notifier(UUID destinataireId, String cleSujet, String cleMessage, Object... params) {
-            appels.add(new Appel(destinataireId,
-                    messages.message(Langue.FR, cleSujet), messages.message(Langue.FR, cleMessage, params)));
+        public void notifier(UUID destinataireId, String sujet, String message) {
+            appels.add(new Appel(destinataireId, sujet, message));
         }
 
         List<Appel> pour(UUID destinataireId) {
@@ -143,9 +138,9 @@ class ListeAttenteServiceTest {
 
         assertThat(notifieur.appels).hasSize(2);
         assertThat(notifieur.pour(PATIENT)).hasSize(1);
-        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Creneau disponible");
+        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("Créneau disponible");
         assertThat(notifieur.pour(PATIENT).get(0).message())
-                .isEqualTo("Un creneau vient de se liberer chez votre medecin le 07/12/2026 a 10:00. Reservez vite.");
+                .isEqualTo("Un créneau vient de se libérer chez votre médecin le 07/12/2026 à 10:00. Réservez vite.");
         assertThat(notifieur.pour(autrePatient)).hasSize(1);
         assertThat(notifieur.pour(patientDUnAutreMedecin)).isEmpty();
     }

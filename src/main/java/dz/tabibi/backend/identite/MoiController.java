@@ -5,7 +5,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,12 +18,12 @@ public class MoiController {
     public Map<String, Object> moi(@AuthenticationPrincipal Jwt jwt) {
         Map<String, Object> realmAccess = jwt.getClaim("realm_access");
         Object roles = realmAccess == null ? List.of() : realmAccess.getOrDefault("roles", List.of());
-        // LinkedHashMap (et non Map.of) : le nom peut etre absent du jeton (preferred_username null),
-        // or Map.of refuse une valeur nulle ; l'ordre d'insertion rend aussi le JSON previsible.
-        Map<String, Object> identite = new LinkedHashMap<>();
-        identite.put("sujet", jwt.getSubject());
-        identite.put("nom", jwt.getClaimAsString("preferred_username"));
-        identite.put("roles", roles);
-        return identite;
+        String nom = jwt.getClaimAsString("preferred_username");
+        // Map.of refuse les valeurs null : on construit une map tolerante (nom absent => on retombe sur le sujet).
+        Map<String, Object> resultat = new HashMap<>();
+        resultat.put("sujet", jwt.getSubject());
+        resultat.put("nom", nom != null ? nom : jwt.getSubject());
+        resultat.put("roles", roles);
+        return resultat;
     }
 }

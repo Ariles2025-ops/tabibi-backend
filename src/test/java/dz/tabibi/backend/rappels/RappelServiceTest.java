@@ -1,11 +1,10 @@
 package dz.tabibi.backend.rappels;
 
-import dz.tabibi.backend.commun.adapter.Messages;
-import dz.tabibi.backend.commun.domain.Langue;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rappels.application.RappelService;
 import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import org.junit.jupiter.api.Test;
 
@@ -34,13 +33,10 @@ class RappelServiceTest {
         record Appel(UUID destinataireId, String sujet, String message) {}
 
         final List<Appel> appels = new ArrayList<>();
-        private final Messages messages = Messages.partagees();
 
-        /** Rend les cles avec le vrai catalogue, en francais : les textes verifies ici sont ceux servis. */
         @Override
-        public void notifier(UUID destinataireId, String cleSujet, String cleMessage, Object... params) {
-            appels.add(new Appel(destinataireId,
-                    messages.message(Langue.FR, cleSujet), messages.message(Langue.FR, cleMessage, params)));
+        public void notifier(UUID destinataireId, String sujet, String message) {
+            appels.add(new Appel(destinataireId, sujet, message));
         }
 
         List<Appel> pour(UUID destinataireId) {
@@ -73,7 +69,7 @@ class RappelServiceTest {
         assertThat(notifieur.appels).hasSize(1);
         assertThat(notifieur.pour(rdv.patientId()).get(0).sujet()).isEqualTo("Rappel de rendez-vous");
         assertThat(notifieur.pour(rdv.patientId()).get(0).message())
-                .isEqualTo("Votre rendez-vous du 06/12/2026 a 13:00 est demain. Pensez a vous presenter 10 minutes en avance.");
+                .isEqualTo("Rappel : votre rendez-vous a lieu le 06/12/2026 à 13:00. Pensez à vous présenter 10 minutes en avance.");
         assertThat(recharge(rdv).rappelEnvoye()).isTrue();
         assertThat(recharge(rdv).rappelEnvoyeLe()).isEqualTo(MAINTENANT);
     }
@@ -118,9 +114,8 @@ class RappelServiceTest {
         RendezVous annule = confirmeDans(Duration.ofHours(3));
         annule.annuler();
         rendezVous.enregistrer(annule);
-        RendezVous honore = confirmeDans(Duration.ofHours(4));
-        honore.honorer();
-        rendezVous.enregistrer(honore);
+        RendezVous honore = rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                MAINTENANT.plus(Duration.ofHours(4)), StatutRdv.HONORE));
 
         assertThat(service.executer()).isEqualTo(0);
         assertThat(notifieur.appels).isEmpty();

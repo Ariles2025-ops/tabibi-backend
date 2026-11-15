@@ -20,7 +20,7 @@ public interface AvisRepository {
     /** Avis deposes par un patient, tous statuts, les plus recents d'abord. */
     List<Avis> parPatient(UUID patientId);
 
-    /** Avis publies sur un medecin (ni signales, ni masques), les plus recents d'abord. */
+    /** Avis visibles sur un medecin (publies ou signales en attente de moderation, jamais masques), les plus recents d abord. */
     List<Avis> publiesPourMedecin(UUID medecinId);
 
     /** Avis d'un statut donne, les plus anciens d'abord. */

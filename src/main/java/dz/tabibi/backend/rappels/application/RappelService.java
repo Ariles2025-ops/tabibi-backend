@@ -1,6 +1,5 @@
 package dz.tabibi.backend.rappels.application;
 
-import dz.tabibi.backend.commun.domain.Cles;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
@@ -44,8 +43,9 @@ public class RappelService {
         Instant maintenant = horloge.instant();
         List<RendezVous> aRappeler = rendezVous.confirmesSansRappelEntre(maintenant, maintenant.plus(HORIZON));
         for (RendezVous rdv : aRappeler) {
-            notifieur.notifier(rdv.patientId(), Cles.NOTIF_RAPPEL_SUJET, Cles.NOTIF_RAPPEL_MESSAGE,
-                    FormatDate.lisible(rdv.debut()));
+            notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
+                    "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
+                            + ". Pensez à vous présenter 10 minutes en avance.", "/mes-rendez-vous");
             rdv.marquerRappelEnvoye(maintenant);
             rendezVous.enregistrer(rdv);
         }

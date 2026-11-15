@@ -10,6 +10,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,34 +30,27 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource,
+                                           @Value("${tabibi.limite.actions-par-minute:60}") int actionsParMinute) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Supervision (sante et sondes liveness/readiness, sans detail) et documentation d'API.
+                // Supervision (sante et sondes liveness/readiness, sans detail). La documentation d'API n'est
+                // plus publique : elle donnait la carte complete des routes (desactivee en prod, voir application-postgres.yml).
                 .requestMatchers(
                         "/actuator/health",
-                        "/actuator/health/**",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html").permitAll()
-                // Metriques : elles decrivent la charge et l'activite de la plateforme, jamais des
-                // donnees personnelles, mais elles n'ont rien a faire en acces libre.
-                .requestMatchers(
-                        "/actuator/prometheus",
-                        "/actuator/metrics",
-                        "/actuator/metrics/**").hasRole("ADMIN")
+                        "/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/medecins", "/api/medecins/**").permitAll()
-                // Donnees de reference publiques (filtres de recherche) : sans jeton.
-                .requestMatchers(HttpMethod.GET, "/api/wilayas", "/api/specialites").permitAll()
                 // Verification d'une ordonnance par son code (pharmacien) : sans jeton, sans donnee personnelle.
                 .requestMatchers(HttpMethod.GET, "/api/ordonnances/verifier/**").permitAll()
                 // Administration : verrou par chemin, en plus du @PreAuthorize des controleurs (defense en profondeur).
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
-            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter())));
+            .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter())))
+            // Au plus N actions (ecritures) par minute et par compte, 429 au-dela.
+            .addFilterAfter(new LimiteDebitFiltre(actionsParMinute), BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 

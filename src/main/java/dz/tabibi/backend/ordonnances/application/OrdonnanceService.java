@@ -1,88 +1,67 @@
 package dz.tabibi.backend.ordonnances.application;
 
-import dz.tabibi.backend.annuaire.domain.Medecin;
-import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
-import dz.tabibi.backend.commun.domain.Cles;
-import dz.tabibi.backend.commun.domain.Compteurs;
 import dz.tabibi.backend.ordonnances.domain.CodeVerification;
-import dz.tabibi.backend.ordonnances.domain.GenerateurPdfOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
-import dz.tabibi.backend.ordonnances.domain.OrdonnanceImprimable;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceIntrouvableException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
-import dz.tabibi.backend.profil.domain.Profil;
-import dz.tabibi.backend.profil.domain.ProfilRepository;
-import org.springframework.beans.factory.annotation.Value;
+import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Cas d'usage des ordonnances : rediger, consulter, verifier par code, imprimer (PDF avec QR code).
- * La version imprimable porte le nom du medecin (annuaire) et celui du patient (profil) ; a defaut,
- * une mention generique : le document reste utilisable, le code de verification fait foi.
- */
+/** Cas d'usage des ordonnances : rediger, consulter, verifier par code. */
 @Service
 public class OrdonnanceService {
 
     /** Nombre de tirages avant d'abandonner la recherche d'un code libre (jamais atteint en pratique). */
     private static final int ESSAIS_CODE = 10;
 
-    /** Repli quand le medecin n'est pas (ou plus) dans l'annuaire. */
-    static final String MEDECIN_INCONNU = "Medecin";
-    /** Repli quand le patient n'a pas renseigne son profil. */
-    static final String PATIENT_INCONNU = "Patient";
-    /** Chemin de la page publique de verification du front web ; le code est passe en parametre. */
-    static final String CHEMIN_VERIFICATION = "/verifier?code=";
-
     private final OrdonnanceRepository repository;
-    private final GenerateurPdfOrdonnance generateurPdf;
-    private final ProfilRepository profils;
-    private final MedecinRepository medecins;
-    private final Compteurs compteurs;
-    private final String baseUrlWeb;
+    private final RendezVousRepository rendezVous;
+    private final Notifieur notifieur;
 
-    public OrdonnanceService(OrdonnanceRepository repository,
-                             GenerateurPdfOrdonnance generateurPdf,
-                             ProfilRepository profils,
-                             MedecinRepository medecins,
-                             Compteurs compteurs,
-                             @Value("${tabibi.web.base-url:http://localhost:4200}") String baseUrlWeb) {
+    public OrdonnanceService(OrdonnanceRepository repository, RendezVousRepository rendezVous, Notifieur notifieur) {
         this.repository = repository;
-        this.generateurPdf = generateurPdf;
-        this.profils = profils;
-        this.medecins = medecins;
-        this.compteurs = compteurs;
-        this.baseUrlWeb = baseUrlWeb.endsWith("/") ? baseUrlWeb.substring(0, baseUrlWeb.length() - 1) : baseUrlWeb;
+        this.rendezVous = rendezVous;
+        this.notifieur = notifieur;
     }
 
     /**
      * Redige une ordonnance pour un patient, eventuellement rattachee a un rendez-vous.
      * Regle : au moins une ligne, et chaque ligne indique un medicament.
+     * Regle d'acces : le medecin ne prescrit qu'a ses patients (au moins un rendez-vous avec lui) ; un
+     * rendez-vous indique doit etre le sien et celui de ce patient.
      * @throws OrdonnanceInvalideException si le contenu est incomplet.
+     * @throws AccesRefuseException si le patient ou le rendez-vous n'est pas celui du medecin.
      */
     public Ordonnance emettre(UUID medecinId, UUID patientId, UUID rendezVousId, List<LigneOrdonnance> lignes) {
         if (patientId == null) {
             throw new OrdonnanceInvalideException("Le patient est obligatoire.");
         }
+        verifierPatientDuMedecin(medecinId, patientId, rendezVousId);
         if (lignes == null || lignes.isEmpty()) {
-            throw new OrdonnanceInvalideException("Une ordonnance doit contenir au moins une ligne.", Cles.ORDONNANCE_SANS_LIGNE);
+            throw new OrdonnanceInvalideException("Une ordonnance doit contenir au moins une ligne.");
         }
         boolean ligneIncomplete = lignes.stream()
                 .anyMatch(l -> l == null || l.medicament() == null || l.medicament().isBlank());
         if (ligneIncomplete) {
-            throw new OrdonnanceInvalideException("Chaque ligne doit indiquer un medicament.");
+            throw new OrdonnanceInvalideException("Chaque ligne doit indiquer un médicament.");
         }
-        Ordonnance ordonnance = repository.enregistrer(Ordonnance.emettre(
-                medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now()));
-        compteurs.incrementer(Compteurs.ORDONNANCES_EMISES);
-        return ordonnance;
+        Ordonnance ordonnance = Ordonnance.emettre(
+                medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now());
+        Ordonnance emise = repository.enregistrer(ordonnance);
+        notifieur.notifier(patientId, "Nouvelle ordonnance",
+                "Votre médecin vous a délivré une ordonnance : retrouvez-la dans « Mes ordonnances ».",
+                "/ordonnances/" + emise.id());
+        return emise;
     }
 
     /** Ordonnances d'un patient, de la plus recente a la plus ancienne. */
@@ -110,26 +89,6 @@ public class OrdonnanceService {
     }
 
     /**
-     * Version imprimable (PDF) d'une ordonnance, aux memes conditions d'acces que {@link #parIdPour} :
-     * son patient ou son medecin auteur. Le QR code encode l'adresse publique de verification
-     * ({@code base-url/verifier?code=XXXX}), qui ne revele aucune donnee personnelle.
-     * @throws OrdonnanceIntrouvableException si elle n'existe pas.
-     * @throws AccesRefuseException si le demandeur n'est ni l'un ni l'autre.
-     */
-    public OrdonnanceImprimable pdf(UUID demandeurId, UUID ordonnanceId) {
-        Ordonnance ordonnance = parIdPour(demandeurId, ordonnanceId);
-        String nomMedecin = medecins.parId(ordonnance.medecinId()).map(Medecin::nomComplet).orElse(MEDECIN_INCONNU);
-        String nomPatient = profils.parUtilisateur(ordonnance.patientId()).map(Profil::nomComplet).orElse(PATIENT_INCONNU);
-        byte[] contenu = generateurPdf.generer(ordonnance, nomMedecin, nomPatient, urlVerification(ordonnance));
-        return new OrdonnanceImprimable(ordonnance.codeVerification(), contenu);
-    }
-
-    /** Adresse de la page publique de verification du front web pour cette ordonnance. */
-    String urlVerification(Ordonnance ordonnance) {
-        return baseUrlWeb + CHEMIN_VERIFICATION + ordonnance.codeVerification();
-    }
-
-    /**
      * Verification publique par code (pharmacien) : la reponse ne revele aucune donnee personnelle.
      * Le code est accepte en minuscules et avec des espaces autour.
      * @throws OrdonnanceIntrouvableException si le code est inconnu.
@@ -140,6 +99,37 @@ public class OrdonnanceService {
         return ResultatVerification.de(ordonnance);
     }
 
+    /**
+     * Le medecin annule une ordonnance qu'il a redigee ; le patient est prevenu.
+     * @throws OrdonnanceIntrouvableException si elle n'existe pas.
+     * @throws AccesRefuseException si elle a ete redigee par un autre medecin.
+     */
+    public Ordonnance annuler(UUID medecinId, UUID ordonnanceId, String motif) {
+        Ordonnance ordonnance = repository.parId(ordonnanceId)
+                .orElseThrow(() -> new OrdonnanceIntrouvableException(ordonnanceId));
+        if (!ordonnance.medecinId().equals(medecinId)) {
+            throw new AccesRefuseException("Vous n'avez pas rédigé cette ordonnance.");
+        }
+        Ordonnance annulee = repository.enregistrer(ordonnance.annuler(motif));
+        notifieur.notifier(annulee.patientId(), "Ordonnance annulée",
+                "Votre médecin a annulé une ordonnance" + (annulee.motifAnnulation() == null ? "." : " : " + annulee.motifAnnulation()),
+                "/ordonnances/" + annulee.id());
+        return annulee;
+    }
+
+    /**
+     * Une pharmacie delivre l'ordonnance (par son code) : elle ne pourra plus etre presentee ailleurs.
+     * @throws OrdonnanceIntrouvableException si le code est inconnu.
+     */
+    public ResultatVerification delivrer(String code) {
+        Ordonnance ordonnance = repository.parCode(CodeVerification.normaliser(code))
+                .orElseThrow(OrdonnanceIntrouvableException::codeInconnu);
+        Ordonnance delivree = repository.enregistrer(ordonnance.delivrer(Instant.now()));
+        notifieur.notifier(delivree.patientId(), "Ordonnance délivrée",
+                "Votre ordonnance a été délivrée en pharmacie.", "/ordonnances/" + delivree.id());
+        return ResultatVerification.de(delivree);
+    }
+
     /** Tire un code de verification qu'aucune ordonnance ne porte encore. */
     private String codeLibre() {
         for (int essai = 0; essai < ESSAIS_CODE; essai++) {
@@ -148,6 +138,21 @@ public class OrdonnanceService {
                 return code;
             }
         }
-        throw new IllegalStateException("Impossible d'attribuer un code de verification libre.");
+        throw new IllegalStateException("Impossible d'attribuer un code de vérification libre.");
+    }
+
+    private void verifierPatientDuMedecin(UUID medecinId, UUID patientId, UUID rendezVousId) {
+        if (rendezVousId != null) {
+            RendezVous rdv = rendezVous.parId(rendezVousId)
+                    .orElseThrow(() -> new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda."));
+            if (!rdv.estAvec(medecinId) || !rdv.appartientA(patientId)) {
+                throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+            }
+            return;
+        }
+        boolean patientDuMedecin = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
+        if (!patientDuMedecin) {
+            throw new AccesRefuseException("Vous ne pouvez rédiger une ordonnance que pour vos patients.");
+        }
     }
 }

@@ -13,11 +13,6 @@ spring:
         jwt:
           # Emetteur des jetons = le realm Keycloak (fourni par docker-compose)
           issuer-uri: ${TABIBI_KEYCLOAK_ISSUER:http://localhost:8081/realms/tabibi}
-          # En fixant aussi le jwk-set-uri, le decodeur JWT devient PARESSEUX : il ne
-          # contacte Keycloak qu'a la 1re validation de jeton, pas au demarrage. Ainsi le
-          # backend demarre meme si Keycloak est eteint, et les endpoints publics
-          # (medecins, wilayas, specialites) repondent. L'emetteur reste valide.
-          jwk-set-uri: ${TABIBI_KEYCLOAK_JWKS:http://localhost:8081/realms/tabibi/protocol/openid-connect/certs}
 
 server:
   port: 8080
@@ -27,22 +22,10 @@ tabibi:
     # Origines (schema://hote:port) autorisees a appeler l'API depuis un navigateur, separees par
     # des virgules : le serveur de dev Angular par defaut ; en production, l'origine publique du front.
     origines: ${TABIBI_CORS_ORIGINES:http://localhost:4200}
-  web:
-    # Adresse publique du front web : le QR code d'une ordonnance imprimee renvoie vers sa page de
-    # verification (base-url/verifier?code=XXXX). En production, l'origine publique du front.
-    base-url: ${TABIBI_WEB_BASE_URL:http://localhost:4200}
   teleconsultation:
     # Salle video Jitsi Meet (open source, sans SDK proprietaire) : instance publique par defaut,
     # remplacable par une instance auto-hebergee. Le lien d'une salle vaut base-url/salleId.
     base-url: ${TABIBI_TELECONSULTATION_BASE_URL:https://meet.jit.si}
-  limite-debit:
-    # Limitation de debit par adresse IP (seau a jetons, en memoire, sans dependance) sur les routes
-    # publiques et les publications ; 429 + Retry-After au-dela du quota. false retire le filtre
-    # (tests de charge, limitation deja assuree par le reverse proxy).
-    actif: ${TABIBI_LIMITE_DEBIT_ACTIF:true}
-    annuaire-par-minute: 120        # GET /api/medecins/** (recherche, fiche, creneaux, avis)
-    verification-par-minute: 30     # GET /api/ordonnances/verifier/** (codes devinables par force brute sinon)
-    publication-par-minute: 20      # POST /api/dawini/besoins, POST /api/conversations, POST /api/avis (chacun)
   rappels:
     # Rappel de rendez-vous 24 h avant, envoye toutes les heures par le planificateur ;
     # false coupe le planificateur (l'appel manuel POST /api/admin/rappels/executer reste possible).
@@ -56,25 +39,4 @@ management:
   endpoints:
     web:
       exposure:
-        # /actuator/health et /actuator/info sont publics ; /actuator/metrics et /actuator/prometheus
-        # sont reserves au role ADMIN par SecurityConfig (ils decrivent la charge et l'activite).
-        include: health,info,metrics,prometheus
-  endpoint:
-    health:
-      # Le detail des sondes (base, disque...) n'est montre qu'a un appelant authentifie.
-      show-details: when-authorized
-      # Sondes /actuator/health/liveness et /readiness (conteneurs, orchestrateurs) actives partout,
-      # pas seulement sous le profil postgres : la supervision doit fonctionner des le profil par defaut.
-      probes:
-        enabled: true
-  # Export Prometheus explicitement active : selon l'environnement, l'export de metriques par
-  # defaut peut etre considere desactive (seul un SimpleMeterRegistry est alors cree et
-  # /actuator/prometheus renvoie 404). Ce reglage par registre force l'enregistrement de l'endpoint.
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-  metrics:
-    tags:
-      # Etiquette portee par toutes les metriques : distingue les instances dans Prometheus.
-      application: tabibi-backend
+        include: health,info
