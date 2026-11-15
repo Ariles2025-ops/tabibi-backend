@@ -22,6 +22,9 @@ public interface ComptesUtilisateurs {
 
     void accorderRole(UUID compte, String role);
 
+    /** Comptes qui ont ce role de royaume (vide si l'annuaire n'est pas configure). */
+    default java.util.List<UUID> avecRole(String role) { return java.util.List.of(); }
+
     /** Retire un role de royaume au compte (sans effet si l'annuaire n'est pas configure). */
     default void retirerRole(UUID compte, String role) {}
 }

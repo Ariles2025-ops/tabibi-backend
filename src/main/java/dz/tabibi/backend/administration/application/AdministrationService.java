@@ -10,6 +10,7 @@ import dz.tabibi.backend.administration.domain.StatistiquesAdministration;
 import dz.tabibi.backend.administration.domain.StatutCandidature;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
+import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,14 @@ public class AdministrationService {
         this.roles = roles;
     }
 
+    /** Annuaire des comptes : sert a prevenir les administrateurs d'une nouvelle candidature (P-79). */
+    private ComptesUtilisateurs comptes;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComptes(ComptesUtilisateurs comptes) {
+        this.comptes = comptes;
+    }
+
     /**
      * Depose la candidature du medecin connecte. Une candidature refusee peut etre redeposee.
      * @throws CandidatureInvalideException si une donnee obligatoire manque.
@@ -58,7 +67,22 @@ public class AdministrationService {
         if (demande != null && demande.ficheReclamee() != null && !ficheReclamable(demande.ficheReclamee())) {
             throw new TransitionInvalideException("Cette fiche a déjà été réclamée ou n'existe plus.");
         }
-        return candidatures.enregistrer(CandidatureMedecin.deposer(medecinId, demande, Instant.now()));
+        CandidatureMedecin deposee = candidatures.enregistrer(CandidatureMedecin.deposer(medecinId, demande, Instant.now()));
+        prevenirLesAdministrateurs(deposee);
+        return deposee;
+    }
+
+    /** Chaque administrateur recoit une notification (lien vers la liste des candidatures). */
+    private void prevenirLesAdministrateurs(CandidatureMedecin c) {
+        if (comptes == null) {
+            return;
+        }
+        String quoi = c.ficheReclamee() != null ? "Réclamation de fiche" : "Nouvelle candidature médecin";
+        String message = c.nomComplet() + " — " + (c.specialiteFr() != null ? c.specialiteFr() : c.specialiteSlug())
+                + (c.wilayaFr() != null ? ", " + c.wilayaFr() : "") + " : à examiner.";
+        for (UUID admin : comptes.avecRole("ADMIN")) {
+            notifieur.notifier(admin, quoi, message, "/admin/candidatures");
+        }
     }
 
     /**

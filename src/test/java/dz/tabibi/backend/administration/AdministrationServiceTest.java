@@ -52,6 +52,27 @@ class AdministrationServiceTest {
     }
 
     @Test
+    void chaque_nouvelle_candidature_previent_les_administrateurs() {
+        UUID admin1 = UUID.randomUUID(), admin2 = UUID.randomUUID();
+        service.setComptes(new dz.tabibi.backend.commun.domain.ComptesUtilisateurs() {
+            public boolean disponible() { return true; }
+            public Optional<InfosCompte> infos(UUID compte) { return Optional.empty(); }
+            public Optional<UUID> parEmail(String email) { return Optional.empty(); }
+            public void accorderRole(UUID compte, String role) { }
+            public List<UUID> avecRole(String role) { return "ADMIN".equals(role) ? List.of(admin1, admin2) : List.of(); }
+        });
+
+        service.deposer(MEDECIN, DEMANDE);
+
+        for (UUID admin : List.of(admin1, admin2)) {
+            assertThat(notificationsDe(admin)).hasSize(1);
+            assertThat(notificationsDe(admin).get(0).sujet()).isEqualTo("Nouvelle candidature médecin");
+            assertThat(notificationsDe(admin).get(0).message()).contains("Dr Nadia Bensalem").contains("Cardiologue");
+            assertThat(notificationsDe(admin).get(0).lien()).isEqualTo("/admin/candidatures");
+        }
+    }
+
+    @Test
     void depose_une_candidature_en_attente() {
         CandidatureMedecin c = service.deposer(MEDECIN, DEMANDE);
 

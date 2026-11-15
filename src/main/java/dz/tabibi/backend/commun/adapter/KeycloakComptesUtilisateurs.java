@@ -110,6 +110,22 @@ public class KeycloakComptesUtilisateurs implements ComptesUtilisateurs {
     }
 
     @Override
+    public List<UUID> avecRole(String role) {
+        if (!configure()) {
+            return List.of();
+        }
+        try {
+            List<?> comptes = http.get().uri("/admin/realms/{realm}/roles/{role}/users?max=100", realm, role)
+                    .header("Authorization", "Bearer " + jeton()).retrieve().body(List.class);
+            return comptes == null ? List.of() : comptes.stream()
+                    .map(u -> UUID.fromString((String) ((Map<?, ?>) u).get("id"))).toList();
+        } catch (RuntimeException e) {
+            log.warn("Liste des comptes {} impossible : {}", role, e.getMessage());
+            return List.of();
+        }
+    }
+
+    @Override
     public void retirerRole(UUID compte, String role) {
         if (!configure()) {
             log.warn("Role {} a retirer a la main au compte {} : secret d'administration Keycloak non configure.", role, compte);
