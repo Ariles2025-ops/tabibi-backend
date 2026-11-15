@@ -27,3 +27,10 @@ management:
       # Sondes /actuator/health/liveness et /actuator/health/readiness pour les conteneurs et orchestrateurs.
       probes:
         enabled: true
+
+# Production : pas de documentation d'API exposee.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

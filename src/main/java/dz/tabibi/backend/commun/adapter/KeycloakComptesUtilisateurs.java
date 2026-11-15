@@ -109,6 +109,26 @@ public class KeycloakComptesUtilisateurs implements ComptesUtilisateurs {
         log.info("Role {} donne au compte {}.", role, compte);
     }
 
+    @Override
+    public void retirerRole(UUID compte, String role) {
+        if (!configure()) {
+            log.warn("Role {} a retirer a la main au compte {} : secret d'administration Keycloak non configure.", role, compte);
+            return;
+        }
+        try {
+            String jeton = "Bearer " + jeton();
+            Map<?, ?> r = http.get().uri("/admin/realms/{realm}/roles/{role}", realm, role)
+                    .header("Authorization", jeton).retrieve().body(Map.class);
+            http.method(org.springframework.http.HttpMethod.DELETE)
+                    .uri("/admin/realms/{realm}/users/{id}/role-mappings/realm", realm, compte)
+                    .header("Authorization", jeton).contentType(MediaType.APPLICATION_JSON)
+                    .body(List.of(r)).retrieve().toBodilessEntity();
+            log.info("Role {} retire au compte {}.", role, compte);
+        } catch (RuntimeException e) {
+            log.warn("Retrait du role {} au compte {} impossible : {}", role, compte, e.getMessage());
+        }
+    }
+
     private static InfosCompte versInfos(Map<?, ?> u) {
         if (u == null || u.get("id") == null) {
             return null;

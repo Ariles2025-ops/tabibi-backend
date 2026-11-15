@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * chaque test joue une fonctionnalite comme le site web la jouerait, en enchainant les roles
  * (patient, medecin, secretaire, pharmacie, administrateur).
  */
-@SpringBootTest(properties = "tabibi.rappels.actifs=false")
+@SpringBootTest(properties = {"tabibi.rappels.actifs=false", "tabibi.limite.actions-par-minute=0"})
 @AutoConfigureMockMvc
 class ParcoursCompletsTest {
 
@@ -237,8 +237,16 @@ class ParcoursCompletsTest {
 
         assertThat((List<?>) lire(ok(get("/api/dawini/besoins?wilaya=16"), compte(pharmacie, "PHARMACIE"), null), "$[?(@.id=='" + besoin + "')]")).hasSize(1);
         int avant = nbNotifications(patient, "PATIENT");
+        // sans profil, la pharmacie ne peut pas repondre (son nom vient toujours du profil)
+        assertThat(statut(post("/api/dawini/besoins/" + besoin + "/reponses"), compte(pharmacie, "PHARMACIE"),
+                "{\"nomPharmacie\":\"Pharmacie du Centre\",\"disponible\":true}")).isEqualTo(400);
+        ok(put("/api/moi/profil"), compte(pharmacie, "PHARMACIE"),
+                "{\"nomComplet\":\"Pharmacie du Centre\",\"wilayaCode\":\"16\",\"langue\":\"fr\"}");
+        // un nom envoye par la pharmacie (ici celui d'une concurrente) est ignore
         ok(post("/api/dawini/besoins/" + besoin + "/reponses"), compte(pharmacie, "PHARMACIE"),
-                "{\"nomPharmacie\":\"Pharmacie du Centre\",\"disponible\":true,\"prixDa\":450}");
+                "{\"nomPharmacie\":\"Pharmacie Concurrente\",\"disponible\":true,\"prixDa\":450}");
+        assertThat((String) lire(ok(get("/api/dawini/besoins/" + besoin + "/reponses"), compte(patient, "PATIENT"), null), "$[0].nomPharmacie"))
+                .isEqualTo("Pharmacie du Centre");
         assertThat((List<?>) lire(ok(get("/api/dawini/besoins/" + besoin + "/reponses"), compte(patient, "PATIENT"), null), "$")).hasSize(1);
         assertThat(nbNotifications(patient, "PATIENT")).isGreaterThan(avant);
 

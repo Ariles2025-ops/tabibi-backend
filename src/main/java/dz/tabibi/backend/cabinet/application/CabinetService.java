@@ -71,7 +71,7 @@ public class CabinetService {
      * @throws AccesRefuseException s'il concerne le cabinet d'un autre medecin.
      */
     @Transactional
-    public void retirer(UUID medecinId, UUID rattachementId) {
+    public UUID retirer(UUID medecinId, UUID rattachementId) {
         Rattachement rattachement = rattachements.parId(rattachementId)
                 .orElseThrow(() -> new RattachementIntrouvableException(rattachementId));
         if (!rattachement.concerneMedecin(medecinId)) {
@@ -80,6 +80,7 @@ public class CabinetService {
         rattachements.supprimer(rattachement.id());
         notifieur.notifier(rattachement.secretaireId(), "Rattachement retiré",
                 "Un médecin a retiré votre rattachement à son cabinet.");
+        return rattachement.secretaireId();
     }
 
     /** Cabinets auxquels la secretaire est rattachee, les plus anciens rattachements d'abord. */

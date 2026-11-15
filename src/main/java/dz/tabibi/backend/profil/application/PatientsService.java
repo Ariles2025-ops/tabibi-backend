@@ -58,8 +58,9 @@ public class PatientsService {
         String nom = profil.map(Profil::nomComplet).filter(n -> n != null && !n.isBlank())
                 .or(() -> compte.map(ComptesUtilisateurs.InfosCompte::nomComplet))
                 .orElse("Patient");
-        String telephone = profil.map(Profil::telephone).filter(t -> t != null && !t.isBlank())
-                .or(() -> compte.map(ComptesUtilisateurs.InfosCompte::telephone))
+        // Le numero verifie par SMS (compte Keycloak) passe avant celui saisi librement dans le profil.
+        String telephone = compte.map(ComptesUtilisateurs.InfosCompte::telephone).filter(t -> t != null && !t.isBlank())
+                .or(() -> profil.map(Profil::telephone).filter(t -> t != null && !t.isBlank()))
                 .orElse(null);
         String email = compte.map(ComptesUtilisateurs.InfosCompte::email).orElse(null);
         return new PatientResume(id, nom, telephone, email);

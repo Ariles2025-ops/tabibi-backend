@@ -87,7 +87,11 @@ public class CabinetController {
     @PostMapping("/api/medecin/secretaires/{id}/retirer")
     @PreAuthorize("hasRole('MEDECIN')")
     public ResponseEntity<Void> retirer(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        service.retirer(identifiant(jwt), id);
+        UUID secretaire = service.retirer(identifiant(jwt), id);
+        // Plus aucun cabinet : la secretaire perd son role (l'espace secretaire disparait a sa prochaine connexion).
+        if (service.medecinsDeLaSecretaire(secretaire).isEmpty()) {
+            comptes.retirerRole(secretaire, "SECRETAIRE");
+        }
         return ResponseEntity.noContent().build();
     }
 

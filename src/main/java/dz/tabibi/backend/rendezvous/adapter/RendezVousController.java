@@ -41,14 +41,8 @@ public class RendezVousController {
         }
     }
 
-    /** Reservation sur un horaire libre (medecin + date), hors agenda. */
-    @PostMapping("/api/rendezvous")
-    @PreAuthorize("hasRole('PATIENT')")
-    public ResponseEntity<RendezVousVue> reserver(@RequestBody DemandeReservation demande,
-                                                  @AuthenticationPrincipal Jwt jwt) {
-        RendezVous rdv = service.reserver(identifiant(jwt), demande.medecinId(), demande.debut());
-        return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.de(rdv));
-    }
+    // Plus de reservation « hors agenda » (POST /api/rendezvous) : elle permettait de reserver a n'importe quelle
+    // heure aupres de n'importe quel medecin. On ne reserve que des creneaux ouverts par le medecin.
 
     /** Reservation d'un creneau propose par le medecin (voir GET /api/medecins/{id}/creneaux). */
     @PostMapping("/api/creneaux/{id}/reserver")

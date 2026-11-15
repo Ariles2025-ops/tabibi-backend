@@ -113,9 +113,11 @@ public class DawiniController {
     public ResponseEntity<ReponseVue> repondre(@PathVariable UUID id, @RequestBody DemandeReponse demande,
                                                @AuthenticationPrincipal Jwt jwt) {
         UUID pharmacie = identifiant(jwt);
-        if ((demande.nomPharmacie() == null || demande.nomPharmacie().isBlank()) && profils != null) {
-            // Nom laisse vide : celui du profil de la pharmacie (renseigne une fois dans son espace).
-            String nom = profils.parUtilisateur(pharmacie).map(p -> p.nomComplet()).orElse(null);
+        if (profils != null) {
+            // Le nom affiche au patient est TOUJOURS celui du profil de la pharmacie : une pharmacie ne peut pas
+            // repondre sous le nom d'une autre. Sans profil renseigne, la reponse est incomplete (400).
+            String nom = profils.parUtilisateur(pharmacie).map(p -> p.nomComplet())
+                    .filter(n -> n != null && !n.isBlank()).orElse(null);
             demande = new DemandeReponse(nom, demande.disponible(), demande.prixDa(), demande.commentaire());
         }
         ReponsePharmacie reponse = service.repondre(pharmacie, id, demande);

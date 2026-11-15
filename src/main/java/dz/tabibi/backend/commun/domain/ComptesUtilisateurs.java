@@ -21,4 +21,7 @@ public interface ComptesUtilisateurs {
     Optional<UUID> parEmail(String email);
 
     void accorderRole(UUID compte, String role);
+
+    /** Retire un role de royaume au compte (sans effet si l'annuaire n'est pas configure). */
+    default void retirerRole(UUID compte, String role) {}
 }

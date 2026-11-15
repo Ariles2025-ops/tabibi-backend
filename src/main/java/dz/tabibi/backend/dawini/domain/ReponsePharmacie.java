@@ -32,7 +32,7 @@ public record ReponsePharmacie(
             throw new ReponseInvalideException("La réponse est vide.");
         }
         if (demande.nomPharmacie() == null || demande.nomPharmacie().isBlank()) {
-            throw new ReponseInvalideException("Le nom de la pharmacie est obligatoire.");
+            throw new ReponseInvalideException("Le nom de la pharmacie est obligatoire : renseignez-le dans votre profil.");
         }
         String nom = demande.nomPharmacie().strip();
         if (nom.length() > LONGUEUR_MAX_NOM) {
