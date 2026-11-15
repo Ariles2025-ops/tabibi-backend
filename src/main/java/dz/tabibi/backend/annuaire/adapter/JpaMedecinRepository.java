@@ -47,4 +47,15 @@ public class JpaMedecinRepository implements MedecinRepository {
     public void supprimer(UUID id) {
         jpa.deleteById(id);
     }
+
+    @Override
+    public List<Medecin> page(int numero, int taille) {
+        return jpa.findAll(PageRequest.of(numero, taille, org.springframework.data.domain.Sort.by("id")))
+                .stream().map(MedecinEntity::versDomaine).toList();
+    }
+
+    @Override
+    public long nombre() {
+        return jpa.count();
+    }
 }

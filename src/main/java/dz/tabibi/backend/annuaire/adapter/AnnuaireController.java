@@ -50,6 +50,23 @@ public class AnnuaireController {
                 .toList();
     }
 
+    /** Taille d'une page du plan des fiches (un fichier sitemap par page). */
+    public static final int TAILLE_PLAN = 5000;
+
+    /** Une entree du plan : de quoi construire l'adresse publique de la fiche. */
+    public record EntreePlan(UUID id, String nomComplet) {}
+
+    public record PagePlan(long total, int page, int taille, List<EntreePlan> medecins) {}
+
+    /** Plan de toutes les fiches, page par page (plan du site pour les moteurs de recherche). */
+    @GetMapping("/api/medecins/plan")
+    public PagePlan plan(@RequestParam(defaultValue = "0") int page) {
+        int numero = Math.max(0, page);
+        List<EntreePlan> entrees = service.page(numero, TAILLE_PLAN).stream()
+                .map(m -> new EntreePlan(m.id(), m.nomComplet())).toList();
+        return new PagePlan(service.nombre(), numero, TAILLE_PLAN, entrees);
+    }
+
     /** Fiche d'un praticien ; 404 s'il est inconnu. */
     @GetMapping("/api/medecins/{id}")
     public ResponseEntity<Medecin> fiche(@PathVariable UUID id) {

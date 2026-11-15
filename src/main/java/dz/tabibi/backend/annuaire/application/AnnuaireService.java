@@ -26,4 +26,12 @@ public class AnnuaireService {
     public Optional<Medecin> parId(UUID id) {
         return repository.parId(id);
     }
+
+    public List<Medecin> page(int numero, int taille) {
+        return repository.page(numero, taille);
+    }
+
+    public long nombre() {
+        return repository.nombre();
+    }
 }

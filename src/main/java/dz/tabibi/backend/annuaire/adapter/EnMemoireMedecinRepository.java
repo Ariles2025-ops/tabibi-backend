@@ -69,4 +69,15 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     public void supprimer(UUID id) {
         parId.remove(id);
     }
+
+    @Override
+    public List<Medecin> page(int numero, int taille) {
+        return parId.values().stream().sorted(java.util.Comparator.comparing(Medecin::id))
+                .skip((long) numero * taille).limit(taille).toList();
+    }
+
+    @Override
+    public long nombre() {
+        return parId.size();
+    }
 }

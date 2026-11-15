@@ -16,4 +16,10 @@ public interface MedecinRepository {
 
     /** Retire une fiche de l'annuaire (fiche importee remplacee par celle du praticien qui l'a reclamee). */
     void supprimer(UUID id);
+
+    /** Toutes les fiches, page par page, dans un ordre stable (plan du site). */
+    List<Medecin> page(int numero, int taille);
+
+    /** Nombre total de fiches. */
+    long nombre();
 }
