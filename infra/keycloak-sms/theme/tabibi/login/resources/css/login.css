@@ -63,8 +63,8 @@ html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app);
 .kc-choicebtn__tx small { font-weight:400; opacity:.85; font-size:.8rem; }
 .kc-choicebtn--ghost { background:var(--n-color-bg-surface); color:var(--n-color-text-brand); border:var(--n-size-border-strong) solid var(--n-color-border-brand); }
 .kc-choicebtn--ghost .kc-choicebtn__tx small { color:var(--n-color-text-muted); opacity:1; }
-.kc-back { background:none; border:0; color:var(--n-color-text-link); cursor:pointer; font:inherit; padding:0; margin-block-end:4px; }
-a.kc-back { display:inline-block; text-decoration:none; }
+.kc-back, a.kc-back { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; min-block-size:36px; padding-inline:14px; margin-block-end:var(--n-space-4, 16px); border-radius:var(--n-radius-full); border:var(--n-size-border) solid var(--n-color-border-strong); background:var(--n-color-bg-surface); color:var(--n-color-text-primary); font:inherit; font-size:var(--n-type-small-size); text-decoration:none; cursor:pointer; }
+.kc-back:hover { border-color:var(--n-color-border-brand); color:var(--n-color-text-brand); }
 
 /* Correctif : titre + sous-texte empiles et alignes a gauche (prime sur le style .n-btn). */
 .kc-choicebtn.kc-choicebtn { justify-content:flex-start; text-align:start; height:auto; min-block-size:var(--n-size-touch-min); padding-block:12px; }
