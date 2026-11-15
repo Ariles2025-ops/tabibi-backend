@@ -56,13 +56,25 @@ class AdministrationServiceTest {
         UUID admin1 = UUID.randomUUID(), admin2 = UUID.randomUUID();
         service.setComptes(new dz.tabibi.backend.commun.domain.ComptesUtilisateurs() {
             public boolean disponible() { return true; }
-            public Optional<InfosCompte> infos(UUID compte) { return Optional.empty(); }
             public Optional<UUID> parEmail(String email) { return Optional.empty(); }
             public void accorderRole(UUID compte, String role) { }
             public List<UUID> avecRole(String role) { return "ADMIN".equals(role) ? List.of(admin1, admin2) : List.of(); }
+            public Optional<InfosCompte> infos(UUID compte) {
+                return Optional.of(new InfosCompte(compte, "Admin", compte.equals(admin1) ? "admin1@tabibi.doctor" : null, null));
+            }
+        });
+        List<String> emails = new java.util.ArrayList<>();
+        service.setCourriel(new dz.tabibi.backend.commun.domain.Courriel() {
+            public boolean disponible() { return true; }
+            public void envoyer(String a, String sujet, String texte) { emails.add(a + " | " + sujet + " | " + texte); }
         });
 
         service.deposer(MEDECIN, DEMANDE);
+
+        // e-mail seulement aux administrateurs qui ont une adresse
+        assertThat(emails).hasSize(1);
+        assertThat(emails.get(0)).startsWith("admin1@tabibi.doctor | Tabibi — Nouvelle candidature médecin |")
+                .contains("Dr Nadia Bensalem").contains("https://tabibi.doctor/admin/candidatures");
 
         for (UUID admin : List.of(admin1, admin2)) {
             assertThat(notificationsDe(admin)).hasSize(1);
