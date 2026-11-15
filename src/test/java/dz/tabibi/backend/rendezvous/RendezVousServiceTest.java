@@ -352,4 +352,29 @@ class RendezVousServiceTest {
     void agenda_d_un_medecin_sans_rendezvous_est_vide() {
         assertThat(service.agendaDuMedecin(UUID.randomUUID())).isEmpty();
     }
+
+    @Test
+    void refuse_de_reserver_un_creneau_deja_passe() {
+        Creneau passe = creneaux.enregistrer(new Creneau(UUID.randomUUID(), UUID.randomUUID(),
+                Instant.now().minusSeconds(3600), 30, true));
+
+        assertThatThrownBy(() -> service.reserverCreneau(UUID.randomUUID(), passe.id()))
+                .isInstanceOf(CreneauDejaReserveException.class);
+        assertThat(estDisponible(passe.id())).isTrue();
+    }
+
+    @Test
+    void le_patient_ne_peut_annuler_ni_un_rendezvous_passe_ni_un_rendezvous_honore() {
+        EnMemoireRendezVousRepository rdvs = new EnMemoireRendezVousRepository();
+        RendezVousService avecRdvs = new RendezVousService(rdvs, creneaux, notifieur, alerte);
+        UUID patient = UUID.randomUUID();
+        RendezVous passe = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), patient, UUID.randomUUID(),
+                Instant.now().minusSeconds(7200), StatutRdv.CONFIRME));
+        RendezVous honore = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), patient, UUID.randomUUID(),
+                Instant.now().plusSeconds(7200), StatutRdv.HONORE));
+
+        assertThatThrownBy(() -> avecRdvs.annuler(patient, passe.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> avecRdvs.annuler(patient, honore.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThat(alerte.alertes).isEmpty();
+    }
 }

@@ -12,6 +12,7 @@ import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +67,9 @@ public class RendezVousService {
         if (!creneau.disponible()) {
             throw new CreneauDejaReserveException("Ce creneau n'est plus disponible.");
         }
+        if (!creneau.debut().isAfter(Instant.now())) {
+            throw new CreneauDejaReserveException("Ce creneau est deja passe.");
+        }
         creneaux.enregistrer(creneau.reserver());
         RendezVous rdv = repository.enregistrer(
                 RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id()));
@@ -94,6 +98,12 @@ public class RendezVousService {
         }
         if (rdv.estAnnule()) {
             return rdv;
+        }
+        if (rdv.statut() == StatutRdv.HONORE) {
+            throw new TransitionInvalideException("Ce rendez-vous a deja eu lieu : il ne peut plus etre annule.");
+        }
+        if (!rdv.debut().isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous est deja passe : il ne peut plus etre annule.");
         }
         rdv.annuler();
         libererCreneau(rdv);
@@ -163,7 +173,7 @@ public class RendezVousService {
      * alerte la liste d'attente du medecin ; sans effet pour un rendez-vous pris hors agenda.
      */
     private void libererCreneau(RendezVous rdv) {
-        if (rdv.creneauId() == null) {
+        if (rdv.creneauId() == null || !rdv.debut().isAfter(Instant.now())) {
             return;
         }
         creneaux.parId(rdv.creneauId()).map(Creneau::liberer).ifPresent(creneau -> {

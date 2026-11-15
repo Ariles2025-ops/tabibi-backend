@@ -52,7 +52,7 @@ public class EnMemoireAvisRepository implements AvisRepository {
 
     @Override
     public List<Avis> publiesPourMedecin(UUID medecinId) {
-        return tries(a -> a.concerne(medecinId) && a.estPublie(), PLUS_RECENT_D_ABORD);
+        return tries(a -> a.concerne(medecinId) && a.statut() != StatutAvis.MASQUE, PLUS_RECENT_D_ABORD);
     }
 
     @Override

@@ -10,6 +10,11 @@ import dz.tabibi.backend.ordonnances.domain.OrdonnanceInvalideException;
 import dz.tabibi.backend.ordonnances.domain.OrdonnanceRepository;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
 import dz.tabibi.backend.ordonnances.domain.StatutOrdonnance;
+import dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository;
+import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -31,7 +36,16 @@ class OrdonnanceServiceTest {
             new LigneOrdonnance("Amoxicilline 500 mg", "1 gelule toutes les 8 heures", "7 jours"));
 
     private final OrdonnanceRepository repository = new EnMemoireOrdonnanceRepository();
-    private final OrdonnanceService service = new OrdonnanceService(repository);
+    private final RendezVousRepository rendezVous = new EnMemoireRendezVousRepository();
+    private final OrdonnanceService service = new OrdonnanceService(repository, rendezVous);
+    /** Rendez-vous qui fait de PATIENT un patient de MEDECIN. */
+    private RendezVous rdvCommun;
+
+    @BeforeEach
+    void patientDuMedecin() {
+        rdvCommun = rendezVous.enregistrer(new RendezVous(
+                UUID.randomUUID(), PATIENT, MEDECIN, Instant.parse("2026-01-10T09:00:00Z"), StatutRdv.HONORE));
+    }
 
     /** Ordonnance emise a une date choisie, enregistree directement (sans passer par le service). */
     private Ordonnance emiseLe(UUID patient, String date, StatutOrdonnance statut, String code) {
@@ -56,11 +70,28 @@ class OrdonnanceServiceTest {
 
     @Test
     void rattache_l_ordonnance_au_rendezvous_indique() {
-        UUID rendezVous = UUID.randomUUID();
+        Ordonnance o = service.emettre(MEDECIN, PATIENT, rdvCommun.id(), LIGNES);
 
-        Ordonnance o = service.emettre(MEDECIN, PATIENT, rendezVous, LIGNES);
+        assertThat(o.rendezVousId()).isEqualTo(rdvCommun.id());
+    }
 
-        assertThat(o.rendezVousId()).isEqualTo(rendezVous);
+    @Test
+    void refuse_une_ordonnance_pour_un_patient_qui_n_est_pas_celui_du_medecin() {
+        UUID inconnu = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.emettre(MEDECIN, inconnu, null, LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.emettre(UUID.randomUUID(), PATIENT, null, LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThat(service.mesOrdonnances(inconnu)).isEmpty();
+    }
+
+    @Test
+    void refuse_un_rendezvous_d_un_autre_medecin_ou_inexistant() {
+        assertThatThrownBy(() -> service.emettre(UUID.randomUUID(), PATIENT, rdvCommun.id(), LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.emettre(MEDECIN, PATIENT, UUID.randomUUID(), LIGNES))
+                .isInstanceOf(AccesRefuseException.class);
     }
 
     @Test

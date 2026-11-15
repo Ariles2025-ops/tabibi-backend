@@ -9,6 +9,7 @@ import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import dz.tabibi.backend.teleconsultation.domain.GenerateurSalle;
+import dz.tabibi.backend.teleconsultation.domain.StatutTeleconsultation;
 import dz.tabibi.backend.teleconsultation.domain.Teleconsultation;
 import dz.tabibi.backend.teleconsultation.domain.TeleconsultationIntrouvableException;
 import dz.tabibi.backend.teleconsultation.domain.TeleconsultationRepository;
@@ -78,12 +79,12 @@ public class TeleconsultationService {
 
     /** Teleconsultations d'un patient, de la plus recente a la plus ancienne. */
     public List<Teleconsultation> mesTeleconsultations(UUID patientId) {
-        return repository.parPatient(patientId);
+        return repository.parPatient(patientId).stream().map(this::synchroniser).toList();
     }
 
     /** Teleconsultations menees par un medecin, de la plus recente a la plus ancienne. */
     public List<Teleconsultation> teleconsultationsDuMedecin(UUID medecinId) {
-        return repository.parMedecin(medecinId);
+        return repository.parMedecin(medecinId).stream().map(this::synchroniser).toList();
     }
 
     /**
@@ -165,8 +166,25 @@ public class TeleconsultationService {
     }
 
     private Teleconsultation charger(UUID teleconsultationId) {
-        return repository.parId(teleconsultationId)
-                .orElseThrow(() -> new TeleconsultationIntrouvableException(teleconsultationId));
+        return synchroniser(repository.parId(teleconsultationId)
+                .orElseThrow(() -> new TeleconsultationIntrouvableException(teleconsultationId)));
+    }
+
+    /**
+     * Une teleconsultation encore planifiee dont le rendez-vous a ete annule (par le patient ou le cabinet)
+     * est annulee a son tour : on ne peut plus y consentir ni la demarrer.
+     */
+    private Teleconsultation synchroniser(Teleconsultation teleconsultation) {
+        if (teleconsultation.statut() != StatutTeleconsultation.PLANIFIEE) {
+            return teleconsultation;
+        }
+        boolean rendezVousAnnule = rendezVous.parId(teleconsultation.rendezVousId())
+                .map(RendezVous::estAnnule).orElse(false);
+        if (!rendezVousAnnule) {
+            return teleconsultation;
+        }
+        teleconsultation.annuler();
+        return repository.enregistrer(teleconsultation);
     }
 
     private Teleconsultation chargerPourLeMedecin(UUID medecinId, UUID teleconsultationId) {

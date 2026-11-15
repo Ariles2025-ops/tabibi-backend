@@ -131,7 +131,7 @@ class AvisServiceTest {
     }
 
     @Test
-    void la_synthese_publique_compte_les_avis_publies_du_medecin_seulement() {
+    void la_synthese_publique_compte_les_avis_publies_et_signales_du_medecin_mais_pas_les_masques() {
         deposeLe(PATIENT, MEDECIN, 5, "2025-01-10T09:00:00Z");
         Avis recent = deposeLe(UUID.randomUUID(), MEDECIN, 4, "2025-03-01T09:00:00Z");
         Avis signale = deposeLe(UUID.randomUUID(), MEDECIN, 1, "2025-02-01T09:00:00Z");
@@ -142,11 +142,12 @@ class AvisServiceTest {
 
         SyntheseAvis synthese = service.avisPublics(MEDECIN);
 
-        assertThat(synthese.nombre()).isEqualTo(2);
-        assertThat(synthese.moyenne()).isEqualTo(4.5);
-        assertThat(synthese.avis()).hasSize(2);
+        // Le signalement ne cache pas l'avis : seul le masquage par l'administrateur le retire.
+        assertThat(synthese.nombre()).isEqualTo(3);
+        assertThat(synthese.moyenne()).isEqualTo(3.3);
+        assertThat(synthese.avis()).hasSize(3);
         assertThat(synthese.avis().get(0)).isEqualTo(recent);
-        assertThat(synthese.avis()).allMatch(Avis::estPublie);
+        assertThat(synthese.avis()).noneMatch(a -> a.statut() == StatutAvis.MASQUE);
     }
 
     @Test
@@ -172,7 +173,7 @@ class AvisServiceTest {
     }
 
     @Test
-    void signaler_par_le_medecin_concerne_retire_l_avis_de_la_synthese() {
+    void signaler_par_le_medecin_concerne_laisse_l_avis_visible_jusqu_a_la_moderation() {
         Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
 
         Avis signale = service.signaler(MEDECIN, a.id());
@@ -180,8 +181,10 @@ class AvisServiceTest {
         assertThat(signale.id()).isEqualTo(a.id());
         assertThat(signale.statut()).isEqualTo(StatutAvis.SIGNALE);
         assertThat(avis.parId(a.id()).orElseThrow().statut()).isEqualTo(StatutAvis.SIGNALE);
-        assertThat(service.avisPublics(MEDECIN).nombre()).isEqualTo(0);
+        assertThat(service.avisPublics(MEDECIN).nombre()).isEqualTo(1);
         assertThat(service.lister(Optional.of(StatutAvis.SIGNALE))).containsExactly(signale);
+        service.masquer(a.id());
+        assertThat(service.avisPublics(MEDECIN).nombre()).isEqualTo(0);
         assertThatThrownBy(() -> service.signaler(MEDECIN, a.id())).isInstanceOf(TransitionInvalideException.class);
     }
 

@@ -259,4 +259,17 @@ class TeleconsultationServiceTest {
         assertThat(service.teleconsultationsDuMedecin(MEDECIN).get(1).id()).isEqualTo(autrePatient.id());
         assertThat(service.teleconsultationsDuMedecin(UUID.randomUUID())).isEmpty();
     }
+
+    @Test
+    void une_teleconsultation_dont_le_rendezvous_est_annule_est_annulee_et_ne_peut_plus_etre_rejointe() {
+        Teleconsultation t = planifiee();
+        RendezVous rdv = rendezVous.parId(t.rendezVousId()).orElseThrow();
+        rdv.annuler();
+        rendezVous.enregistrer(rdv);
+
+        assertThatThrownBy(() -> service.consentir(PATIENT, t.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.demarrer(MEDECIN, t.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThat(teleconsultations.parId(t.id()).orElseThrow().statut()).isEqualTo(StatutTeleconsultation.ANNULEE);
+        assertThat(service.mesTeleconsultations(PATIENT)).allMatch(x -> x.statut() == StatutTeleconsultation.ANNULEE);
+    }
 }

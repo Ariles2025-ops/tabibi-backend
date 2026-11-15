@@ -68,7 +68,10 @@ public class AvisService {
         return avis.parPatient(patientId);
     }
 
-    /** Synthese publique d'un medecin : seuls les avis publies comptent (ni signales, ni masques). */
+    /**
+     * Synthese publique d'un medecin : les avis publies et ceux signales par le medecin (ils restent visibles
+     * tant que l'administrateur ne les a pas masques), jamais les avis masques.
+     */
     public SyntheseAvis avisPublics(UUID medecinId) {
         return SyntheseAvis.de(avis.publiesPourMedecin(medecinId));
     }

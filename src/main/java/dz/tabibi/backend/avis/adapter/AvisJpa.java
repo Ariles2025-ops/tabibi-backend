@@ -15,6 +15,8 @@ interface AvisJpa extends JpaRepository<AvisEntity, UUID> {
 
     List<AvisEntity> findByMedecinIdAndStatutOrderByDeposeLeDesc(UUID medecinId, StatutAvis statut);
 
+    List<AvisEntity> findByMedecinIdAndStatutInOrderByDeposeLeDesc(UUID medecinId, java.util.Collection<StatutAvis> statuts);
+
     List<AvisEntity> findByStatutOrderByDeposeLeAsc(StatutAvis statut);
 
     List<AvisEntity> findAllByOrderByDeposeLeAsc();

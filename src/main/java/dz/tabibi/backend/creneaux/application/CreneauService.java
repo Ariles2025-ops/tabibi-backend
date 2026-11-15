@@ -29,7 +29,11 @@ public class CreneauService {
     }
 
     public List<Creneau> disponiblesPour(UUID medecinId) {
-        return repository.disponiblesPour(medecinId);
+        // Seuls les creneaux a venir sont proposes : un creneau passe n'est plus reservable.
+        Instant maintenant = Instant.now();
+        return repository.disponiblesPour(medecinId).stream()
+                .filter(c -> c.debut().isAfter(maintenant))
+                .toList();
     }
 
     /**

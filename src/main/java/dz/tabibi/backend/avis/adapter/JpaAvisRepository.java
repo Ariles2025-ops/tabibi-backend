@@ -47,7 +47,7 @@ public class JpaAvisRepository implements AvisRepository {
 
     @Override
     public List<Avis> publiesPourMedecin(UUID medecinId) {
-        return jpa.findByMedecinIdAndStatutOrderByDeposeLeDesc(medecinId, StatutAvis.PUBLIE)
+        return jpa.findByMedecinIdAndStatutInOrderByDeposeLeDesc(medecinId, java.util.List.of(StatutAvis.PUBLIE, StatutAvis.SIGNALE))
                 .stream().map(AvisEntity::versDomaine).toList();
     }
 
