@@ -4,5 +4,7 @@ package dz.tabibi.backend.rendezvous.domain;
 public enum StatutRdv {
     CONFIRME,
     ANNULE,
-    HONORE
+    HONORE,
+    /** Le patient n'est pas venu au rendez-vous (constate par le cabinet apres l'heure). */
+    ABSENT
 }

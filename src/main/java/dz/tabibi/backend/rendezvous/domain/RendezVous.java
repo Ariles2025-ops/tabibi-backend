@@ -83,6 +83,20 @@ public class RendezVous {
     }
 
     /** Vrai si le rendez-vous a ete pris par ce patient. */
+    /**
+     * Le patient n'est pas venu : le cabinet le constate une fois l'heure passee.
+     * @throws TransitionInvalideException s'il n'est pas confirme ou n'a pas encore commence.
+     */
+    public void marquerAbsent() {
+        if (statut != StatutRdv.CONFIRME) {
+            throw new TransitionInvalideException("Seul un rendez-vous confirmé peut être marqué « absent ».");
+        }
+        if (debut.isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : le patient ne peut pas être marqué absent.");
+        }
+        this.statut = StatutRdv.ABSENT;
+    }
+
     public boolean appartientA(UUID unPatientId) {
         return patientId.equals(unPatientId);
     }

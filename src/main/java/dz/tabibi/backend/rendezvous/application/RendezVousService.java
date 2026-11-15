@@ -126,7 +126,7 @@ public class RendezVousService {
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
         notifieur.notifier(annule.medecinId(), "Rendez-vous annule",
-                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a ete annule par le patient.");
+                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a ete annule par le patient.", "/medecin/agenda");
         return annule;
     }
 
@@ -150,6 +150,25 @@ public class RendezVousService {
         }
         rdv.honorer();
         return repository.enregistrer(rdv);
+    }
+
+    /**
+     * Le patient n'est pas venu : le medecin (ou sa secretaire) le constate apres l'heure du rendez-vous.
+     * @throws AccesRefuseException s'il est dans l'agenda d'un autre medecin.
+     * @throws TransitionInvalideException s'il n'est pas confirme ou pas encore commence.
+     */
+    @Transactional
+    public RendezVous marquerAbsent(UUID medecinId, UUID rendezVousId) {
+        RendezVous rdv = parId(rendezVousId);
+        if (!rdv.estAvec(medecinId)) {
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+        }
+        rdv.marquerAbsent();
+        RendezVous absent = repository.enregistrer(rdv);
+        notifieur.notifier(absent.patientId(), "Rendez-vous manqué",
+                "Vous n'êtes pas venu à votre rendez-vous du " + FormatDate.lisible(absent.debut())
+                        + ". Pensez à annuler à l'avance pour libérer la place.", "/mes-rendez-vous");
+        return absent;
     }
 
     /**
@@ -181,7 +200,7 @@ public class RendezVousService {
         RendezVous annule = repository.enregistrer(rdv);
         notifieur.notifier(annule.patientId(), "Rendez-vous annule par le cabinet",
                 "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                        + " a ete annule par le cabinet. Vous pouvez reserver un autre creneau.");
+                        + " a ete annule par le cabinet. Vous pouvez reserver un autre creneau.", "/medecins/" + annule.medecinId());
         return annule;
     }
 
@@ -203,8 +222,8 @@ public class RendezVousService {
     private void notifierReservation(RendezVous rdv) {
         String date = FormatDate.lisible(rdv.debut());
         notifieur.notifier(rdv.patientId(), "Rendez-vous confirme",
-                "Votre rendez-vous du " + date + " est confirme.");
+                "Votre rendez-vous du " + date + " est confirme.", "/mes-rendez-vous");
         notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous",
-                "Un patient a reserve un rendez-vous le " + date + ".");
+                "Un patient a reserve un rendez-vous le " + date + ".", "/medecin/agenda");
     }
 }

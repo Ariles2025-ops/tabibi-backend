@@ -89,6 +89,13 @@ public class RendezVousController {
      * Le medecin annule lui-meme un rendez-vous confirme de son agenda : le creneau est remis a disposition
      * et le patient est prevenu (403 si le rendez-vous est a un autre medecin, 409 s'il n'est pas confirme).
      */
+    /** Le patient n'est pas venu : le medecin le marque absent (409 si pas confirme ou pas encore commence). */
+    @PostMapping("/api/medecin/rendezvous/{id}/absent")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public RendezVousVue absent(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return RendezVousVue.de(service.marquerAbsent(identifiant(jwt), id));
+    }
+
     @PostMapping("/api/medecin/rendezvous/{id}/annuler")
     @PreAuthorize("hasRole('MEDECIN')")
     public RendezVousVue annulerParCabinet(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {

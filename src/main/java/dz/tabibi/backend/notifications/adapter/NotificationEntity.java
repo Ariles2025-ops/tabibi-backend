@@ -37,6 +37,9 @@ class NotificationEntity {
     @Column(name = "lue", nullable = false)
     private boolean lue;
 
+    @Column(name = "lien", length = 300)
+    private String lien;
+
     @Column(name = "cree_le", nullable = false)
     private Instant creeLe;
 
@@ -51,10 +54,11 @@ class NotificationEntity {
         e.message = n.message();
         e.lue = n.lue();
         e.creeLe = n.creeLe();
+        e.lien = n.lien();
         return e;
     }
 
     Notification versDomaine() {
-        return new Notification(id, destinataireId, canal, sujet, message, lue, creeLe);
+        return new Notification(id, destinataireId, canal, sujet, message, lue, creeLe, lien);
     }
 }

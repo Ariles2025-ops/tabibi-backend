@@ -30,10 +30,10 @@ public class NotificationController {
 
     /** Vue d'une notification telle que renvoyee par l'API. */
     public record NotificationVue(UUID id, UUID destinataireId, String canal, String sujet,
-                                  String message, boolean lue, Instant creeLe) {
+                                  String message, boolean lue, Instant creeLe, String lien) {
         static NotificationVue de(Notification n) {
             return new NotificationVue(n.id(), n.destinataireId(), n.canal().name(), n.sujet(),
-                    n.message(), n.lue(), n.creeLe());
+                    n.message(), n.lue(), n.creeLe(), n.lien());
         }
     }
 

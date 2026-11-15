@@ -104,7 +104,7 @@ public class MessagerieService {
         Message message = messages.enregistrer(Message.envoyer(conversation.id(), sujet, contenu, Instant.now()));
         conversations.enregistrer(conversation.avecDernierMessageLe(message.envoyeLe()));
         notifieur.notifier(conversation.autreParticipant(sujet), "Nouveau message",
-                "Vous avez recu un nouveau message.");
+                "Vous avez recu un nouveau message.", "/messagerie/" + conversation.id());
         return message;
     }
 

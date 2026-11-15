@@ -19,11 +19,47 @@ public record Ordonnance(
         List<LigneOrdonnance> lignes,
         Instant emiseLe,
         String codeVerification,
-        StatutOrdonnance statut
+        StatutOrdonnance statut,
+        String motifAnnulation,
+        Instant delivreeLe
 ) {
 
     public Ordonnance {
         lignes = List.copyOf(lignes);
+    }
+
+    public Ordonnance(UUID id, UUID medecinId, UUID patientId, UUID rendezVousId, List<LigneOrdonnance> lignes,
+                      Instant emiseLe, String codeVerification, StatutOrdonnance statut) {
+        this(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification, statut, null, null);
+    }
+
+    /**
+     * Le medecin annule une ordonnance emise (erreur de prescription) : elle n'est plus valide en pharmacie.
+     * @throws dz.tabibi.backend.commun.domain.TransitionInvalideException si elle n'est plus emise.
+     */
+    public Ordonnance annuler(String motif) {
+        if (statut != StatutOrdonnance.EMISE) {
+            throw new dz.tabibi.backend.commun.domain.TransitionInvalideException(
+                    statut == StatutOrdonnance.DELIVREE ? "Cette ordonnance a déjà été délivrée : elle ne peut plus être annulée."
+                            : "Cette ordonnance est déjà annulée.");
+        }
+        String m = motif == null || motif.isBlank() ? null : motif.trim();
+        return new Ordonnance(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification,
+                StatutOrdonnance.ANNULEE, m, null);
+    }
+
+    /**
+     * Une pharmacie delivre les medicaments : l'ordonnance ne peut plus servir une seconde fois.
+     * @throws dz.tabibi.backend.commun.domain.TransitionInvalideException si elle n'est plus emise.
+     */
+    public Ordonnance delivrer(Instant quand) {
+        if (statut != StatutOrdonnance.EMISE) {
+            throw new dz.tabibi.backend.commun.domain.TransitionInvalideException(
+                    statut == StatutOrdonnance.DELIVREE ? "Cette ordonnance a déjà été délivrée."
+                            : "Cette ordonnance a été annulée par le médecin : elle ne peut pas être délivrée.");
+        }
+        return new Ordonnance(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification,
+                StatutOrdonnance.DELIVREE, null, quand);
     }
 
     /** Cree une ordonnance emise, avec le code de verification qui lui est attribue. */

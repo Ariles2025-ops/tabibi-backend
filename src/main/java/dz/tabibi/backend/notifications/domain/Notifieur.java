@@ -11,4 +11,9 @@ import java.util.UUID;
 public interface Notifieur {
 
     void notifier(UUID destinataireId, String sujet, String message);
+
+    /** Comme {@link #notifier(UUID, String, String)}, avec la page de l'application ou mene la notification. */
+    default void notifier(UUID destinataireId, String sujet, String message, String lien) {
+        notifier(destinataireId, sujet, message);
+    }
 }

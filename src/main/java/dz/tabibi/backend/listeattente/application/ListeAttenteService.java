@@ -81,6 +81,7 @@ public class ListeAttenteService implements AlerteCreneau {
         String message = "Un creneau vient de se liberer chez votre medecin le "
                 + FormatDate.lisible(debut) + ". Reservez vite.";
         repository.parMedecin(medecinId)
-                .forEach(inscription -> notifieur.notifier(inscription.patientId(), "Creneau disponible", message));
+                .forEach(inscription -> notifieur.notifier(inscription.patientId(), "Creneau disponible", message,
+                        "/medecins/" + medecinId));
     }
 }

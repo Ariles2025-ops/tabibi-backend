@@ -44,8 +44,8 @@ public class RappelService {
         List<RendezVous> aRappeler = rendezVous.confirmesSansRappelEntre(maintenant, maintenant.plus(HORIZON));
         for (RendezVous rdv : aRappeler) {
             notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
-                    "Votre rendez-vous du " + FormatDate.lisible(rdv.debut())
-                            + " est demain. Pensez a vous presenter 10 minutes en avance.");
+                    "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
+                            + ". Pensez a vous presenter 10 minutes en avance.", "/mes-rendez-vous");
             rdv.marquerRappelEnvoye(maintenant);
             rendezVous.enregistrer(rdv);
         }

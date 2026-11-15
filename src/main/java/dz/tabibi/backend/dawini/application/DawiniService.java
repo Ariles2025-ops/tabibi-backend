@@ -91,7 +91,7 @@ public class DawiniService {
         ReponsePharmacie reponse = reponses.enregistrer(
                 ReponsePharmacie.repondre(besoin.id(), pharmacieId, demande, Instant.now()));
         notifieur.notifier(besoin.patientId(), "Reponse d'une pharmacie",
-                "Une pharmacie a repondu a votre demande de medicament.");
+                "Une pharmacie a repondu a votre demande de medicament.", "/dawini/" + besoin.id());
         return reponse;
     }
 

@@ -69,7 +69,7 @@ class RappelServiceTest {
         assertThat(notifieur.appels).hasSize(1);
         assertThat(notifieur.pour(rdv.patientId()).get(0).sujet()).isEqualTo("Rappel de rendez-vous");
         assertThat(notifieur.pour(rdv.patientId()).get(0).message())
-                .isEqualTo("Votre rendez-vous du 06/12/2026 a 13:00 est demain. Pensez a vous presenter 10 minutes en avance.");
+                .isEqualTo("Rappel : votre rendez-vous a lieu le 06/12/2026 a 13:00. Pensez a vous presenter 10 minutes en avance.");
         assertThat(recharge(rdv).rappelEnvoye()).isTrue();
         assertThat(recharge(rdv).rappelEnvoyeLe()).isEqualTo(MAINTENANT);
     }

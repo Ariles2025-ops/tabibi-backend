@@ -43,17 +43,17 @@ public class OrdonnanceController {
     /** Vue d'une ordonnance telle que renvoyee par l'API (a son patient ou a son medecin). */
     public record OrdonnanceVue(UUID id, UUID medecinId, UUID patientId, UUID rendezVousId,
                                 List<LigneOrdonnance> lignes, Instant emiseLe,
-                                String codeVerification, String statut) {
+                                String codeVerification, String statut, String motifAnnulation, Instant delivreeLe) {
         static OrdonnanceVue de(Ordonnance o) {
             return new OrdonnanceVue(o.id(), o.medecinId(), o.patientId(), o.rendezVousId(),
-                    o.lignes(), o.emiseLe(), o.codeVerification(), o.statut().name());
+                    o.lignes(), o.emiseLe(), o.codeVerification(), o.statut().name(), o.motifAnnulation(), o.delivreeLe());
         }
     }
 
     /** Reponse publique de verification : aucune donnee personnelle. */
-    public record VerificationVue(boolean valide, Instant emiseLe, String statut) {
+    public record VerificationVue(boolean valide, Instant emiseLe, String statut, Instant delivreeLe) {
         static VerificationVue de(ResultatVerification r) {
-            return new VerificationVue(r.valide(), r.emiseLe(), r.statut().name());
+            return new VerificationVue(r.valide(), r.emiseLe(), r.statut().name(), r.delivreeLe());
         }
     }
 
@@ -88,6 +88,23 @@ public class OrdonnanceController {
     }
 
     /** Verification publique par un pharmacien (sans jeton, voir SecurityConfig) ; 404 si le code est inconnu. */
+    public record DemandeAnnulation(String motif) {}
+
+    /** Le medecin annule une ordonnance qu'il a redigee (409 si deja annulee ou delivree, 403 sinon). */
+    @PostMapping("/api/medecin/ordonnances/{id}/annuler")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public OrdonnanceVue annuler(@PathVariable UUID id, @RequestBody(required = false) DemandeAnnulation demande,
+                                 @AuthenticationPrincipal Jwt jwt) {
+        return OrdonnanceVue.de(service.annuler(identifiant(jwt), id, demande == null ? null : demande.motif()));
+    }
+
+    /** Une pharmacie marque l'ordonnance delivree (409 si deja delivree ou annulee, 404 si code inconnu). */
+    @PostMapping("/api/pharmacie/ordonnances/{code}/delivrer")
+    @PreAuthorize("hasRole('PHARMACIE')")
+    public VerificationVue delivrer(@PathVariable String code) {
+        return VerificationVue.de(service.delivrer(code));
+    }
+
     @GetMapping("/api/ordonnances/verifier/{code}")
     public VerificationVue verifier(@PathVariable String code) {
         return VerificationVue.de(service.verifier(code));

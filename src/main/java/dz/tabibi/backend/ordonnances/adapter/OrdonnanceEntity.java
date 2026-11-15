@@ -50,6 +50,12 @@ class OrdonnanceEntity {
     @Column(name = "statut", nullable = false, length = 20)
     private StatutOrdonnance statut;
 
+    @Column(name = "motif_annulation", length = 300)
+    private String motifAnnulation;
+
+    @Column(name = "delivree_le")
+    private java.time.Instant delivreeLe;
+
     protected OrdonnanceEntity() { }
 
     static OrdonnanceEntity de(Ordonnance o, String lignesJson) {
@@ -62,11 +68,13 @@ class OrdonnanceEntity {
         e.emiseLe = o.emiseLe();
         e.codeVerification = o.codeVerification();
         e.statut = o.statut();
+        e.motifAnnulation = o.motifAnnulation();
+        e.delivreeLe = o.delivreeLe();
         return e;
     }
 
     Ordonnance versDomaine(List<LigneOrdonnance> lignes) {
-        return new Ordonnance(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification, statut);
+        return new Ordonnance(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification, statut, motifAnnulation, delivreeLe);
     }
 
     String getLignesJson() { return lignesJson; }

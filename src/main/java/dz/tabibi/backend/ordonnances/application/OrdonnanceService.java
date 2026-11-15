@@ -59,7 +59,8 @@ public class OrdonnanceService {
                 medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now());
         Ordonnance emise = repository.enregistrer(ordonnance);
         notifieur.notifier(patientId, "Nouvelle ordonnance",
-                "Votre medecin vous a delivre une ordonnance : retrouvez-la dans « Mes ordonnances ».");
+                "Votre médecin vous a délivré une ordonnance : retrouvez-la dans « Mes ordonnances ».",
+                "/ordonnances/" + emise.id());
         return emise;
     }
 
@@ -96,6 +97,37 @@ public class OrdonnanceService {
         Ordonnance ordonnance = repository.parCode(CodeVerification.normaliser(code))
                 .orElseThrow(OrdonnanceIntrouvableException::codeInconnu);
         return ResultatVerification.de(ordonnance);
+    }
+
+    /**
+     * Le medecin annule une ordonnance qu'il a redigee ; le patient est prevenu.
+     * @throws OrdonnanceIntrouvableException si elle n'existe pas.
+     * @throws AccesRefuseException si elle a ete redigee par un autre medecin.
+     */
+    public Ordonnance annuler(UUID medecinId, UUID ordonnanceId, String motif) {
+        Ordonnance ordonnance = repository.parId(ordonnanceId)
+                .orElseThrow(() -> new OrdonnanceIntrouvableException(ordonnanceId));
+        if (!ordonnance.medecinId().equals(medecinId)) {
+            throw new AccesRefuseException("Vous n'avez pas rédigé cette ordonnance.");
+        }
+        Ordonnance annulee = repository.enregistrer(ordonnance.annuler(motif));
+        notifieur.notifier(annulee.patientId(), "Ordonnance annulée",
+                "Votre médecin a annulé une ordonnance" + (annulee.motifAnnulation() == null ? "." : " : " + annulee.motifAnnulation()),
+                "/ordonnances/" + annulee.id());
+        return annulee;
+    }
+
+    /**
+     * Une pharmacie delivre l'ordonnance (par son code) : elle ne pourra plus etre presentee ailleurs.
+     * @throws OrdonnanceIntrouvableException si le code est inconnu.
+     */
+    public ResultatVerification delivrer(String code) {
+        Ordonnance ordonnance = repository.parCode(CodeVerification.normaliser(code))
+                .orElseThrow(OrdonnanceIntrouvableException::codeInconnu);
+        Ordonnance delivree = repository.enregistrer(ordonnance.delivrer(Instant.now()));
+        notifieur.notifier(delivree.patientId(), "Ordonnance délivrée",
+                "Votre ordonnance a été délivrée en pharmacie.", "/ordonnances/" + delivree.id());
+        return ResultatVerification.de(delivree);
     }
 
     /** Tire un code de verification qu'aucune ordonnance ne porte encore. */

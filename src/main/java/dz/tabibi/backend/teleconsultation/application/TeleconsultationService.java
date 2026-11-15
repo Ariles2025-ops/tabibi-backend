@@ -76,7 +76,7 @@ public class TeleconsultationService {
                 Teleconsultation.planifier(rendezVousId, rdv.patientId(), medecinId, generateurSalle.generer()));
         notifieur.notifier(rdv.patientId(), "Teleconsultation proposee",
                 "Votre medecin vous propose une teleconsultation pour votre rendez-vous du "
-                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est necessaire pour y acceder.");
+                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est necessaire pour y acceder.", "/teleconsultations");
         return teleconsultation;
     }
 
@@ -117,7 +117,7 @@ public class TeleconsultationService {
         teleconsultation.consentir(Instant.now());
         Teleconsultation acceptee = repository.enregistrer(teleconsultation);
         notifieur.notifier(acceptee.medecinId(), "Teleconsultation acceptee",
-                "Le patient a accepte la teleconsultation : vous pourrez la demarrer a l'heure du rendez-vous.");
+                "Le patient a accepte la teleconsultation : vous pourrez la demarrer a l'heure du rendez-vous.", "/medecin/teleconsultations");
         return acceptee;
     }
 
@@ -132,7 +132,7 @@ public class TeleconsultationService {
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
         notifieur.notifier(demarree.patientId(), "Teleconsultation demarree",
-                "Votre medecin a demarre la teleconsultation : rejoignez la salle depuis votre espace Tabibi.");
+                "Votre medecin a demarre la teleconsultation : rejoignez la salle depuis votre espace Tabibi.", "/teleconsultations");
         return demarree;
     }
 

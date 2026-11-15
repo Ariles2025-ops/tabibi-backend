@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-notification-lien
+      author: tabibi
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column: { name: lien, type: varchar(300) }
+  - changeSet:
+      id: 019-ordonnance-annulation-delivrance
+      author: tabibi
+      changes:
+        - addColumn:
+            tableName: ordonnance
+            columns:
+              - column: { name: motif_annulation, type: varchar(300) }
+              - column: { name: delivree_le, type: timestamptz }

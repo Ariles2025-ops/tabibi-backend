@@ -28,8 +28,13 @@ public class NotifieurInterne implements Notifieur {
 
     @Override
     public void notifier(UUID destinataireId, String sujet, String message) {
+        notifier(destinataireId, sujet, message, null);
+    }
+
+    @Override
+    public void notifier(UUID destinataireId, String sujet, String message, String lien) {
         Notification notification = repository.enregistrer(
-                Notification.interne(destinataireId, sujet, message, Instant.now()));
+                Notification.interne(destinataireId, sujet, message, Instant.now(), lien));
         LOG.info("Notification interne {} deposee pour {} : {}", notification.id(), destinataireId, sujet);
     }
 }

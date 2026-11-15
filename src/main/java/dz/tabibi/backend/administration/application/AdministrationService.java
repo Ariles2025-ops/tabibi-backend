@@ -105,7 +105,7 @@ public class AdministrationService {
         roles.accorder(validee.medecinId());
         notifieur.notifier(validee.medecinId(), "Candidature validee",
                 "Votre candidature a ete validee : vous figurez desormais dans l'annuaire Tabibi. "
-                        + "Reconnectez-vous pour ouvrir votre espace medecin.");
+                        + "Reconnectez-vous pour ouvrir votre espace medecin.", "/medecin/agenda");
         return validee;
     }
 
@@ -119,7 +119,7 @@ public class AdministrationService {
     public CandidatureMedecin refuser(UUID candidatureId, String motif) {
         CandidatureMedecin refusee = candidatures.enregistrer(charger(candidatureId).refuser(motif, Instant.now()));
         notifieur.notifier(refusee.medecinId(), "Candidature refusee",
-                "Votre candidature a ete refusee. Motif : " + refusee.motifRefus());
+                "Votre candidature a ete refusee. Motif : " + refusee.motifRefus(), "/medecin/candidature");
         return refusee;
     }
 

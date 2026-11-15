@@ -345,4 +345,38 @@ class ParcoursCompletsTest {
         assertThat(statut(post("/api/medecin/teleconsultations"), compte(medecin, "MEDECIN"),
                 "{\"rendezVousId\":\"" + rdvPasse(patient, medecin).id() + "\"}")).isEqualTo(409);
     }
+
+    @Test
+    void ordonnance_annulee_par_le_medecin_ou_delivree_une_seule_fois_en_pharmacie() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID(), pharmacie = UUID.randomUUID();
+        rdvPasse(patient, medecin);
+        String corps = "{\"patientId\":\"" + patient + "\",\"lignes\":[{\"medicament\":\"Ibuprofene 400 mg\"}]}";
+
+        String o1 = ok(post("/api/ordonnances"), compte(medecin, "MEDECIN"), corps);
+        String code1 = lire(o1, "$.codeVerification");
+        ok(post("/api/pharmacie/ordonnances/" + code1 + "/delivrer"), compte(pharmacie, "PHARMACIE"), null);
+        assertThat((String) lire(ok(get("/api/ordonnances/verifier/" + code1), null, null), "$.statut")).isEqualTo("DELIVREE");
+        assertThat(statut(post("/api/pharmacie/ordonnances/" + code1 + "/delivrer"), compte(pharmacie, "PHARMACIE"), null)).isEqualTo(409);
+
+        String o2 = ok(post("/api/ordonnances"), compte(medecin, "MEDECIN"), corps);
+        String id2 = lire(o2, "$.id"), code2 = lire(o2, "$.codeVerification");
+        assertThat(statut(post("/api/medecin/ordonnances/" + id2 + "/annuler"), compte(UUID.randomUUID(), "MEDECIN"), "{}")).isEqualTo(403);
+        ok(post("/api/medecin/ordonnances/" + id2 + "/annuler"), compte(medecin, "MEDECIN"), "{\"motif\":\"Erreur de dosage\"}");
+        assertThat((Boolean) lire(ok(get("/api/ordonnances/verifier/" + code2), null, null), "$.valide")).isFalse();
+        assertThat(statut(post("/api/pharmacie/ordonnances/" + code2 + "/delivrer"), compte(pharmacie, "PHARMACIE"), null)).isEqualTo(409);
+    }
+
+    @Test
+    void patient_absent_et_notifications_avec_lien() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID();
+        String futur = reserver(patient, ouvrirCreneau(medecin, demain(17)));
+        assertThat(statut(post("/api/medecin/rendezvous/" + futur + "/absent"), compte(medecin, "MEDECIN"), null)).isEqualTo(409);
+
+        RendezVous passe = rdvPasse(patient, medecin);
+        ok(post("/api/medecin/rendezvous/" + passe.id() + "/absent"), compte(medecin, "MEDECIN"), null);
+        assertThat(rendezVous.parId(passe.id()).orElseThrow().statut()).isEqualTo(StatutRdv.ABSENT);
+
+        String notifs = ok(get("/api/notifications/mes"), compte(patient, "PATIENT"), null);
+        assertThat((List<?>) lire(notifs, "$[?(@.lien=='/mes-rendez-vous')]")).isNotEmpty();
+    }
 }

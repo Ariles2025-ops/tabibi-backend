@@ -135,6 +135,12 @@ public class CabinetController {
         return RendezVousVue.de(service.honorerPour(identifiant(jwt), id));
     }
 
+    @PostMapping("/api/secretaire/rendezvous/{id}/absent")
+    @PreAuthorize("hasRole('SECRETAIRE')")
+    public RendezVousVue absent(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return RendezVousVue.de(service.absentPour(identifiant(jwt), id));
+    }
+
     /** Annulation d'un rendez-vous par une secretaire rattachee : creneau libere, patient prevenu (403 sinon, 409). */
     @PostMapping("/api/secretaire/rendezvous/{id}/annuler")
     @PreAuthorize("hasRole('SECRETAIRE')")

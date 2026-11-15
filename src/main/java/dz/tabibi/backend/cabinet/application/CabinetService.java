@@ -56,7 +56,7 @@ public class CabinetService {
         }
         Rattachement enregistre = rattachements.enregistrer(rattachement);
         notifieur.notifier(secretaireId, "Rattachement a un cabinet",
-                "Un medecin vous a rattachee a son cabinet : vous pouvez desormais gerer son agenda.");
+                "Un medecin vous a rattachee a son cabinet : vous pouvez desormais gerer son agenda.", "/secretaire");
         return enregistre;
     }
 
@@ -128,6 +128,14 @@ public class CabinetService {
     public void supprimerCreneauPour(UUID secretaireId, UUID medecinId, UUID creneauId) {
         verifierAcces(secretaireId, medecinId);
         creneaux.supprimer(medecinId, creneauId);
+    }
+
+    /** Une secretaire rattachee constate l'absence du patient. */
+    @Transactional
+    public RendezVous absentPour(UUID secretaireId, UUID rendezVousId) {
+        RendezVous rdv = rendezVous.parId(rendezVousId);
+        verifierAcces(secretaireId, rdv.medecinId());
+        return rendezVous.marquerAbsent(rdv.medecinId(), rendezVousId);
     }
 
     /**
