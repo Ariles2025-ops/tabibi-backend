@@ -11,6 +11,7 @@ import dz.tabibi.backend.administration.domain.StatutCandidature;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
+import dz.tabibi.backend.commun.domain.Courriel;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,14 @@ public class AdministrationService {
         this.medecins = medecins;
         this.notifieur = notifieur;
         this.roles = roles;
+    }
+
+    /** E-mail aux administrateurs (en plus de la notification), si un serveur SMTP est configure. */
+    private Courriel courriel;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCourriel(Courriel courriel) {
+        this.courriel = courriel;
     }
 
     /** Annuaire des comptes : sert a prevenir les administrateurs d'une nouvelle candidature (P-79). */
@@ -82,6 +91,18 @@ public class AdministrationService {
                 + (c.wilayaFr() != null ? ", " + c.wilayaFr() : "") + " : à examiner.";
         for (UUID admin : comptes.avecRole("ADMIN")) {
             notifieur.notifier(admin, quoi, message, "/admin/candidatures");
+            if (courriel != null && courriel.disponible()) {
+                comptes.infos(admin).map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank())
+                        .ifPresent(email -> {
+                            try {
+                                courriel.envoyer(email, "Tabibi — " + quoi, message
+                                        + "\n\nÀ examiner ici : https://tabibi.doctor/admin/candidatures");
+                            } catch (RuntimeException e) {
+                                org.slf4j.LoggerFactory.getLogger(AdministrationService.class)
+                                        .warn("E-mail d'alerte candidature non envoyé : {}", e.getMessage());
+                            }
+                        });
+            }
         }
     }
 
