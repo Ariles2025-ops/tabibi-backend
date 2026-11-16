@@ -20,9 +20,11 @@ public class JpaMedecinRepository implements MedecinRepository {
     static final int RESULTATS_MAX = 50;
 
     private final MedecinJpa jpa;
+    private final MedecinAliasJpa alias;
 
-    public JpaMedecinRepository(MedecinJpa jpa) {
+    public JpaMedecinRepository(MedecinJpa jpa, MedecinAliasJpa alias) {
         this.jpa = jpa;
+        this.alias = alias;
     }
 
     @Override
@@ -57,5 +59,15 @@ public class JpaMedecinRepository implements MedecinRepository {
     @Override
     public long nombre() {
         return jpa.count();
+    }
+
+    @Override
+    public void ajouterAlias(UUID ancienId, UUID nouvelId) {
+        alias.save(new MedecinAliasEntity(ancienId, nouvelId, java.time.Instant.now()));
+    }
+
+    @Override
+    public Optional<UUID> aliasDe(UUID ancienId) {
+        return alias.findById(ancienId).map(MedecinAliasEntity::nouvelId);
     }
 }

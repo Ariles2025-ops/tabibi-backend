@@ -65,6 +65,24 @@ public class ListeAttenteService implements AlerteCreneau {
         repository.supprimer(inscription.id());
     }
 
+    /**
+     * Fiche reclamee : les inscrits de la liste d'attente de l'ancienne fiche passent sur celle du praticien
+     * (meme inscription, meme anciennete) ; un patient deja inscrit chez le praticien n'est pas inscrit deux fois.
+     */
+    @Transactional
+    public void reporter(UUID ancienMedecinId, UUID nouveauMedecinId) {
+        if (ancienMedecinId.equals(nouveauMedecinId)) {
+            return;
+        }
+        for (InscriptionAttente i : repository.parMedecin(ancienMedecinId)) {
+            if (repository.parPatientEtMedecin(i.patientId(), nouveauMedecinId).isPresent()) {
+                repository.supprimer(i.id());
+            } else {
+                repository.enregistrer(new InscriptionAttente(i.id(), i.patientId(), nouveauMedecinId, i.inscritLe()));
+            }
+        }
+    }
+
     /** Suppression du compte : le patient est retire de toutes les listes d'attente. */
     @Transactional
     public void retirerToutes(UUID patientId) {

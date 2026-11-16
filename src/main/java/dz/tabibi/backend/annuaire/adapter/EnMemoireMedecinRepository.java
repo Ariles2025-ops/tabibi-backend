@@ -80,4 +80,16 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     public long nombre() {
         return parId.size();
     }
+
+    private final Map<UUID, UUID> alias = new ConcurrentHashMap<>();
+
+    @Override
+    public void ajouterAlias(UUID ancienId, UUID nouvelId) {
+        alias.put(ancienId, nouvelId);
+    }
+
+    @Override
+    public Optional<UUID> aliasDe(UUID ancienId) {
+        return Optional.ofNullable(alias.get(ancienId));
+    }
 }

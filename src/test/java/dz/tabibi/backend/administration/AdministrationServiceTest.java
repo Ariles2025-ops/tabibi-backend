@@ -255,6 +255,30 @@ class AdministrationServiceTest {
     }
 
     @Test
+    void la_fiche_reclamee_garde_son_ancien_identifiant_et_sa_liste_d_attente() {
+        UUID fiche = UUID.randomUUID();
+        medecins.enregistrer(new Medecin(fiche, "BENSALEM Nadia", "cardiologue", "Cardiologue", "16", "Alger", "Hydra"));
+        var attente = new dz.tabibi.backend.listeattente.adapter.EnMemoireListeAttenteRepository();
+        var listeAttente = new dz.tabibi.backend.listeattente.application.ListeAttenteService(attente, (d, s, m) -> { });
+        service.setListeAttente(listeAttente);
+        UUID patient1 = UUID.randomUUID(), patient2 = UUID.randomUUID();
+        listeAttente.inscrire(patient1, fiche);
+        listeAttente.inscrire(patient2, fiche);
+        listeAttente.inscrire(patient2, MEDECIN); // deja inscrit chez le praticien : pas de doublon
+        CandidatureMedecin c = service.deposer(MEDECIN, new DemandeCandidature("Dr Nadia Bensalem", "cardiologue",
+                "Cardiologue", "16", "Alger", "Hydra", "16-12345", "0550000000", fiche));
+
+        service.valider(c.id());
+
+        var annuaire = new dz.tabibi.backend.annuaire.application.AnnuaireService(medecins);
+        assertThat(annuaire.parId(fiche)).get().extracting(Medecin::id).isEqualTo(MEDECIN);
+        assertThat(annuaire.parId(fiche).orElseThrow().nomComplet()).isEqualTo("Dr Nadia Bensalem");
+        assertThat(attente.parMedecin(fiche)).isEmpty();
+        assertThat(attente.parMedecin(MEDECIN)).extracting(i -> i.patientId())
+                .containsExactlyInAnyOrder(patient1, patient2);
+    }
+
+    @Test
     void une_fiche_deja_reclamee_ne_peut_plus_l_etre() {
         UUID fiche = UUID.randomUUID();
         medecins.enregistrer(new Medecin(fiche, "BENSALEM Nadia", "cardiologue", "Cardiologue", "16", "Alger", null));

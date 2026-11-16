@@ -55,4 +55,15 @@ class JpaMedecinRepositoryIT {
                 .extracting(Medecin::nomComplet).containsExactly("Dr Benali Amina");
         assertThat(repository.rechercher(CritereRecherche.de("dentiste", "31", null))).hasSize(1);
     }
+
+    @Test
+    void alias_d_une_fiche_reclamee() {
+        UUID ancien = UUID.randomUUID();
+        UUID nouveau = UUID.randomUUID();
+        assertThat(repository.aliasDe(ancien)).isEmpty();
+
+        repository.ajouterAlias(ancien, nouveau);
+
+        assertThat(repository.aliasDe(ancien)).contains(nouveau);
+    }
 }

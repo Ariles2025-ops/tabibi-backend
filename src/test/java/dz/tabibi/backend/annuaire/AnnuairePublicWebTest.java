@@ -48,6 +48,17 @@ class AnnuairePublicWebTest {
     }
 
     @Test
+    void fiche_par_ancien_identifiant_renvoie_la_fiche_actuelle_avec_son_nouvel_id() throws Exception {
+        UUID ancien = UUID.randomUUID();
+        Medecin actuelle = new Medecin(UUID.randomUUID(), "Dr Nadia Bensalem", "cardiologue", "Cardiologue", "16", "Alger", null);
+        when(service.parId(ancien)).thenReturn(Optional.of(actuelle));
+
+        mvc.perform(get("/api/medecins/{id}", ancien))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.id").value(actuelle.id().toString()));
+    }
+
+    @Test
     void fiche_inconnue_repond_404() throws Exception {
         UUID id = UUID.randomUUID();
         when(service.parId(id)).thenReturn(Optional.empty());

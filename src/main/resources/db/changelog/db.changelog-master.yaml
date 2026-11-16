@@ -41,3 +41,5 @@ databaseChangeLog:
       file: db/changelog/020-invitation-secretaire.yaml
   - include:
       file: db/changelog/021-rdv-creneau-unique.yaml
+  - include:
+      file: db/changelog/022-medecin-alias.yaml
