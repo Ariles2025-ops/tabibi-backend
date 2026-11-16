@@ -79,38 +79,6 @@ class RendezVousServiceTest {
     }
 
     @Test
-    void reserve_un_creneau_libre() {
-        UUID patient = UUID.randomUUID();
-        UUID medecin = UUID.randomUUID();
-        Instant debut = Instant.parse("2026-12-04T09:00:00Z");
-
-        RendezVous rdv = service.reserver(patient, medecin, debut);
-
-        assertThat(rdv.id()).isNotNull();
-        assertThat(rdv.statut()).isEqualTo(StatutRdv.CONFIRME);
-        assertThat(rdv.medecinId()).isEqualTo(medecin);
-        assertThat(rdv.creneauId()).isNull();
-        assertThat(notifieur.pour(patient)).hasSize(1);
-        assertThat(notifieur.pour(patient).get(0).sujet()).isEqualTo("Rendez-vous confirmé");
-        assertThat(notifieur.pour(patient).get(0).message()).contains("04/12/2026");
-        assertThat(notifieur.pour(medecin)).hasSize(1);
-        assertThat(notifieur.pour(medecin).get(0).sujet()).isEqualTo("Nouveau rendez-vous");
-    }
-
-    @Test
-    void refuse_un_creneau_deja_pris() {
-        UUID medecin = UUID.randomUUID();
-        Instant debut = Instant.parse("2026-12-04T09:00:00Z");
-        service.reserver(UUID.randomUUID(), medecin, debut);
-        UUID second = UUID.randomUUID();
-
-        assertThatThrownBy(() -> service.reserver(second, medecin, debut))
-                .isInstanceOf(CreneauDejaReserveException.class);
-        assertThat(notifieur.pour(second)).isEmpty();
-        assertThat(notifieur.pour(medecin)).hasSize(1);
-    }
-
-    @Test
     void reserve_un_creneau_disponible_de_l_agenda() {
         UUID patient = UUID.randomUUID();
         Creneau creneau = premierCreneauDisponible();
@@ -188,20 +156,7 @@ class RendezVousServiceTest {
     @Test
     void la_reservation_n_alerte_pas_la_liste_d_attente() {
         service.reserverCreneau(UUID.randomUUID(), premierCreneauDisponible().id());
-        service.reserver(UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z"));
 
-        assertThat(alerte.alertes).isEmpty();
-    }
-
-    @Test
-    void annuler_un_rendezvous_pris_hors_agenda_ne_libere_aucun_creneau_et_n_alerte_personne() {
-        UUID patient = UUID.randomUUID();
-        RendezVous rdv = service.reserver(patient, UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z"));
-
-        RendezVous annule = service.annuler(patient, rdv.id());
-
-        assertThat(annule.statut()).isEqualTo(StatutRdv.ANNULE);
-        assertThat(notifieur.pour(rdv.medecinId())).hasSize(2); // nouveau rendez-vous, puis annulation
         assertThat(alerte.alertes).isEmpty();
     }
 
@@ -346,7 +301,8 @@ class RendezVousServiceTest {
         RendezVous annule = service.reserverCreneau(patient, disponibles.get(2).id());
         service.annuler(patient, annule.id());
         service.reserverCreneau(UUID.randomUUID(), disponibles.get(0).id());
-        service.reserver(UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-12-04T09:00:00Z")); // autre medecin
+        service.reserverCreneau(UUID.randomUUID(), creneaux.disponiblesPour(
+                EnMemoireMedecinRepository.MEDECINS_DEMO.get(1).id()).get(0).id()); // autre medecin
 
         List<RendezVous> agenda = service.agendaDuMedecin(MEDECIN_DEMO);
 
@@ -396,5 +352,14 @@ class RendezVousServiceTest {
                 .isInstanceOf(CreneauDejaReserveException.class);
         service.annuler(patient, premier.id());
         assertThat(service.reserverCreneau(patient, disponibles.get(1).id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+    }
+
+    @Test
+    void un_patient_ne_peut_pas_reserver_chez_lui_meme() {
+        Creneau creneau = premierCreneauDisponible();
+
+        assertThatThrownBy(() -> service.reserverCreneau(creneau.medecinId(), creneau.id()))
+                .isInstanceOf(dz.tabibi.backend.creneaux.domain.CreneauInvalideException.class);
+        assertThat(estDisponible(creneau.id())).isTrue();
     }
 }

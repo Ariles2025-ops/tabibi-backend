@@ -52,7 +52,8 @@ public class GestionErreursApi {
             BesoinIntrouvableException.class,
             ProfilIntrouvableException.class,
             InscriptionIntrouvableException.class,
-            RattachementIntrouvableException.class})
+            RattachementIntrouvableException.class,
+            dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }

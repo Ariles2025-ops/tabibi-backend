@@ -41,6 +41,7 @@ class ParcoursCompletsTest {
 
     @Autowired MockMvc mvc;
     @Autowired RendezVousRepository rendezVous;
+    @Autowired dz.tabibi.backend.annuaire.domain.MedecinRepository annuaire;
     @MockBean JwtDecoder jwtDecoder;
 
     // ---------- outils ----------
@@ -135,9 +136,14 @@ class ParcoursCompletsTest {
     @Test
     void liste_d_attente_alerte_puis_desinscription_apres_reservation() throws Exception {
         UUID medecin = UUID.randomUUID(), p1 = UUID.randomUUID(), p2 = UUID.randomUUID();
+        // la liste d'attente n'existe que pour un praticien de l'annuaire
+        annuaire.enregistrer(new dz.tabibi.backend.annuaire.domain.Medecin(medecin, "Dr Parcours", "cardiologue",
+                "Cardiologue", "16", "Alger", null));
         String creneau = ouvrirCreneau(medecin, demain(11));
         String rdv = reserver(p1, creneau);
 
+        assertThat(statut(post("/api/medecins/" + UUID.randomUUID() + "/liste-attente"), compte(p2, "PATIENT"), null))
+                .isEqualTo(404);
         ok(post("/api/medecins/" + medecin + "/liste-attente"), compte(p2, "PATIENT"), null);
         assertThat((List<?>) lire(ok(get("/api/medecin/liste-attente"), compte(medecin, "MEDECIN"), null), "$")).hasSize(1);
         int avant = nbNotifications(p2, "PATIENT");

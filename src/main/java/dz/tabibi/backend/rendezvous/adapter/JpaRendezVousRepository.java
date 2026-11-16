@@ -26,11 +26,6 @@ public class JpaRendezVousRepository implements RendezVousRepository {
     }
 
     @Override
-    public boolean creneauEstLibre(UUID medecinId, Instant debut) {
-        return !jpa.existsByMedecinIdAndDebutAndStatut(medecinId, debut, StatutRdv.CONFIRME);
-    }
-
-    @Override
     public RendezVous enregistrer(RendezVous rdv) {
         jpa.save(RendezVousEntity.de(rdv));
         return rdv;

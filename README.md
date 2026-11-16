@@ -47,8 +47,8 @@ Sans jeton :
 
 | Methode | Chemin | Description |
 |---|---|---|
-| GET | `/api/medecins?specialite=&wilaya=&q=` | recherche de praticiens |
-| GET | `/api/medecins/{id}` | fiche d'un praticien (404 si inconnu) |
+| GET | `/api/medecins?specialite=&wilaya=&q=` | recherche de praticiens (50 au plus), les reservables en ligne en tete ; sans `specialite`, les pharmacies sont exclues (`?specialite=pharmacie` pour elles) |
+| GET | `/api/medecins/{id}` | fiche d'un praticien (404 si inconnu) ; l'ancien identifiant d'une fiche reclamee renvoie la fiche actuelle (champ `id` = nouvel identifiant) |
 | GET | `/api/medecins/{id}/creneaux` | creneaux encore disponibles |
 | GET | `/api/ordonnances/verifier/{code}` | verification d'une ordonnance par un pharmacien, sans donnee personnelle |
 | GET | `/api/medecins/{id}/avis` | avis publies sur un praticien `{ moyenne, nombre, avis: [{ id, note, commentaire, deposeLe }] }`, anonymises |
@@ -61,6 +61,8 @@ Tout utilisateur authentifie :
 | DELETE | `/api/moi` | supprime mon compte (204) : rendez-vous a venir annules (cabinet prevenu), retrait des listes d'attente, profil anonymise (« Compte supprimé »), compte Keycloak supprime ; ordonnances et avis conserves |
 | GET | `/api/moi/profil` | mon profil `{ utilisateurId, nomComplet, telephone, dateNaissance, wilayaCode, langue, misAJourLe }` (404 tant qu'il n'est pas renseigne) |
 | PUT | `/api/moi/profil` | renseigne ou remplace mon profil `{ nomComplet, telephone, dateNaissance, wilayaCode, langue }` (400 si invalide : nom 2..120, telephone algerien, date de naissance passee, langue fr / ar / kab / en) |
+| POST | `/api/medecin/candidature` | candidature a l'annuaire, ouverte a tout compte connecte (le role MEDECIN est donne a la validation) `{ nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone, ficheReclamee? }` (201, 400, 409) ; `ficheReclamee` = identifiant d'une fiche importee a reclamer |
+| GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
 | GET | `/api/notifications/mes` | mes notifications, les plus recentes d'abord |
 | GET | `/api/notifications/non-lues/nombre` | `{ "nombre": n }` |
 | POST | `/api/notifications/{id}/lue` | marque une notification lue (403 si elle n'est pas a moi, 404 si inconnue) |
@@ -70,8 +72,7 @@ Role PATIENT :
 
 | Methode | Chemin | Description |
 |---|---|---|
-| POST | `/api/rendezvous` | reserve un horaire libre `{ medecinId, debut }` (201, 409 si pris) |
-| POST | `/api/creneaux/{id}/reserver` | reserve un creneau de l'agenda (201, 404, 409) |
+| POST | `/api/creneaux/{id}/reserver` | seule facon de reserver : un creneau ouvert par le medecin (201 ; 404 inconnu ; 409 deja pris, passe, ou rendez-vous deja a venir avec ce medecin ; 400 chez soi-meme). Reservation atomique : de deux demandes simultanees, une seule passe |
 | GET | `/api/rendezvous/mes` | mes rendez-vous, du plus proche au plus lointain |
 | POST | `/api/rendezvous/{id}/annuler` | annule mon rendez-vous, le creneau est remis a disposition |
 | GET | `/api/ordonnances/mes` | mes ordonnances, les plus recentes d'abord |
@@ -83,7 +84,7 @@ Role PATIENT :
 | POST | `/api/dawini/besoins` | publie un besoin de medicament `{ medicament, wilayaCode, commune, precision }` (201, 400) |
 | GET | `/api/dawini/besoins/mes` | mes besoins, tous statuts, les plus recents d'abord, avec `nombreReponses` |
 | POST | `/api/dawini/besoins/{id}/cloturer` | cloture mon besoin (404, 403, 409 si deja cloture) |
-| POST | `/api/medecins/{id}/liste-attente` | m'inscrit sur la liste d'attente d'un medecin (201, 409 si deja inscrit) : je suis prevenu des qu'un creneau se libere chez lui |
+| POST | `/api/medecins/{id}/liste-attente` | m'inscrit sur la liste d'attente d'un medecin (201, 404 si le praticien n'existe pas, 409 si deja inscrit) : je suis prevenu des qu'un creneau se libere chez lui |
 | GET | `/api/liste-attente/mes` | mes inscriptions en liste d'attente, les plus anciennes d'abord |
 | POST | `/api/liste-attente/{id}/retirer` | me retire d'une liste d'attente (204 sans corps, 404, 403 si l'inscription est a un autre patient) |
 
@@ -94,15 +95,13 @@ Role MEDECIN :
 | GET | `/api/medecin/rendezvous` | mon agenda, tous statuts |
 | POST | `/api/rendezvous/{id}/honorer` | le patient est venu (409 si le rendez-vous n'est pas confirme) |
 | POST | `/api/medecin/creneaux` | ouvre un creneau `{ debut, dureeMinutes }` (201, 400) |
-| POST | `/api/ordonnances` | redige une ordonnance (201, 400) |
+| POST | `/api/ordonnances` | redige une ordonnance (201, 400 ; 403 si le patient n'a aucun rendez-vous confirme ou honore avec moi ; 409 sur un rendez-vous annule ou manque) |
 | GET | `/api/medecin/ordonnances` | ordonnances que j'ai redigees |
 | POST | `/api/medecin/teleconsultations` | planifie une teleconsultation `{ rendezVousId }` sur un rendez-vous confirme (201, 404, 403, 409) |
 | GET | `/api/medecin/teleconsultations` | mes teleconsultations, les plus recentes d'abord |
 | POST | `/api/teleconsultations/{id}/demarrer` | ouvre la session (409 sans consentement du patient) |
 | POST | `/api/teleconsultations/{id}/terminer` | clot la session (409 si elle n'est pas en cours) |
 | POST | `/api/teleconsultations/{id}/annuler` | annule une teleconsultation planifiee (409 sinon) |
-| POST | `/api/medecin/candidature` | depose ma candidature a l'annuaire `{ nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, numeroOrdre, telephone }` (201, 400, 409) |
-| GET | `/api/medecin/candidature` | ma derniere candidature (404 si aucune) |
 | POST | `/api/avis/{id}/signaler` | signale a l'administrateur un avis publie qui me concerne (403 sinon, 409 s'il n'est pas publie) |
 | GET | `/api/medecin/liste-attente` | ma liste d'attente : patients inscrits, les plus anciens d'abord |
 | POST | `/api/medecin/rendezvous/{id}/annuler` | annule un rendez-vous confirme de mon agenda : creneau remis a disposition, patient prevenu (403 si autre medecin, 409 si annule ou honore) |

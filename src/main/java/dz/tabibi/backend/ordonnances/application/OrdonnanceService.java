@@ -141,6 +141,12 @@ public class OrdonnanceService {
         throw new IllegalStateException("Impossible d'attribuer un code de vérification libre.");
     }
 
+    /** Seul un rendez-vous confirme ou honore fait du patient celui du medecin (pas annule, pas absent). */
+    private static boolean rdvOuvreUneOrdonnance(RendezVous rdv) {
+        return rdv.statut() == dz.tabibi.backend.rendezvous.domain.StatutRdv.CONFIRME
+                || rdv.statut() == dz.tabibi.backend.rendezvous.domain.StatutRdv.HONORE;
+    }
+
     private void verifierPatientDuMedecin(UUID medecinId, UUID patientId, UUID rendezVousId) {
         if (rendezVousId != null) {
             RendezVous rdv = rendezVous.parId(rendezVousId)
@@ -148,9 +154,14 @@ public class OrdonnanceService {
             if (!rdv.estAvec(medecinId) || !rdv.appartientA(patientId)) {
                 throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
             }
+            if (!rdvOuvreUneOrdonnance(rdv)) {
+                throw new dz.tabibi.backend.commun.domain.TransitionInvalideException(
+                        "Une ordonnance ne se rédige que sur un rendez-vous confirmé ou honoré.");
+            }
             return;
         }
-        boolean patientDuMedecin = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
+        boolean patientDuMedecin = rendezVous.parPatient(patientId).stream()
+                .anyMatch(r -> r.estAvec(medecinId) && rdvOuvreUneOrdonnance(r));
         if (!patientDuMedecin) {
             throw new AccesRefuseException("Vous ne pouvez rédiger une ordonnance que pour vos patients.");
         }

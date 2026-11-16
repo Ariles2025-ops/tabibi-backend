@@ -11,8 +11,6 @@ import java.util.UUID;
  */
 public interface RendezVousRepository {
 
-    boolean creneauEstLibre(UUID medecinId, Instant debut);
-
     RendezVous enregistrer(RendezVous rdv);
 
     Optional<RendezVous> parId(UUID id);

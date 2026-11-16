@@ -31,7 +31,7 @@ class KeycloakComptesUtilisateursTest {
 
     @Test
     void supprimer_appelle_delete_users() {
-        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret");
+        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret", java.time.Clock.systemUTC());
         attendJeton();
         serveur.expect(requestTo("http://kc/admin/realms/tabibi/users/" + COMPTE))
                .andExpect(method(HttpMethod.DELETE))
@@ -44,7 +44,7 @@ class KeycloakComptesUtilisateursTest {
 
     @Test
     void supprimer_un_compte_deja_absent_n_est_pas_une_erreur() {
-        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret");
+        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret", java.time.Clock.systemUTC());
         attendJeton();
         serveur.expect(requestTo("http://kc/admin/realms/tabibi/users/" + COMPTE))
                .andRespond(withStatus(HttpStatus.NOT_FOUND));
@@ -56,9 +56,41 @@ class KeycloakComptesUtilisateursTest {
 
     @Test
     void sans_secret_supprimer_ne_fait_aucun_appel() {
-        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "");
+        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "", java.time.Clock.systemUTC());
 
         comptes.supprimer(COMPTE);
+
+        serveur.verify();
+    }
+
+    /** Horloge reglable a la main. */
+    static class Horloge extends java.time.Clock {
+        java.time.Instant maintenant = java.time.Instant.parse("2026-11-16T10:00:00Z");
+        @Override public java.time.ZoneId getZone() { return java.time.ZoneOffset.UTC; }
+        @Override public java.time.Clock withZone(java.time.ZoneId zone) { return this; }
+        @Override public java.time.Instant instant() { return maintenant; }
+    }
+
+    private void attendCompte(String telephone) {
+        attendJeton();
+        serveur.expect(requestTo("http://kc/admin/realms/tabibi/users/" + COMPTE))
+               .andExpect(method(HttpMethod.GET))
+               .andRespond(withSuccess("{\"id\":\"" + COMPTE + "\",\"firstName\":\"Amina\","
+                       + "\"attributes\":{\"phoneNumber\":[\"" + telephone + "\"]}}", MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void le_cache_des_comptes_expire_au_bout_d_une_heure() {
+        Horloge horloge = new Horloge();
+        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret", horloge);
+        attendCompte("0550000001");
+        attendCompte("0550000002");
+
+        org.assertj.core.api.Assertions.assertThat(comptes.infos(COMPTE).orElseThrow().telephone()).isEqualTo("0550000001");
+        horloge.maintenant = horloge.maintenant.plus(java.time.Duration.ofMinutes(59));
+        org.assertj.core.api.Assertions.assertThat(comptes.infos(COMPTE).orElseThrow().telephone()).isEqualTo("0550000001");
+        horloge.maintenant = horloge.maintenant.plus(java.time.Duration.ofMinutes(2));
+        org.assertj.core.api.Assertions.assertThat(comptes.infos(COMPTE).orElseThrow().telephone()).isEqualTo("0550000002");
 
         serveur.verify();
     }

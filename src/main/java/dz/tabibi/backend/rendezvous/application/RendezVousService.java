@@ -69,20 +69,6 @@ public class RendezVousService {
     }
 
     /**
-     * Reserve un horaire libre pour un patient. Regle : le creneau doit etre libre.
-     * @throws CreneauDejaReserveException si le creneau est deja pris.
-     */
-    public RendezVous reserver(UUID patientId, UUID medecinId, Instant debut) {
-        if (!repository.creneauEstLibre(medecinId, debut)) {
-            throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
-        }
-        RendezVous rdv = repository.enregistrer(RendezVous.confirmer(patientId, medecinId, debut));
-        alerteCreneau.patientAReserve(rdv.patientId(), rdv.medecinId());
-        notifierReservation(rdv);
-        return rdv;
-    }
-
-    /**
      * Reserve un creneau de l'agenda d'un medecin : le rendez-vous est cree sur
      * l'horaire du creneau, qui cesse d'etre propose aux autres patients.
      * @throws CreneauIntrouvableException si le creneau n'existe pas.
@@ -97,6 +83,10 @@ public class RendezVousService {
         }
         if (!creneau.debut().isAfter(Instant.now())) {
             throw new CreneauDejaReserveException("Ce créneau est déjà passé.");
+        }
+        if (creneau.medecinId().equals(patientId)) {
+            throw new dz.tabibi.backend.creneaux.domain.CreneauInvalideException(
+                    "Vous ne pouvez pas réserver un rendez-vous avec vous-même.");
         }
         verifierPasDeRendezVousAVenir(patientId, creneau.medecinId());
         // Prise atomique (UPDATE ... where disponible = true) : de deux reservations simultanees, une seule passe.

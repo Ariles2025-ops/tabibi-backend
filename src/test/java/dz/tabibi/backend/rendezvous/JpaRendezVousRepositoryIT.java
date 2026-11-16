@@ -42,13 +42,13 @@ class JpaRendezVousRepositoryIT {
     RendezVousRepository repository;
 
     @Test
-    void enregistre_et_detecte_le_creneau_pris() {
+    void enregistre_et_relit_l_agenda_du_medecin() {
         UUID medecin = UUID.randomUUID();
         Instant debut = Instant.parse("2026-12-04T09:00:00Z");
-        assertThat(repository.creneauEstLibre(medecin, debut)).isTrue();
+        assertThat(repository.parMedecin(medecin)).isEmpty();
 
-        repository.enregistrer(RendezVous.confirmer(UUID.randomUUID(), medecin, debut));
+        RendezVous rdv = repository.enregistrer(RendezVous.confirmer(UUID.randomUUID(), medecin, debut));
 
-        assertThat(repository.creneauEstLibre(medecin, debut)).isFalse();
+        assertThat(repository.parMedecin(medecin)).extracting(RendezVous::id).containsExactly(rdv.id());
     }
 }

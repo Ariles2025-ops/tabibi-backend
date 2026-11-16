@@ -43,6 +43,14 @@ public class CabinetService {
         this.notifieur = notifieur;
     }
 
+    /** Comptes Keycloak : le role SECRETAIRE est donne a l'acceptation de l'invitation. */
+    private dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComptes(dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes) {
+        this.comptes = comptes;
+    }
+
     /**
      * Invite une secretaire au cabinet du medecin connecte ; elle est prevenue et doit accepter
      * (aucun acces ni role tant qu'elle n'a pas accepte).
@@ -76,6 +84,11 @@ public class CabinetService {
         Rattachement r = invitationPour(secretaireId, rattachementId);
         if (r.accepte()) {
             return r;
+        }
+        // Role d'abord : si Keycloak refuse, l'exception annule tout et l'invitation reste a accepter
+        // (jamais une secretaire « acceptee » sans le role qui lui ouvre son espace).
+        if (comptes != null) {
+            comptes.accorderRole(secretaireId, "SECRETAIRE");
         }
         Rattachement accepte = rattachements.enregistrer(r.accepter());
         notifieur.notifier(r.medecinId(), "Invitation acceptée",

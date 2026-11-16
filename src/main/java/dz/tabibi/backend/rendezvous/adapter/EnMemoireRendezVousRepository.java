@@ -26,14 +26,6 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
     private final Map<UUID, RendezVous> parId = new ConcurrentHashMap<>();
 
     @Override
-    public boolean creneauEstLibre(UUID medecinId, Instant debut) {
-        return parId.values().stream().noneMatch(r ->
-                r.medecinId().equals(medecinId)
-                && r.debut().equals(debut)
-                && r.statut() == StatutRdv.CONFIRME);
-    }
-
-    @Override
     public RendezVous enregistrer(RendezVous rdv) {
         parId.put(rdv.id(), rdv);
         return rdv;

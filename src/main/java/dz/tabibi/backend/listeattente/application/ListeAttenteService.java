@@ -33,12 +33,24 @@ public class ListeAttenteService implements AlerteCreneau {
         this.notifieur = notifieur;
     }
 
+    /** Annuaire : on ne s'inscrit que sur la liste d'un praticien qui existe (ancien identifiant resolu). */
+    private dz.tabibi.backend.annuaire.application.AnnuaireService annuaire;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAnnuaire(dz.tabibi.backend.annuaire.application.AnnuaireService annuaire) {
+        this.annuaire = annuaire;
+    }
+
     /**
      * Inscrit le patient sur la liste d'attente d'un medecin.
+     * @throws dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException si le praticien n'existe pas (404).
      * @throws TransitionInvalideException s'il y est deja inscrit.
      */
     @Transactional
-    public InscriptionAttente inscrire(UUID patientId, UUID medecinId) {
+    public InscriptionAttente inscrire(UUID patientId, UUID medecinDemande) {
+        UUID medecinId = annuaire == null ? medecinDemande : annuaire.parId(medecinDemande)
+                .map(dz.tabibi.backend.annuaire.domain.Medecin::id)
+                .orElseThrow(() -> new dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException(medecinDemande));
         if (repository.parPatientEtMedecin(patientId, medecinId).isPresent()) {
             throw new TransitionInvalideException("Vous êtes déjà inscrit sur la liste d'attente de ce médecin.");
         }

@@ -9,8 +9,6 @@ import java.util.UUID;
 
 interface RendezVousJpa extends JpaRepository<RendezVousEntity, UUID> {
 
-    boolean existsByMedecinIdAndDebutAndStatut(UUID medecinId, Instant debut, StatutRdv statut);
-
     List<RendezVousEntity> findByPatientIdOrderByDebut(UUID patientId);
 
     List<RendezVousEntity> findByMedecinIdOrderByDebut(UUID medecinId);
