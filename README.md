@@ -58,6 +58,7 @@ Tout utilisateur authentifie :
 | Methode | Chemin | Description |
 |---|---|---|
 | GET | `/api/moi` | identite portee par le jeton |
+| DELETE | `/api/moi` | supprime mon compte (204) : rendez-vous a venir annules (cabinet prevenu), retrait des listes d'attente, profil anonymise (« Compte supprimé »), compte Keycloak supprime ; ordonnances et avis conserves |
 | GET | `/api/moi/profil` | mon profil `{ utilisateurId, nomComplet, telephone, dateNaissance, wilayaCode, langue, misAJourLe }` (404 tant qu'il n'est pas renseigne) |
 | PUT | `/api/moi/profil` | renseigne ou remplace mon profil `{ nomComplet, telephone, dateNaissance, wilayaCode, langue }` (400 si invalide : nom 2..120, telephone algerien, date de naissance passee, langue fr / ar / kab / en) |
 | GET | `/api/notifications/mes` | mes notifications, les plus recentes d'abord |

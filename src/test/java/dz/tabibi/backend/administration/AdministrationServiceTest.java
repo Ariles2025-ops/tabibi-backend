@@ -58,6 +58,7 @@ class AdministrationServiceTest {
             public boolean disponible() { return true; }
             public Optional<UUID> parEmail(String email) { return Optional.empty(); }
             public void accorderRole(UUID compte, String role) { }
+            public void supprimer(UUID compte) { }
             public List<UUID> avecRole(String role) { return "ADMIN".equals(role) ? List.of(admin1, admin2) : List.of(); }
             public Optional<InfosCompte> infos(UUID compte) {
                 return Optional.of(new InfosCompte(compte, "Admin", compte.equals(admin1) ? "admin1@tabibi.doctor" : null, null));

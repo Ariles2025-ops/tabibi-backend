@@ -27,4 +27,11 @@ public interface ComptesUtilisateurs {
 
     /** Retire un role de royaume au compte (sans effet si l'annuaire n'est pas configure). */
     default void retirerRole(UUID compte, String role) {}
+
+    /**
+     * Supprime definitivement le compte (suppression demandee par l'utilisateur). Sans annuaire configure,
+     * la suppression est seulement journalisee (a faire a la main dans la console). Un compte deja absent
+     * n'est pas une erreur.
+     */
+    void supprimer(UUID compte);
 }

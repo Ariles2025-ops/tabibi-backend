@@ -65,6 +65,12 @@ public class ListeAttenteService implements AlerteCreneau {
         repository.supprimer(inscription.id());
     }
 
+    /** Suppression du compte : le patient est retire de toutes les listes d'attente. */
+    @Transactional
+    public void retirerToutes(UUID patientId) {
+        repository.parPatient(patientId).forEach(i -> repository.supprimer(i.id()));
+    }
+
     /** Liste d'attente du medecin : ses inscrits, les plus anciens d'abord. */
     public List<InscriptionAttente> listeDuMedecin(UUID medecinId) {
         return repository.parMedecin(medecinId);

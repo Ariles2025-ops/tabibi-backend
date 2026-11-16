@@ -134,6 +134,21 @@ public class RendezVousService {
         return annule;
     }
 
+    /**
+     * Suppression du compte du patient : chacun de ses rendez-vous confirmes a venir est annule comme s'il
+     * l'annulait lui-meme (creneau libere, cabinet prevenu). Les rendez-vous passes restent (historique du cabinet).
+     * @return le nombre de rendez-vous annules.
+     */
+    @Transactional
+    public int annulerAVenirDuPatient(UUID patientId) {
+        Instant maintenant = Instant.now();
+        List<RendezVous> aVenir = repository.parPatient(patientId).stream()
+                .filter(r -> r.statut() == StatutRdv.CONFIRME && r.debut().isAfter(maintenant))
+                .toList();
+        aVenir.forEach(r -> annuler(patientId, r.id()));
+        return aVenir.size();
+    }
+
     /** Agenda d'un medecin : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
     public List<RendezVous> agendaDuMedecin(UUID medecinId) {
         return repository.parMedecin(medecinId);

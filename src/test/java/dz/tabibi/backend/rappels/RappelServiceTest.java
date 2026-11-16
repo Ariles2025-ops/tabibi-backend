@@ -79,6 +79,7 @@ class RappelServiceTest {
             }
             public java.util.Optional<UUID> parEmail(String e) { return java.util.Optional.empty(); }
             public void accorderRole(UUID c, String r) { }
+            public void supprimer(UUID c) { }
         });
 
         assertThat(service.executer()).isEqualTo(3);
