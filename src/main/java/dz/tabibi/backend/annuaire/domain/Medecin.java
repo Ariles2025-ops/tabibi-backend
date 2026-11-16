@@ -1,5 +1,6 @@
 package dz.tabibi.backend.annuaire.domain;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -12,8 +13,29 @@ public record Medecin(
         String specialiteFr,
         String wilayaCode,
         String wilayaFr,
-        String ville
+        String ville,
+        String adresse,
+        String telephoneCabinet,
+        String horaires,
+        String presentation,
+        List<String> langues
 ) {
+    public Medecin {
+        langues = langues == null ? List.of() : List.copyOf(langues);
+    }
+
+    /** Fiche sans les informations modifiables par le praticien (import, publication d'une candidature). */
+    public Medecin(UUID id, String nomComplet, String specialiteSlug, String specialiteFr,
+                   String wilayaCode, String wilayaFr, String ville) {
+        this(id, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, null, null, null, null, List.of());
+    }
+
+    /** Applique les informations modifiables ; nom, specialite et wilaya restent inchanges. */
+    public Medecin avec(FicheModifiable f) {
+        return new Medecin(id, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville,
+                f.adresse(), f.telephoneCabinet(), f.horaires(), f.presentation(), f.langues());
+    }
+
     private static final Pattern PONCTUATION_INITIALE = Pattern.compile("^[^\\p{L}]+");
 
     /**

@@ -19,6 +19,11 @@ class MedecinEntity {
     @Column(name = "wilaya_code", nullable = false) private String wilayaCode;
     @Column(name = "wilaya_fr", nullable = false) private String wilayaFr;
     @Column(name = "ville") private String ville;
+    @Column(name = "adresse") private String adresse;
+    @Column(name = "telephone_cabinet") private String telephoneCabinet;
+    @Column(name = "horaires") private String horaires;
+    @Column(name = "presentation") private String presentation;
+    @Column(name = "langues") private String langues;
 
     protected MedecinEntity() {}
 
@@ -32,10 +37,16 @@ class MedecinEntity {
         e.wilayaCode = m.wilayaCode();
         e.wilayaFr = m.wilayaFr();
         e.ville = m.ville();
+        e.adresse = m.adresse();
+        e.telephoneCabinet = m.telephoneCabinet();
+        e.horaires = m.horaires();
+        e.presentation = m.presentation();
+        e.langues = String.join(",", m.langues());
         return e;
     }
 
     Medecin versDomaine() {
-        return new Medecin(id, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville);
+        return new Medecin(id, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr, ville, adresse, telephoneCabinet, horaires, presentation,
+                langues == null || langues.isBlank() ? java.util.List.of() : java.util.List.of(langues.split(",")));
     }
 }

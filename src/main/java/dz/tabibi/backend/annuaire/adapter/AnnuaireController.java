@@ -2,6 +2,7 @@ package dz.tabibi.backend.annuaire.adapter;
 
 import dz.tabibi.backend.annuaire.application.AnnuaireService;
 import dz.tabibi.backend.annuaire.domain.CritereRecherche;
+import dz.tabibi.backend.annuaire.domain.FicheModifiable;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,5 +80,20 @@ public class AnnuaireController {
         return service.parId(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Sa propre fiche (le medecin connecte uniquement : l'identifiant vient du jeton, jamais de l'URL). */
+    @GetMapping("/api/medecin/fiche")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('MEDECIN')")
+    public Medecin maFiche(@org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
+        return service.maFiche(UUID.fromString(jwt.getSubject()));
+    }
+
+    /** Modifie sa propre fiche : adresse, telephone du cabinet, horaires, presentation, langues (400 si invalide). */
+    @org.springframework.web.bind.annotation.PutMapping("/api/medecin/fiche")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('MEDECIN')")
+    public Medecin modifierMaFiche(@org.springframework.web.bind.annotation.RequestBody FicheModifiable demande,
+                                   @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
+        return service.modifierMaFiche(UUID.fromString(jwt.getSubject()), demande);
     }
 }
