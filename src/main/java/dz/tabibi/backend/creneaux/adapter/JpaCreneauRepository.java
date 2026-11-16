@@ -50,4 +50,10 @@ public class JpaCreneauRepository implements CreneauRepository {
     public void supprimer(UUID id) {
         jpa.deleteById(id);
     }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public boolean reserverSiDisponible(UUID id) {
+        return jpa.prendreSiDisponible(id) == 1;
+    }
 }

@@ -22,4 +22,11 @@ public interface CreneauRepository {
 
     /** Supprime definitivement un creneau. */
     void supprimer(UUID id);
+
+    /**
+     * Prend le creneau s'il est encore disponible, en une seule operation atomique (disponible -> pris) :
+     * de deux reservations simultanees, une seule obtient vrai.
+     * @return vrai si le creneau etait disponible et vient d'etre pris, faux sinon (deja pris ou inconnu).
+     */
+    boolean reserverSiDisponible(UUID id);
 }

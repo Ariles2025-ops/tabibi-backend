@@ -72,7 +72,11 @@ public class RendezVousService {
             throw new CreneauDejaReserveException("Ce créneau est déjà passé.");
         }
         verifierPasDeRendezVousAVenir(patientId, creneau.medecinId());
-        creneaux.enregistrer(creneau.reserver());
+        // Prise atomique (UPDATE ... where disponible = true) : de deux reservations simultanees, une seule passe.
+        // L'index unique partiel sur rendez_vous(creneau_id) (rendez-vous non annules) garde la base coherente.
+        if (!creneaux.reserverSiDisponible(creneau.id())) {
+            throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
+        }
         RendezVous rdv = repository.enregistrer(
                 RendezVous.confirmer(patientId, creneau.medecinId(), creneau.debut(), creneau.id()));
         alerteCreneau.patientAReserve(rdv.patientId(), rdv.medecinId());
