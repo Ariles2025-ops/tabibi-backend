@@ -39,12 +39,21 @@ public class PatientsService {
         this.comptes = comptes;
     }
 
-    /** Les patients d'un medecin, avec leur nom. */
+    /**
+     * Les patients d'un medecin, avec leur nom. Telephone et e-mail ne sont donnes que pour les patients qui ont
+     * eu au moins un rendez-vous avec lui (loi 18-07) : un simple inscrit en liste d'attente n'apparait qu'avec son nom.
+     */
     public List<PatientResume> patientsDuMedecin(UUID medecinId) {
-        Set<UUID> ids = new LinkedHashSet<>();
-        rendezVous.parMedecin(medecinId).stream().map(RendezVous::patientId).forEach(ids::add);
-        listeAttente.parMedecin(medecinId).forEach(i -> ids.add(i.patientId()));
-        return resumes(ids);
+        Set<UUID> avecRendezVous = new LinkedHashSet<>();
+        rendezVous.parMedecin(medecinId).stream().map(RendezVous::patientId).forEach(avecRendezVous::add);
+        Set<UUID> enAttenteSeulement = new LinkedHashSet<>();
+        listeAttente.parMedecin(medecinId).stream().map(i -> i.patientId())
+                .filter(id -> !avecRendezVous.contains(id)).forEach(enAttenteSeulement::add);
+        List<PatientResume> patients = new java.util.ArrayList<>(resumes(avecRendezVous));
+        enAttenteSeulement.stream().map(this::resume)
+                .map(p -> new PatientResume(p.patientId(), p.nomComplet(), null, null))
+                .forEach(patients::add);
+        return patients;
     }
 
     /** Resumes d'une liste de comptes (administration). */

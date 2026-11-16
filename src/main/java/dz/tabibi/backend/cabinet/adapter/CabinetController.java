@@ -89,9 +89,8 @@ public class CabinetController {
     /** Accepter : le rattachement devient actif et le compte recoit le role SECRETAIRE (403 si pas pour lui). */
     @PostMapping("/api/moi/invitations-cabinet/{id}/accepter")
     public RattachementVue accepterInvitation(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        Rattachement r = service.accepterInvitation(identifiant(jwt), id);
-        comptes.accorderRole(r.secretaireId(), "SECRETAIRE");
-        return RattachementVue.de(r);
+        // Le role SECRETAIRE est donne par le cas d'usage, avant d'enregistrer l'acceptation.
+        return RattachementVue.de(service.accepterInvitation(identifiant(jwt), id));
     }
 
     /** Refuser : l'invitation disparait, le medecin est prevenu (204). */

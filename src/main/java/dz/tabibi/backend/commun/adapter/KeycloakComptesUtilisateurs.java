@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,15 +31,30 @@ public class KeycloakComptesUtilisateurs implements ComptesUtilisateurs {
     private final String realm;
     private final String clientId;
     private final String secret;
-    /** Les coordonnees changent rarement : on evite d'interroger Keycloak a chaque affichage d'agenda. */
-    private final Map<UUID, InfosCompte> cache = new ConcurrentHashMap<>();
+    /**
+     * Les coordonnees changent rarement : on evite d'interroger Keycloak a chaque affichage d'agenda. Chaque entree
+     * expire au bout d'une heure, pour qu'un changement de numero ou d'e-mail finisse par etre pris en compte.
+     */
+    static final Duration DUREE_CACHE = Duration.ofHours(1);
 
+    private record EnCache(InfosCompte infos, Instant expireLe) {}
+
+    private final Map<UUID, EnCache> cache = new ConcurrentHashMap<>();
+    private final Clock horloge;
+
+    @org.springframework.beans.factory.annotation.Autowired
     public KeycloakComptesUtilisateurs(
             @Value("${tabibi.keycloak.admin.url:http://keycloak:8080}") String url,
             @Value("${tabibi.keycloak.admin.realm:tabibi}") String realm,
             @Value("${tabibi.keycloak.admin.client-id:tabibi-backend-admin}") String clientId,
             @Value("${tabibi.keycloak.admin.secret:}") String secret) {
-        this.http = RestClient.builder().baseUrl(url).build();
+        this(RestClient.builder().baseUrl(url), realm, clientId, secret, Clock.systemUTC());
+    }
+
+    /** Pour les tests : client HTTP fourni (serveur simule) et horloge choisie. */
+    KeycloakComptesUtilisateurs(RestClient.Builder http, String realm, String clientId, String secret, Clock horloge) {
+        this.horloge = horloge;
+        this.http = http.build();
         this.realm = realm;
         this.clientId = clientId;
         this.secret = secret;
@@ -56,16 +74,16 @@ public class KeycloakComptesUtilisateurs implements ComptesUtilisateurs {
         if (!configure() || compte == null) {
             return Optional.empty();
         }
-        InfosCompte connu = cache.get(compte);
-        if (connu != null) {
-            return Optional.of(connu);
+        EnCache connu = cache.get(compte);
+        if (connu != null && horloge.instant().isBefore(connu.expireLe())) {
+            return Optional.of(connu.infos());
         }
         try {
             Map<?, ?> u = http.get().uri("/admin/realms/{realm}/users/{id}", realm, compte)
                     .header("Authorization", "Bearer " + jeton()).retrieve().body(Map.class);
             InfosCompte infos = versInfos(u);
             if (infos != null) {
-                cache.put(compte, infos);
+                cache.put(compte, new EnCache(infos, horloge.instant().plus(DUREE_CACHE)));
             }
             return Optional.ofNullable(infos);
         } catch (RuntimeException e) {
@@ -142,6 +160,22 @@ public class KeycloakComptesUtilisateurs implements ComptesUtilisateurs {
             log.info("Role {} retire au compte {}.", role, compte);
         } catch (RuntimeException e) {
             log.warn("Retrait du role {} au compte {} impossible : {}", role, compte, e.getMessage());
+        }
+    }
+
+    @Override
+    public void supprimer(UUID compte) {
+        cache.remove(compte);
+        if (!configure()) {
+            log.warn("Compte {} a supprimer a la main dans Keycloak : secret d'administration Keycloak non configure.", compte);
+            return;
+        }
+        try {
+            http.delete().uri("/admin/realms/{realm}/users/{id}", realm, compte)
+                    .header("Authorization", "Bearer " + jeton()).retrieve().toBodilessEntity();
+            log.info("Compte {} supprime de Keycloak.", compte);
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            log.info("Compte {} deja absent de Keycloak.", compte);
         }
     }
 

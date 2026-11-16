@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-rdv-creneau-unique
+      author: tabibi
+      dbms: postgresql
+      comment: >-
+        Anti double reservation : un creneau ne porte qu'un rendez-vous non annule (index unique partiel).
+        Non destructif : si des doublons existaient deja, l'index n'est pas cree (changeset marque comme
+        passe) au lieu de bloquer le demarrage ; la prise atomique du creneau protege de toute facon.
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              select count(*) from (select creneau_id from rendez_vous
+              where creneau_id is not null and statut <> 'ANNULE'
+              group by creneau_id having count(*) > 1) doublons
+      changes:
+        - sql:
+            sql: >-
+              create unique index if not exists ux_rdv_creneau_actif on rendez_vous (creneau_id)
+              where creneau_id is not null and statut <> 'ANNULE'

@@ -2,7 +2,6 @@ package dz.tabibi.backend.rendezvous.adapter;
 
 import dz.tabibi.backend.rendezvous.application.RendezVousService;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,8 +31,6 @@ public class RendezVousController {
         this.service = service;
     }
 
-    public record DemandeReservation(@NotNull UUID medecinId, @NotNull Instant debut) {}
-
     /** Vue d'un rendez-vous telle que renvoyee par l'API (au patient, au medecin comme a sa secretaire). */
     public record RendezVousVue(UUID id, UUID patientId, UUID medecinId, UUID creneauId, Instant debut, String statut) {
         public static RendezVousVue de(RendezVous r) {
@@ -41,8 +38,7 @@ public class RendezVousController {
         }
     }
 
-    // Plus de reservation « hors agenda » (POST /api/rendezvous) : elle permettait de reserver a n'importe quelle
-    // heure aupres de n'importe quel medecin. On ne reserve que des creneaux ouverts par le medecin.
+    // On ne reserve que des creneaux ouverts par le medecin (pas de reservation « hors agenda »).
 
     /** Reservation d'un creneau propose par le medecin (voir GET /api/medecins/{id}/creneaux). */
     @PostMapping("/api/creneaux/{id}/reserver")

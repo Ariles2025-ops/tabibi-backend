@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-medecin-alias
+      author: tabibi
+      comment: >-
+        Fiche reclamee : l'ancien identifiant (fiche importee, URL SEO /praticiens/{ancienId}) reste valable et
+        mene a la fiche du compte du praticien. Table nouvelle, aucune donnee existante modifiee.
+      changes:
+        - createTable:
+            tableName: medecin_alias
+            columns:
+              - column: { name: ancien_id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: nouvel_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: cree_le, type: timestamptz, defaultValueComputed: now(), constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_medecin_alias_nouvel
+            tableName: medecin_alias
+            columns:
+              - column: { name: nouvel_id }

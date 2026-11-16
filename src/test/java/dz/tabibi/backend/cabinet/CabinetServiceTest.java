@@ -301,4 +301,20 @@ class CabinetServiceTest {
         assertThatThrownBy(() -> service.annulerPour(SECRETAIRE, UUID.randomUUID())).isInstanceOf(RendezVousIntrouvableException.class);
         assertThat(notifieur.pour(rdv.patientId())).hasSize(2); // une seule annulation notifiee
     }
+
+    @Test
+    void accepter_donne_le_role_avant_d_enregistrer_et_rien_n_est_accepte_si_keycloak_refuse() {
+        dz.tabibi.backend.commun.FauxComptes comptes = new dz.tabibi.backend.commun.FauxComptes();
+        service.setComptes(comptes);
+        Rattachement invitation = service.rattacher(MEDECIN, SECRETAIRE);
+        comptes.panne = new IllegalStateException("Keycloak injoignable");
+
+        assertThatThrownBy(() -> service.accepterInvitation(SECRETAIRE, invitation.id()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(rattachements.parId(invitation.id()).orElseThrow().accepte()).isFalse();
+
+        comptes.panne = null;
+        assertThat(service.accepterInvitation(SECRETAIRE, invitation.id()).accepte()).isTrue();
+        assertThat(comptes.rolesAccordes).containsExactly(SECRETAIRE + ":SECRETAIRE");
+    }
 }

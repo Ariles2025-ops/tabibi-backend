@@ -33,12 +33,24 @@ public class ListeAttenteService implements AlerteCreneau {
         this.notifieur = notifieur;
     }
 
+    /** Annuaire : on ne s'inscrit que sur la liste d'un praticien qui existe (ancien identifiant resolu). */
+    private dz.tabibi.backend.annuaire.application.AnnuaireService annuaire;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAnnuaire(dz.tabibi.backend.annuaire.application.AnnuaireService annuaire) {
+        this.annuaire = annuaire;
+    }
+
     /**
      * Inscrit le patient sur la liste d'attente d'un medecin.
+     * @throws dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException si le praticien n'existe pas (404).
      * @throws TransitionInvalideException s'il y est deja inscrit.
      */
     @Transactional
-    public InscriptionAttente inscrire(UUID patientId, UUID medecinId) {
+    public InscriptionAttente inscrire(UUID patientId, UUID medecinDemande) {
+        UUID medecinId = annuaire == null ? medecinDemande : annuaire.parId(medecinDemande)
+                .map(dz.tabibi.backend.annuaire.domain.Medecin::id)
+                .orElseThrow(() -> new dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException(medecinDemande));
         if (repository.parPatientEtMedecin(patientId, medecinId).isPresent()) {
             throw new TransitionInvalideException("Vous êtes déjà inscrit sur la liste d'attente de ce médecin.");
         }
@@ -63,6 +75,30 @@ public class ListeAttenteService implements AlerteCreneau {
             throw new AccesRefuseException("Cette inscription ne vous appartient pas.");
         }
         repository.supprimer(inscription.id());
+    }
+
+    /**
+     * Fiche reclamee : les inscrits de la liste d'attente de l'ancienne fiche passent sur celle du praticien
+     * (meme inscription, meme anciennete) ; un patient deja inscrit chez le praticien n'est pas inscrit deux fois.
+     */
+    @Transactional
+    public void reporter(UUID ancienMedecinId, UUID nouveauMedecinId) {
+        if (ancienMedecinId.equals(nouveauMedecinId)) {
+            return;
+        }
+        for (InscriptionAttente i : repository.parMedecin(ancienMedecinId)) {
+            if (repository.parPatientEtMedecin(i.patientId(), nouveauMedecinId).isPresent()) {
+                repository.supprimer(i.id());
+            } else {
+                repository.enregistrer(new InscriptionAttente(i.id(), i.patientId(), nouveauMedecinId, i.inscritLe()));
+            }
+        }
+    }
+
+    /** Suppression du compte : le patient est retire de toutes les listes d'attente. */
+    @Transactional
+    public void retirerToutes(UUID patientId) {
+        repository.parPatient(patientId).forEach(i -> repository.supprimer(i.id()));
     }
 
     /** Liste d'attente du medecin : ses inscrits, les plus anciens d'abord. */

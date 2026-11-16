@@ -41,4 +41,14 @@ class LimiteLectureFiltreTest {
         assertThat(LimiteLectureFiltre.estInterne("41.200.10.5")).isFalse();
         assertThat(LimiteLectureFiltre.estInterne("")).isFalse();
     }
+
+    @Test
+    void la_verification_des_ordonnances_est_aussi_limitee() throws Exception {
+        LimiteLectureFiltre filtre = new LimiteLectureFiltre(2);
+        assertThat(lire(filtre, "/api/ordonnances/verifier/AAAA1111", "41.200.10.7")).isEqualTo(200);
+        assertThat(lire(filtre, "/api/ordonnances/verifier/AAAA2222", "41.200.10.7")).isEqualTo(200);
+        assertThat(lire(filtre, "/api/ordonnances/verifier/AAAA3333", "41.200.10.7")).isEqualTo(429);
+        // les autres lectures d'ordonnances (connecte) ne sont pas concernees
+        assertThat(lire(filtre, "/api/ordonnances/mes", "41.200.10.7")).isEqualTo(200);
+    }
 }

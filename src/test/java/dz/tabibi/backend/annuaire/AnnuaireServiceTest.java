@@ -61,4 +61,30 @@ class AnnuaireServiceTest {
         assertThat(new Medecin(UUID.randomUUID(), "01 EPSP Mila", "x", "X", "1", "A", null).cleDeTri()).isEqualTo("epsp mila");
         assertThat(new Medecin(UUID.randomUUID(), "...", "x", "X", "1", "A", null).cleDeTri()).isEmpty();
     }
+
+    @Test
+    void un_ancien_identifiant_mene_a_la_fiche_actuelle() {
+        var depot = new EnMemoireMedecinRepository();
+        var annuaire = new AnnuaireService(depot);
+        UUID ancien = UUID.randomUUID();
+        Medecin actuelle = depot.enregistrer(new Medecin(UUID.randomUUID(), "Dr Nadia Bensalem", "cardiologue",
+                "Cardiologue", "16", "Alger", null));
+        depot.ajouterAlias(ancien, actuelle.id());
+
+        assertThat(annuaire.parId(ancien)).contains(actuelle);
+        assertThat(annuaire.parId(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void sans_specialite_les_pharmacies_ne_sont_pas_listees_parmi_les_medecins() {
+        var depot = new EnMemoireMedecinRepository();
+        var annuaire = new AnnuaireService(depot);
+        depot.enregistrer(new Medecin(UUID.randomUUID(), "Pharmacie Centrale Zeralda", "pharmacie", "Pharmacie", "16", "Alger", null));
+
+        assertThat(annuaire.rechercher(CritereRecherche.de(null, null, null)))
+                .noneMatch(m -> m.specialiteSlug().equals("pharmacie"));
+        assertThat(annuaire.rechercher(CritereRecherche.de(null, null, "zeralda"))).isEmpty();
+        assertThat(annuaire.rechercher(CritereRecherche.de("pharmacie", null, null)))
+                .extracting(Medecin::nomComplet).containsExactly("Pharmacie Centrale Zeralda");
+    }
 }

@@ -203,4 +203,19 @@ class OrdonnanceServiceTest {
         assertThatThrownBy(() -> service.verifier("ZZZZZZZZ"))
                 .isInstanceOf(OrdonnanceIntrouvableException.class);
     }
+
+    @Test
+    void refuse_une_ordonnance_sur_un_rendez_vous_annule_ou_manque() {
+        UUID autrePatient = UUID.randomUUID();
+        RendezVous annule = rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), autrePatient, MEDECIN,
+                Instant.parse("2026-01-12T09:00:00Z"), StatutRdv.ANNULE));
+        rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), autrePatient, MEDECIN,
+                Instant.parse("2026-01-13T09:00:00Z"), StatutRdv.ABSENT));
+
+        assertThatThrownBy(() -> service.emettre(MEDECIN, autrePatient, annule.id(), LIGNES))
+                .isInstanceOf(dz.tabibi.backend.commun.domain.TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.emettre(MEDECIN, autrePatient, null, LIGNES))
+                .isInstanceOf(dz.tabibi.backend.commun.domain.AccesRefuseException.class);
+        assertThat(service.emettre(MEDECIN, PATIENT, rdvCommun.id(), LIGNES)).isNotNull();
+    }
 }

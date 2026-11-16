@@ -59,6 +59,14 @@ public class AdministrationService {
         this.comptes = comptes;
     }
 
+    /** Liste d'attente : reportee de la fiche importee vers la fiche du praticien quand il la reclame. */
+    private dz.tabibi.backend.listeattente.application.ListeAttenteService listeAttente;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setListeAttente(dz.tabibi.backend.listeattente.application.ListeAttenteService listeAttente) {
+        this.listeAttente = listeAttente;
+    }
+
     /**
      * Depose la candidature du medecin connecte. Une candidature refusee peut etre redeposee.
      * @throws CandidatureInvalideException si une donnee obligatoire manque.
@@ -142,9 +150,14 @@ public class AdministrationService {
             throw new TransitionInvalideException("Cette fiche a déjà été réclamée ou n'existe plus.");
         }
         CandidatureMedecin validee = candidatures.enregistrer(candidature.valider(Instant.now()));
-        if (validee.estUneReclamation()) {
-            // La fiche importee est remplacee par celle du praticien, sous l'identifiant de son compte.
+        if (validee.estUneReclamation() && !validee.ficheReclamee().equals(validee.medecinId())) {
+            // La fiche importee est remplacee par celle du praticien, sous l'identifiant de son compte ; son ancien
+            // identifiant reste un alias (URL SEO /praticiens/{ancienId}) et sa liste d'attente suit le praticien.
             medecins.supprimer(validee.ficheReclamee());
+            medecins.ajouterAlias(validee.ficheReclamee(), validee.medecinId());
+            if (listeAttente != null) {
+                listeAttente.reporter(validee.ficheReclamee(), validee.medecinId());
+            }
         }
         medecins.enregistrer(fichePublique(validee));
         roles.accorder(validee.medecinId());

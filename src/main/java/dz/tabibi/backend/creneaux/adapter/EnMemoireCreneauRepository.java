@@ -85,4 +85,18 @@ public class EnMemoireCreneauRepository implements CreneauRepository {
     public void supprimer(UUID id) {
         parId.remove(id);
     }
+
+    @Override
+    public boolean reserverSiDisponible(UUID id) {
+        boolean[] pris = {false};
+        // computeIfPresent est atomique pour une cle : deux appels simultanes ne peuvent pas prendre le meme creneau.
+        parId.computeIfPresent(id, (cle, c) -> {
+            if (!c.disponible()) {
+                return c;
+            }
+            pris[0] = true;
+            return c.reserver();
+        });
+        return pris[0];
+    }
 }

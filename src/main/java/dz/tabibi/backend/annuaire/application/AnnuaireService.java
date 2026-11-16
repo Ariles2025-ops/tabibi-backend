@@ -23,8 +23,23 @@ public class AnnuaireService {
         return repository.rechercher(critere);
     }
 
+    /**
+     * Fiche d'un praticien. Un ancien identifiant (fiche importee puis reclamee par le praticien) mene a la
+     * fiche actuelle, qui porte son nouvel identifiant : les adresses deja indexees restent valables.
+     */
     public Optional<Medecin> parId(UUID id) {
-        return repository.parId(id);
+        Optional<Medecin> fiche = repository.parId(id);
+        UUID courant = id;
+        // Quelques sauts au plus (une fiche reclamee n'est normalement jamais reclamee a nouveau).
+        for (int saut = 0; fiche.isEmpty() && saut < 3; saut++) {
+            Optional<UUID> suivant = repository.aliasDe(courant);
+            if (suivant.isEmpty()) {
+                break;
+            }
+            courant = suivant.get();
+            fiche = repository.parId(courant);
+        }
+        return fiche;
     }
 
     public List<Medecin> page(int numero, int taille) {

@@ -163,4 +163,26 @@ class ListeAttenteServiceTest {
 
         assertThat(notifieur.appels).isEmpty();
     }
+
+    @Test
+    void refuse_l_inscription_chez_un_medecin_inexistant() {
+        var depot = new dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository();
+        service.setAnnuaire(new dz.tabibi.backend.annuaire.application.AnnuaireService(depot));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.inscrire(PATIENT, UUID.randomUUID()))
+                .isInstanceOf(dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException.class);
+        assertThat(repository.parPatient(PATIENT)).isEmpty();
+    }
+
+    @Test
+    void l_inscription_par_un_ancien_identifiant_va_sur_la_fiche_actuelle() {
+        var depot = new dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository();
+        service.setAnnuaire(new dz.tabibi.backend.annuaire.application.AnnuaireService(depot));
+        depot.enregistrer(new dz.tabibi.backend.annuaire.domain.Medecin(MEDECIN, "Dr Test", "cardiologue",
+                "Cardiologue", "16", "Alger", null));
+        UUID ancien = UUID.randomUUID();
+        depot.ajouterAlias(ancien, MEDECIN);
+
+        assertThat(service.inscrire(PATIENT, ancien).medecinId()).isEqualTo(MEDECIN);
+    }
 }

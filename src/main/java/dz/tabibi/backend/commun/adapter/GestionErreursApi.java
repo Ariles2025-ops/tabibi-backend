@@ -52,7 +52,8 @@ public class GestionErreursApi {
             BesoinIntrouvableException.class,
             ProfilIntrouvableException.class,
             InscriptionIntrouvableException.class,
-            RattachementIntrouvableException.class})
+            RattachementIntrouvableException.class,
+            dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException.class})
     public ResponseEntity<ErreurApi> introuvable(RuntimeException ex) {
         return reponse(HttpStatus.NOT_FOUND, ex);
     }
@@ -76,6 +77,16 @@ public class GestionErreursApi {
     @ExceptionHandler({CreneauDejaReserveException.class, TransitionInvalideException.class})
     public ResponseEntity<ErreurApi> conflit(RuntimeException ex) {
         return reponse(HttpStatus.CONFLICT, ex);
+    }
+
+    /**
+     * Contrainte de la base violee (ex. index unique : deux rendez-vous actifs sur le meme creneau, ecrits
+     * au meme instant) : c'est un conflit avec l'etat courant, jamais une erreur 500.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErreurApi> conflitBase(org.springframework.dao.DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErreurApi("Cette action entre en conflit avec une autre faite au même moment : réessayez."));
     }
 
     @ExceptionHandler(AccesRefuseException.class)

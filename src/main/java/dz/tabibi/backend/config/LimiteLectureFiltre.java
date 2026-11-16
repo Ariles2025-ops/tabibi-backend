@@ -13,7 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Anti-copie de l'annuaire : au plus {@code maxParMinute} lectures de /api/medecins… par adresse IP et par minute
+ * Anti-copie de l'annuaire (et anti-essais de codes d'ordonnance) : au plus {@code maxParMinute} lectures de
+ * /api/medecins… et /api/ordonnances/verifier/… par adresse IP et par minute
  * (429 au-dela). Un visiteur humain n'en fait que quelques-unes ; un robot qui aspire les 75 000 fiches est freine.
  * Les adresses du reseau interne (rendu serveur du site, donc aussi les robots des moteurs de recherche qui lisent
  * les pages rendues) ne sont pas limitees. L'adresse du client est celle reconstituee par Tomcat depuis
@@ -33,7 +34,7 @@ public class LimiteLectureFiltre extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest requete) {
         String chemin = requete.getRequestURI();
         return maxParMinute <= 0 || !"GET".equals(requete.getMethod())
-                || chemin == null || !chemin.startsWith("/api/medecins")
+                || chemin == null || !(chemin.startsWith("/api/medecins") || chemin.startsWith("/api/ordonnances/verifier"))
                 || estInterne(requete.getRemoteAddr());
     }
 

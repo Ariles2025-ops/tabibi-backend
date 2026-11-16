@@ -39,6 +39,9 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
 
     private final Map<UUID, Medecin> parId = new ConcurrentHashMap<>();
 
+    /** Les pharmacies ne sont pas listees parmi les medecins sans specialite demandee (meme regle que JPA). */
+    private static final String PHARMACIE = "pharmacie";
+
     public EnMemoireMedecinRepository() {
         MEDECINS_DEMO.forEach(m -> parId.put(m.id(), m));
     }
@@ -46,7 +49,9 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     @Override
     public List<Medecin> rechercher(CritereRecherche c) {
         return parId.values().stream()
-                .filter(m -> c.specialite() == null || m.specialiteSlug().equalsIgnoreCase(c.specialite()))
+                .filter(m -> c.specialite() == null
+                        ? !PHARMACIE.equalsIgnoreCase(m.specialiteSlug())
+                        : m.specialiteSlug().equalsIgnoreCase(c.specialite()))
                 .filter(m -> c.wilaya() == null || m.wilayaCode().equals(c.wilaya()))
                 .filter(m -> c.texte() == null
                         || m.nomComplet().toLowerCase(Locale.ROOT).contains(c.texte().toLowerCase(Locale.ROOT)))
@@ -79,5 +84,17 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
     @Override
     public long nombre() {
         return parId.size();
+    }
+
+    private final Map<UUID, UUID> alias = new ConcurrentHashMap<>();
+
+    @Override
+    public void ajouterAlias(UUID ancienId, UUID nouvelId) {
+        alias.put(ancienId, nouvelId);
+    }
+
+    @Override
+    public Optional<UUID> aliasDe(UUID ancienId) {
+        return Optional.ofNullable(alias.get(ancienId));
     }
 }

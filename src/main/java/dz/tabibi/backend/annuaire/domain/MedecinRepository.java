@@ -22,4 +22,10 @@ public interface MedecinRepository {
 
     /** Nombre total de fiches. */
     long nombre();
+
+    /** L'ancien identifiant d'une fiche (fiche importee reclamee) mene desormais a la fiche {@code nouvelId}. */
+    void ajouterAlias(UUID ancienId, UUID nouvelId);
+
+    /** Identifiant actuel de la fiche qui portait autrefois cet identifiant, s'il y en a un. */
+    Optional<UUID> aliasDe(UUID ancienId);
 }
