@@ -41,6 +41,9 @@ class JpaMedecinRepositoryIT {
     @Autowired
     MedecinRepository repository;
 
+    @Autowired
+    dz.tabibi.backend.creneaux.domain.CreneauRepository creneaux;
+
     @Test
     void recherche_sans_critere_puis_par_nom_et_limite_les_resultats() {
         for (int i = 0; i < 60; i++) {
@@ -65,5 +68,33 @@ class JpaMedecinRepositoryIT {
         repository.ajouterAlias(ancien, nouveau);
 
         assertThat(repository.aliasDe(ancien)).contains(nouveau);
+    }
+
+    @Test
+    void le_medecin_reservable_passe_en_tete_avant_la_limite_et_les_pharmacies_sont_a_part() {
+        String wilaya = "47"; // wilaya propre a ce test
+        for (int i = 0; i < 60; i++) {
+            repository.enregistrer(new Medecin(UUID.randomUUID(), "Aaa Medecin " + i,
+                    "pediatre", "Pédiatre", wilaya, "Ghardaia", null));
+        }
+        UUID inscrit = UUID.randomUUID();
+        repository.enregistrer(new Medecin(inscrit, "Zzz Inscrit", "pediatre", "Pédiatre", wilaya, "Ghardaia", null));
+        creneaux.enregistrer(new dz.tabibi.backend.creneaux.domain.Creneau(UUID.randomUUID(), inscrit,
+                java.time.Instant.now().plusSeconds(86_400), 20, true));
+        UUID passe = UUID.randomUUID(); // creneau libre mais passe : pas reservable
+        repository.enregistrer(new Medecin(passe, "Zzz Passe", "pediatre", "Pédiatre", wilaya, "Ghardaia", null));
+        creneaux.enregistrer(new dz.tabibi.backend.creneaux.domain.Creneau(UUID.randomUUID(), passe,
+                java.time.Instant.now().minusSeconds(86_400), 20, true));
+        repository.enregistrer(new Medecin(UUID.randomUUID(), "Pharmacie Ghardaia", "pharmacie", "Pharmacie",
+                wilaya, "Ghardaia", null));
+
+        var resultats = repository.rechercher(CritereRecherche.de(null, wilaya, null));
+
+        assertThat(resultats).hasSize(50);
+        assertThat(resultats.get(0).id()).isEqualTo(inscrit);
+        assertThat(resultats).extracting(Medecin::id).doesNotContain(passe);
+        assertThat(resultats).noneMatch(m -> m.specialiteSlug().equals("pharmacie"));
+        assertThat(repository.rechercher(CritereRecherche.de("pharmacie", wilaya, null)))
+                .extracting(Medecin::nomComplet).containsExactly("Pharmacie Ghardaia");
     }
 }

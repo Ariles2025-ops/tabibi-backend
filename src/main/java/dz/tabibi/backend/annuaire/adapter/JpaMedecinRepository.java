@@ -30,7 +30,7 @@ public class JpaMedecinRepository implements MedecinRepository {
     @Override
     public List<Medecin> rechercher(CritereRecherche c) {
         String motif = c.texte() == null ? "%" : "%" + c.texte().toLowerCase(Locale.ROOT) + "%";
-        return jpa.rechercher(c.specialite(), c.wilaya(), motif, PageRequest.of(0, RESULTATS_MAX))
+        return jpa.rechercher(c.specialite(), c.wilaya(), motif, java.time.Instant.now(), PageRequest.of(0, RESULTATS_MAX))
                 .stream().map(MedecinEntity::versDomaine).toList();
     }
 

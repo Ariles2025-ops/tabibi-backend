@@ -74,4 +74,17 @@ class AnnuaireServiceTest {
         assertThat(annuaire.parId(ancien)).contains(actuelle);
         assertThat(annuaire.parId(UUID.randomUUID())).isEmpty();
     }
+
+    @Test
+    void sans_specialite_les_pharmacies_ne_sont_pas_listees_parmi_les_medecins() {
+        var depot = new EnMemoireMedecinRepository();
+        var annuaire = new AnnuaireService(depot);
+        depot.enregistrer(new Medecin(UUID.randomUUID(), "Pharmacie Centrale Zeralda", "pharmacie", "Pharmacie", "16", "Alger", null));
+
+        assertThat(annuaire.rechercher(CritereRecherche.de(null, null, null)))
+                .noneMatch(m -> m.specialiteSlug().equals("pharmacie"));
+        assertThat(annuaire.rechercher(CritereRecherche.de(null, null, "zeralda"))).isEmpty();
+        assertThat(annuaire.rechercher(CritereRecherche.de("pharmacie", null, null)))
+                .extracting(Medecin::nomComplet).containsExactly("Pharmacie Centrale Zeralda");
+    }
 }

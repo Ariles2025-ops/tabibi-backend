@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/021-rdv-creneau-unique.yaml
   - include:
       file: db/changelog/022-medecin-alias.yaml
+  - include:
+      file: db/changelog/023-reclassement-autre.yaml

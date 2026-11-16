@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-reclassement-autre
+      author: tabibi
+      dbms: postgresql
+      comment: >-
+        Reclasse les fiches « autre » dont la specialite figure en fin de nom (« Nom, Cardiologue À Lieu ») :
+        specialite_slug, specialite_fr, nom_complet sans le suffixe, nom_tri. Libelles inconnus laisses « autre ».
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/023-reclassement-autre.sql
+            encoding: UTF-8
+            splitStatements: false
+            stripComments: false
