@@ -2,6 +2,9 @@ package dz.tabibi.backend.creneaux.adapter;
 
 import dz.tabibi.backend.creneaux.application.CreneauService;
 import dz.tabibi.backend.creneaux.domain.Creneau;
+import dz.tabibi.backend.creneaux.domain.JourSemaine;
+import dz.tabibi.backend.creneaux.domain.ResultatSemaineType;
+import dz.tabibi.backend.creneaux.domain.SemaineType;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +38,22 @@ public class CreneauController {
     }
 
     public record DemandeCreneau(@NotNull Instant debut, int dureeMinutes) {}
+
+    /** Corps de la semaine type : heures au format HH:mm, date au format AAAA-MM-JJ, fuseau Africa/Algiers. */
+    public record DemandeSemaineType(List<JourSemaine> jours, LocalTime debut, LocalTime fin,
+                                     int dureeMinutes, LocalDate aPartirDu, int nombreSemaines) {
+        public SemaineType modele() {
+            return new SemaineType(jours, debut, fin, dureeMinutes, aPartirDu, nombreSemaines);
+        }
+    }
+
+    /** Ouverture d'une semaine type dans l'agenda du medecin connecte (400 si invalide). */
+    @PostMapping("/api/medecin/creneaux/semaine-type")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResultatSemaineType ouvrirSemaineType(@RequestBody DemandeSemaineType demande,
+                                                 @AuthenticationPrincipal Jwt jwt) {
+        return service.ouvrirSemaineType(identifiant(jwt), demande.modele());
+    }
 
     @GetMapping("/api/medecins/{medecinId}/creneaux")
     public List<Creneau> disponibles(@PathVariable UUID medecinId) {
