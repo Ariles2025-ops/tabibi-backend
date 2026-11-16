@@ -24,7 +24,10 @@
   "registrationAllowed": true,
   "loginTheme": "tabibi",
   "internationalizationEnabled": true,
-  "supportedLocales": ["fr", "ar"],
+  "supportedLocales": [
+    "fr",
+    "ar"
+  ],
   "defaultLocale": "fr",
   "defaultRole": {
     "name": "default-roles-tabibi",
@@ -34,16 +37,49 @@
   },
   "roles": {
     "realm": [
-      { "name": "PATIENT", "description": "Patient : prise de rendez-vous, ordonnances, messagerie, avis, Dawini" },
-      { "name": "MEDECIN", "description": "Medecin : agenda, creneaux, ordonnances, teleconsultations, cabinet" },
-      { "name": "SECRETAIRE", "description": "Secretaire rattachee a un ou plusieurs cabinets" },
-      { "name": "ADMIN", "description": "Administrateur de la plateforme : candidatures, moderation, audit" },
-      { "name": "PHARMACIE", "description": "Pharmacie : reponses aux besoins de medicaments (Dawini)" },
+      {
+        "name": "PATIENT",
+        "description": "Patient : prise de rendez-vous, ordonnances, messagerie, avis, Dawini"
+      },
+      {
+        "name": "MEDECIN",
+        "description": "Medecin : agenda, creneaux, ordonnances, teleconsultations, cabinet"
+      },
+      {
+        "name": "SECRETAIRE",
+        "description": "Secretaire rattachee a un ou plusieurs cabinets"
+      },
+      {
+        "name": "ADMIN",
+        "description": "Administrateur de la plateforme : candidatures, moderation, audit"
+      },
+      {
+        "name": "PHARMACIE",
+        "description": "Pharmacie : reponses aux besoins de medicaments (Dawini)"
+      },
       {
         "name": "default-roles-tabibi",
         "description": "Roles donnes a tout nouveau compte : PATIENT (le role MEDECIN est donne a la validation de la candidature)",
         "composite": true,
-        "composites": { "realm": ["offline_access", "uma_authorization", "PATIENT"] }
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization",
+            "PATIENT"
+          ]
+        }
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}",
+        "composite": false,
+        "clientRole": false
       }
     ]
   },
@@ -55,8 +91,14 @@
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
-      "redirectUris": ["http://localhost:4200/*", "https://tabibi.example/*"],
-      "webOrigins": ["http://localhost:4200", "https://tabibi.example"],
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "https://tabibi.example/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200",
+        "https://tabibi.example"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "+"
@@ -69,7 +111,9 @@
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["dz.tabibi.app:/oauthredirect"],
+      "redirectUris": [
+        "dz.tabibi.app:/oauthredirect"
+      ],
       "webOrigins": [],
       "attributes": {
         "pkce.code.challenge.method": "S256",
@@ -86,8 +130,18 @@
       "firstName": "Patient",
       "lastName": "Demo",
       "email": "patient.demo@tabibi.local",
-      "credentials": [{ "type": "password", "userLabel": "Mot de passe de demonstration", "temporary": false, "secretData": "{\"value\":\"Cq3NE/wGxBCgdwEpKtWzjiRZ4bbiPx/6sAPA9EeCoblI4U0Dv7vOzfd2eQh8NrNynhYtyxuuRT/KfNb62dBziQ==\",\"salt\":\"wXkeF8w9a37RXVE1G/aO+g==\"}", "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}" }],
-      "realmRoles": ["PATIENT"]
+      "credentials": [
+        {
+          "type": "password",
+          "userLabel": "Mot de passe de demonstration",
+          "temporary": false,
+          "secretData": "{\"value\":\"Cq3NE/wGxBCgdwEpKtWzjiRZ4bbiPx/6sAPA9EeCoblI4U0Dv7vOzfd2eQh8NrNynhYtyxuuRT/KfNb62dBziQ==\",\"salt\":\"wXkeF8w9a37RXVE1G/aO+g==\"}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}"
+        }
+      ],
+      "realmRoles": [
+        "PATIENT"
+      ]
     },
     {
       "id": "00000000-0000-0000-0000-000000000001",
@@ -97,8 +151,18 @@
       "firstName": "Amina",
       "lastName": "Belkacem",
       "email": "medecin.demo@tabibi.local",
-      "credentials": [{ "type": "password", "userLabel": "Mot de passe de demonstration", "temporary": false, "secretData": "{\"value\":\"ObgnL5+3HC7OroX3z3gHiSMD4lY505dw8Gh5GM4dQVWCB29pf+kMqtm7sdCCgiunP6iNsKgwwUQrZJc8MwN4yw==\",\"salt\":\"9d9aMLyNZVBQs06VDmj2dA==\"}", "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}" }],
-      "realmRoles": ["MEDECIN"]
+      "credentials": [
+        {
+          "type": "password",
+          "userLabel": "Mot de passe de demonstration",
+          "temporary": false,
+          "secretData": "{\"value\":\"ObgnL5+3HC7OroX3z3gHiSMD4lY505dw8Gh5GM4dQVWCB29pf+kMqtm7sdCCgiunP6iNsKgwwUQrZJc8MwN4yw==\",\"salt\":\"9d9aMLyNZVBQs06VDmj2dA==\"}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}"
+        }
+      ],
+      "realmRoles": [
+        "MEDECIN"
+      ]
     },
     {
       "id": "33333333-3333-3333-3333-333333333333",
@@ -108,8 +172,18 @@
       "firstName": "Admin",
       "lastName": "Demo",
       "email": "admin.demo@tabibi.local",
-      "credentials": [{ "type": "password", "userLabel": "Mot de passe de demonstration", "temporary": false, "secretData": "{\"value\":\"uBiIcZ3iJODq/0BSxWxbFfiENiTW1zcpmtVoyKnIwtyeM4Ar1y1pVdvJVluCiOcOePjojwouN7oYgr5yXac5Dw==\",\"salt\":\"WIVjQTd2zFLe82YsVRI1NA==\"}", "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}" }],
-      "realmRoles": ["ADMIN"]
+      "credentials": [
+        {
+          "type": "password",
+          "userLabel": "Mot de passe de demonstration",
+          "temporary": false,
+          "secretData": "{\"value\":\"uBiIcZ3iJODq/0BSxWxbFfiENiTW1zcpmtVoyKnIwtyeM4Ar1y1pVdvJVluCiOcOePjojwouN7oYgr5yXac5Dw==\",\"salt\":\"WIVjQTd2zFLe82YsVRI1NA==\"}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}"
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
     },
     {
       "id": "44444444-4444-4444-4444-444444444444",
@@ -119,8 +193,18 @@
       "firstName": "Pharmacie",
       "lastName": "Demo",
       "email": "pharmacie.demo@tabibi.local",
-      "credentials": [{ "type": "password", "userLabel": "Mot de passe de demonstration", "temporary": false, "secretData": "{\"value\":\"qXgi2DmKuqu5rcNEn0bP5mWCrAX69M8UXFfLRrjMpwc/rsBBHD0+fhC3Wov/K5kO7/fx+dBqhIsxXWmokTPmVA==\",\"salt\":\"kbNLvzRuWVBV7N64NTh0Iw==\"}", "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}" }],
-      "realmRoles": ["PHARMACIE"]
+      "credentials": [
+        {
+          "type": "password",
+          "userLabel": "Mot de passe de demonstration",
+          "temporary": false,
+          "secretData": "{\"value\":\"qXgi2DmKuqu5rcNEn0bP5mWCrAX69M8UXFfLRrjMpwc/rsBBHD0+fhC3Wov/K5kO7/fx+dBqhIsxXWmokTPmVA==\",\"salt\":\"kbNLvzRuWVBV7N64NTh0Iw==\"}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}"
+        }
+      ],
+      "realmRoles": [
+        "PHARMACIE"
+      ]
     },
     {
       "id": "55555555-5555-5555-5555-555555555555",
@@ -130,8 +214,18 @@
       "firstName": "Secretaire",
       "lastName": "Demo",
       "email": "secretaire.demo@tabibi.local",
-      "credentials": [{ "type": "password", "userLabel": "Mot de passe de demonstration", "temporary": false, "secretData": "{\"value\":\"e3ehZaGy0kvzEb9xqBa4Ki3MK6fp58H2gm8C6p1pw/Aa2ARlMGDd4MEWHQqyh7QPqaPT0eEnyqWIZTBfcwZZ9A==\",\"salt\":\"pspjbTidCAuR80ZVgs91hw==\"}", "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}" }],
-      "realmRoles": ["SECRETAIRE"]
+      "credentials": [
+        {
+          "type": "password",
+          "userLabel": "Mot de passe de demonstration",
+          "temporary": false,
+          "secretData": "{\"value\":\"e3ehZaGy0kvzEb9xqBa4Ki3MK6fp58H2gm8C6p1pw/Aa2ARlMGDd4MEWHQqyh7QPqaPT0eEnyqWIZTBfcwZZ9A==\",\"salt\":\"pspjbTidCAuR80ZVgs91hw==\"}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\"}"
+        }
+      ],
+      "realmRoles": [
+        "SECRETAIRE"
+      ]
     }
   ]
 }
