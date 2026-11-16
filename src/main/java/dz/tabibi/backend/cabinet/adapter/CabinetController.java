@@ -5,6 +5,7 @@ import dz.tabibi.backend.cabinet.domain.Rattachement;
 import dz.tabibi.backend.creneaux.adapter.CreneauController.DemandeCreneau;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.rendezvous.adapter.RendezVousController.RendezVousVue;
+import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import jakarta.validation.constraints.NotNull;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.cabinet.domain.CabinetInvalideException;
@@ -131,6 +132,23 @@ public class CabinetController {
     @PreAuthorize("hasRole('SECRETAIRE')")
     public List<RendezVousVue> agenda(@PathVariable UUID medecinId, @AuthenticationPrincipal Jwt jwt) {
         return service.agendaPour(identifiant(jwt), medecinId).stream().map(RendezVousVue::de).toList();
+    }
+
+    /** Corps de la prise de rendez-vous par telephone ; le motif est facultatif. */
+    public record DemandeRendezVousTelephone(UUID creneauId, String nomPatient, String telephonePatient, String motif) {}
+
+    /**
+     * Une secretaire rattachee prend un rendez-vous pour un patient qui a appele (sans compte) : creneau reserve
+     * de facon atomique, source TELEPHONE, aucun message envoye (403 si non rattachee, 400 si invalide, 404 creneau, 409 pris).
+     */
+    @PostMapping("/api/secretaire/medecins/{medecinId}/rendezvous")
+    @PreAuthorize("hasRole('SECRETAIRE')")
+    public ResponseEntity<RendezVousVue> prendreRendezVousTelephone(@PathVariable UUID medecinId,
+                                                                    @RequestBody DemandeRendezVousTelephone demande,
+                                                                    @AuthenticationPrincipal Jwt jwt) {
+        RendezVous rdv = service.prendreRendezVousTelephone(identifiant(jwt), medecinId, demande.creneauId(),
+                demande.nomPatient(), demande.telephonePatient(), demande.motif());
+        return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.de(rdv));
     }
 
     /** Ouverture d'un creneau dans l'agenda d'un medecin par une secretaire rattachee (403 sinon, 400 si invalide). */

@@ -20,6 +20,14 @@ public class RendezVous {
     private StatutRdv statut;
     /** Date d'envoi du rappel de la veille au patient, ou null tant qu'il n'a pas ete envoye. */
     private Instant rappelEnvoyeLe;
+    /** Origine du rendez-vous : application (patient connecte) ou telephone (saisi par le cabinet). */
+    private final SourceRdv source;
+    /** Nom saisi par le cabinet : uniquement pour un rendez-vous pris par telephone (donnee personnelle). */
+    private String nomPatient;
+    /** Telephone saisi par le cabinet : uniquement pour un rendez-vous pris par telephone (donnee personnelle). */
+    private String telephonePatient;
+    /** Motif facultatif saisi par le cabinet (rendez-vous pris par telephone). */
+    private String motif;
 
     public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut) {
         this(id, patientId, medecinId, debut, statut, null);
@@ -31,7 +39,17 @@ public class RendezVous {
 
     public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut, UUID creneauId,
                       Instant rappelEnvoyeLe) {
+        this(id, patientId, medecinId, debut, statut, creneauId, rappelEnvoyeLe, SourceRdv.APPLICATION, null, null, null);
+    }
+
+    public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut, UUID creneauId,
+                      Instant rappelEnvoyeLe, SourceRdv source, String nomPatient, String telephonePatient,
+                      String motif) {
         this.id = id;
+        this.source = source == null ? SourceRdv.APPLICATION : source;
+        this.nomPatient = nomPatient;
+        this.telephonePatient = telephonePatient;
+        this.motif = motif;
         this.patientId = patientId;
         this.medecinId = medecinId;
         this.debut = debut;
@@ -48,6 +66,29 @@ public class RendezVous {
     /** Cree un rendez-vous confirme sur un creneau de l'agenda du medecin. */
     public static RendezVous confirmer(UUID patientId, UUID medecinId, Instant debut, UUID creneauId) {
         return new RendezVous(UUID.randomUUID(), patientId, medecinId, debut, StatutRdv.CONFIRME, creneauId);
+    }
+
+    /**
+     * Cree un rendez-vous confirme pris par telephone pour un patient sans compte : aucun compte lie,
+     * nom et telephone saisis par le cabinet.
+     */
+    public static RendezVous parTelephone(UUID medecinId, Instant debut, UUID creneauId, String nomPatient,
+                                          String telephonePatient, String motif) {
+        return new RendezVous(UUID.randomUUID(), null, medecinId, debut, StatutRdv.CONFIRME, creneauId, null,
+                SourceRdv.TELEPHONE, nomPatient, telephonePatient, motif);
+    }
+
+    /** Efface les donnees personnelles saisies par le cabinet (suppression / anonymisation). */
+    public void anonymiser(String nomAnonyme) {
+        if (source == SourceRdv.TELEPHONE) {
+            this.nomPatient = nomAnonyme;
+            this.telephonePatient = null;
+            this.motif = null;
+        }
+    }
+
+    public boolean estTelephonique() {
+        return source == SourceRdv.TELEPHONE;
     }
 
     public void annuler() {
@@ -98,7 +139,7 @@ public class RendezVous {
     }
 
     public boolean appartientA(UUID unPatientId) {
-        return patientId.equals(unPatientId);
+        return patientId != null && patientId.equals(unPatientId);
     }
 
     /** Vrai si le rendez-vous est dans l'agenda de ce medecin. */
@@ -119,7 +160,12 @@ public class RendezVous {
         return rappelEnvoyeLe != null;
     }
 
+    public SourceRdv source() { return source; }
+    public String nomPatient() { return nomPatient; }
+    public String telephonePatient() { return telephonePatient; }
+    public String motif() { return motif; }
     public UUID id() { return id; }
+    /** Null pour un rendez-vous pris par telephone (patient sans compte). */
     public UUID patientId() { return patientId; }
     public UUID medecinId() { return medecinId; }
     public Instant debut() { return debut; }

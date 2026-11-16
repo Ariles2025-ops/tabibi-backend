@@ -48,11 +48,13 @@ public class SuppressionCompteService {
     @Transactional
     public void supprimer(UUID utilisateurId) {
         int annules = rendezVous.annulerAVenirDuPatient(utilisateurId);
+        // Medecin : le nom et le telephone des patients pris par telephone sont effaces avec son compte.
+        int anonymises = rendezVous.anonymiserRendezVousTelephoniques(utilisateurId);
         listeAttente.retirerToutes(utilisateurId);
         String langue = profils.parUtilisateur(utilisateurId).map(Profil::langue).orElse(Profil.LANGUE_PAR_DEFAUT);
         // Le profil anonyme est toujours ecrit : sans lui, le cabinet afficherait encore le nom du compte.
         profils.enregistrer(new Profil(utilisateurId, NOM_ANONYME, null, null, null, langue, Instant.now()));
         comptes.supprimer(utilisateurId);
-        log.info("Compte {} supprime a sa demande ({} rendez-vous a venir annules).", utilisateurId, annules);
+        log.info("Compte {} supprime a sa demande ({} rendez-vous a venir annules, {} rendez-vous telephoniques anonymises).", utilisateurId, annules, anonymises);
     }
 }
