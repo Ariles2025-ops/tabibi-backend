@@ -1,6 +1,9 @@
 package dz.tabibi.backend.rendezvous.application;
 
+import dz.tabibi.backend.cabinet.domain.Rattachement;
+import dz.tabibi.backend.cabinet.domain.RattachementRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -8,11 +11,15 @@ import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.rappels.domain.EnvoiSms;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +29,8 @@ import java.util.UUID;
 
 /**
  * Cas d'usage des rendez-vous. Contient la regle metier, pas le client.
- * Le patient et le medecin sont prevenus (port Notifieur) a la reservation, le medecin a l'annulation ;
+ * Le patient, le medecin et ses secretaires sont prevenus (port Notifieur) a la reservation, le medecin et ses
+ * secretaires a l'annulation par le patient, le patient (et par SMS) a l'annulation par le cabinet ;
  * un creneau remis a disposition est signale au port AlerteCreneau (liste d'attente du medecin).
  */
 @Service
@@ -39,6 +47,25 @@ public class RendezVousService {
         this.creneaux = creneaux;
         this.notifieur = notifieur;
         this.alerteCreneau = alerteCreneau;
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(RendezVousService.class);
+
+    /** Secretaires du cabinet : prevenues des reservations et annulations des patients. */
+    private RattachementRepository rattachements;
+    /** SMS au patient quand le cabinet annule (numero verifie du compte), si une passerelle est configuree. */
+    private EnvoiSms sms;
+    private ComptesUtilisateurs comptes;
+
+    @Autowired(required = false)
+    public void setCabinet(RattachementRepository rattachements) {
+        this.rattachements = rattachements;
+    }
+
+    @Autowired(required = false)
+    public void setSms(EnvoiSms sms, ComptesUtilisateurs comptes) {
+        this.sms = sms;
+        this.comptes = comptes;
     }
 
     /**
@@ -129,8 +156,10 @@ public class RendezVousService {
         rdv.annuler();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
-        notifieur.notifier(annule.medecinId(), "Rendez-vous annulé",
-                "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a été annulé par le patient.", "/medecin/agenda");
+        String message = "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a été annulé par le patient.";
+        notifieur.notifier(annule.medecinId(), "Rendez-vous annulé", message, "/medecin/agenda");
+        secretairesDe(annule.medecinId()).forEach(s ->
+                notifieur.notifier(s, "Rendez-vous annulé", message, "/secretaire"));
         return annule;
     }
 
@@ -178,6 +207,15 @@ public class RendezVousService {
      */
     @Transactional
     public RendezVous marquerAbsent(UUID medecinId, UUID rendezVousId) {
+        return marquerAbsent(medecinId, rendezVousId, medecinId);
+    }
+
+    /**
+     * Comme {@link #marquerAbsent(UUID, UUID)}, fait par {@code auteurId} (le medecin ou sa secretaire) :
+     * quand c'est la secretaire, le medecin est prevenu.
+     */
+    @Transactional
+    public RendezVous marquerAbsent(UUID medecinId, UUID rendezVousId, UUID auteurId) {
         RendezVous rdv = parId(rendezVousId);
         if (!rdv.estAvec(medecinId)) {
             throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
@@ -187,6 +225,11 @@ public class RendezVousService {
         notifieur.notifier(absent.patientId(), "Rendez-vous manqué",
                 "Vous n'êtes pas venu à votre rendez-vous du " + FormatDate.lisible(absent.debut())
                         + ". Pensez à annuler à l'avance pour libérer la place.", "/mes-rendez-vous");
+        if (!medecinId.equals(auteurId)) {
+            notifieur.notifier(medecinId, "Patient absent",
+                    "Votre secrétaire a marqué absent le patient du rendez-vous du " + FormatDate.lisible(absent.debut()) + ".",
+                    "/medecin/agenda");
+        }
         return absent;
     }
 
@@ -210,6 +253,15 @@ public class RendezVousService {
      */
     @Transactional
     public RendezVous annulerParCabinet(UUID medecinId, UUID rendezVousId) {
+        return annulerParCabinet(medecinId, rendezVousId, medecinId);
+    }
+
+    /**
+     * Comme {@link #annulerParCabinet(UUID, UUID)}, fait par {@code auteurId} (le medecin ou sa secretaire) :
+     * le patient est prevenu dans l'appli et par SMS ; quand c'est la secretaire, le medecin est prevenu aussi.
+     */
+    @Transactional
+    public RendezVous annulerParCabinet(UUID medecinId, UUID rendezVousId, UUID auteurId) {
         RendezVous rdv = parId(rendezVousId);
         if (!rdv.estAvec(medecinId)) {
             throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
@@ -220,7 +272,42 @@ public class RendezVousService {
         notifieur.notifier(annule.patientId(), "Rendez-vous annulé par le cabinet",
                 "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
                         + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
+        smsAnnulationParCabinet(annule);
+        if (!medecinId.equals(auteurId)) {
+            notifieur.notifier(medecinId, "Rendez-vous annulé par votre secrétaire",
+                    "Votre secrétaire a annulé le rendez-vous du " + FormatDate.lisible(annule.debut()) + ".", "/medecin/agenda");
+        }
         return annule;
+    }
+
+    /**
+     * SMS court (sans accents : un seul segment) au numero verifie du compte du patient. Un echec (numero
+     * absent, passerelle) n'empeche jamais l'annulation ni la notification dans l'appli.
+     */
+    private void smsAnnulationParCabinet(RendezVous rdv) {
+        if (sms == null || comptes == null || !sms.disponible()) {
+            return;
+        }
+        try {
+            String tel = comptes.infos(rdv.patientId()).map(ComptesUtilisateurs.InfosCompte::telephone)
+                    .map(EnvoiSms::normaliser).orElse(null);
+            if (tel == null) {
+                return;
+            }
+            sms.envoyer(tel, "Tabibi : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
+                    + " a ete annule par le cabinet. Reprenez un creneau sur tabibi.doctor");
+        } catch (RuntimeException e) {
+            log.warn("SMS d'annulation non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+        }
+    }
+
+    /** Secretaires qui ont accepte de gerer l'agenda de ce medecin. */
+    private List<UUID> secretairesDe(UUID medecinId) {
+        if (rattachements == null) {
+            return List.of();
+        }
+        return rattachements.parMedecin(medecinId).stream()
+                .filter(Rattachement::accepte).map(Rattachement::secretaireId).toList();
     }
 
     /**
@@ -242,7 +329,9 @@ public class RendezVousService {
         String date = FormatDate.lisible(rdv.debut());
         notifieur.notifier(rdv.patientId(), "Rendez-vous confirmé",
                 "Votre rendez-vous du " + date + " est confirmé.", "/mes-rendez-vous");
-        notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous",
-                "Un patient a réservé un rendez-vous le " + date + ".", "/medecin/agenda");
+        String message = "Un patient a réservé un rendez-vous le " + date + ".";
+        notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous", message, "/medecin/agenda");
+        secretairesDe(rdv.medecinId()).forEach(s ->
+                notifieur.notifier(s, "Nouveau rendez-vous", message, "/secretaire"));
     }
 }

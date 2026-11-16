@@ -180,7 +180,7 @@ public class CabinetService {
     public RendezVous absentPour(UUID secretaireId, UUID rendezVousId) {
         RendezVous rdv = rendezVous.parId(rendezVousId);
         verifierAcces(secretaireId, rdv.medecinId());
-        return rendezVous.marquerAbsent(rdv.medecinId(), rendezVousId);
+        return rendezVous.marquerAbsent(rdv.medecinId(), rendezVousId, secretaireId);
     }
 
     /**
@@ -207,6 +207,6 @@ public class CabinetService {
     public RendezVous annulerPour(UUID secretaireId, UUID rendezVousId) {
         RendezVous rdv = rendezVous.parId(rendezVousId);
         verifierAcces(secretaireId, rdv.medecinId());
-        return rendezVous.annulerParCabinet(rdv.medecinId(), rendezVousId);
+        return rendezVous.annulerParCabinet(rdv.medecinId(), rendezVousId, secretaireId);
     }
 }
