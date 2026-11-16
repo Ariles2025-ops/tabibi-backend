@@ -95,7 +95,20 @@ class RealmKeycloakTest {
     @Test
     void les_roles_de_la_plateforme_sont_presents() {
         assertThat(textes(realm.get("roles").get("realm"), "name"))
-                .containsExactlyInAnyOrder("PATIENT", "MEDECIN", "SECRETAIRE", "ADMIN", "PHARMACIE", "default-roles-tabibi");
+                .containsExactlyInAnyOrder("PATIENT", "MEDECIN", "SECRETAIRE", "ADMIN", "PHARMACIE", "default-roles-tabibi",
+                        "offline_access", "uma_authorization");
+    }
+
+    @Test
+    void chaque_role_compose_par_defaut_est_declare() {
+        // Sans cela, une installation neuve de Keycloak refuse l'import (« Unable to find composite realm role »).
+        java.util.Set<String> declares = new java.util.HashSet<>(textes(realm.get("roles").get("realm"), "name"));
+        for (JsonNode role : realm.get("roles").get("realm")) {
+            JsonNode composes = role.path("composites").path("realm");
+            for (JsonNode nom : composes) {
+                assertThat(declares).as("role compose %s de %s", nom.asText(), role.get("name").asText()).contains(nom.asText());
+            }
+        }
     }
 
     @Test
