@@ -21,13 +21,30 @@
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "rememberMe": false,
+  "registrationAllowed": true,
+  "loginTheme": "tabibi",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "ar"],
+  "defaultLocale": "fr",
+  "defaultRole": {
+    "name": "default-roles-tabibi",
+    "description": "Roles donnes a tout nouveau compte : PATIENT (le role MEDECIN est donne a la validation de la candidature)",
+    "composite": true,
+    "clientRole": false
+  },
   "roles": {
     "realm": [
       { "name": "PATIENT", "description": "Patient : prise de rendez-vous, ordonnances, messagerie, avis, Dawini" },
       { "name": "MEDECIN", "description": "Medecin : agenda, creneaux, ordonnances, teleconsultations, cabinet" },
       { "name": "SECRETAIRE", "description": "Secretaire rattachee a un ou plusieurs cabinets" },
       { "name": "ADMIN", "description": "Administrateur de la plateforme : candidatures, moderation, audit" },
-      { "name": "PHARMACIE", "description": "Pharmacie : reponses aux besoins de medicaments (Dawini)" }
+      { "name": "PHARMACIE", "description": "Pharmacie : reponses aux besoins de medicaments (Dawini)" },
+      {
+        "name": "default-roles-tabibi",
+        "description": "Roles donnes a tout nouveau compte : PATIENT (le role MEDECIN est donne a la validation de la candidature)",
+        "composite": true,
+        "composites": { "realm": ["offline_access", "uma_authorization", "PATIENT"] }
+      }
     ]
   },
   "clients": [

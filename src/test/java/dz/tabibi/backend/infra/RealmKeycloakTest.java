@@ -95,7 +95,50 @@ class RealmKeycloakTest {
     @Test
     void les_roles_de_la_plateforme_sont_presents() {
         assertThat(textes(realm.get("roles").get("realm"), "name"))
-                .containsExactlyInAnyOrder("PATIENT", "MEDECIN", "SECRETAIRE", "ADMIN", "PHARMACIE");
+                .containsExactlyInAnyOrder("PATIENT", "MEDECIN", "SECRETAIRE", "ADMIN", "PHARMACIE", "default-roles-tabibi");
+    }
+
+    @Test
+    void tout_nouveau_compte_recoit_le_role_patient_et_l_inscription_est_ouverte() {
+        assertThat(realm.get("defaultRole").get("name").asText()).isEqualTo("default-roles-tabibi");
+        JsonNode parDefaut = null;
+        for (JsonNode role : realm.get("roles").get("realm")) {
+            if ("default-roles-tabibi".equals(role.get("name").asText())) {
+                parDefaut = role;
+            }
+        }
+        assertThat(parDefaut).isNotNull();
+        assertThat(parDefaut.get("composite").asBoolean()).isTrue();
+        assertThat(textes(parDefaut.get("composites").get("realm"), null)).contains("PATIENT").doesNotContain("MEDECIN", "ADMIN");
+        assertThat(realm.get("registrationAllowed").asBoolean()).isTrue();
+        assertThat(realm.get("loginTheme").asText()).isEqualTo("tabibi");
+        assertThat(realm.get("internationalizationEnabled").asBoolean()).isTrue();
+        assertThat(textes(realm.get("supportedLocales"), null)).containsExactlyInAnyOrder("fr", "ar");
+        assertThat(realm.get("defaultLocale").asText()).isEqualTo("fr");
+    }
+
+    private static final Path THEME = Path.of("infra/keycloak-sms/theme/tabibi/login");
+
+    private static java.util.Properties messages(String langue) throws Exception {
+        java.util.Properties p = new java.util.Properties();
+        try (var lecteur = java.nio.file.Files.newBufferedReader(THEME.resolve("messages/messages_" + langue + ".properties"),
+                java.nio.charset.StandardCharsets.UTF_8)) {
+            p.load(lecteur);
+        }
+        return p;
+    }
+
+    @Test
+    void le_theme_est_celui_de_tabibi_en_francais_et_en_arabe() throws Exception {
+        for (String langue : List.of("fr", "ar")) {
+            java.util.Properties m = messages(langue);
+            assertThat(m.stringPropertyNames()).as("cles heritees de Sel3a").noneMatch(k -> k.startsWith("auth.role."));
+            assertThat(m.getProperty("emailVerifiedAlreadyMessage")).isNotBlank().doesNotContain("verified");
+            assertThat(m.values()).as("marque Sel3a").noneMatch(v -> v.toString().contains("سلعة"));
+        }
+        assertThat(messages("ar").getProperty("app.name")).isEqualTo("طبيبي");
+        String gabarit = java.nio.file.Files.readString(THEME.resolve("template.ftl"));
+        assertThat(gabarit).contains("69 ولاية").doesNotContain("58 ولاية");
     }
 
     @Test
