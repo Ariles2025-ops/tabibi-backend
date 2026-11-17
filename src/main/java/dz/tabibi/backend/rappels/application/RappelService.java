@@ -82,7 +82,7 @@ public class RappelService {
             if (tel == null) {
                 return;
             }
-            sms.envoyer(tel, "Tabibi : rappel de votre rendez-vous le " + FormatDate.lisible(rdv.debut())
+            sms.envoyer(tel, "Ndawik : rappel de votre rendez-vous le " + FormatDate.lisible(rdv.debut())
                     + ". Pour annuler : tabibi.doctor/mes-rendez-vous");
         } catch (RuntimeException e) {
             log.warn("Rappel SMS non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());

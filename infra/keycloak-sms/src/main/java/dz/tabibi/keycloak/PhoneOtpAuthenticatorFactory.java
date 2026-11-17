@@ -44,7 +44,7 @@ public class PhoneOtpAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getDisplayType() {
-        return "Tabibi : téléphone + code SMS";
+        return "Ndawik : téléphone + code SMS";
     }
 
     @Override

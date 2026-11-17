@@ -103,7 +103,7 @@ public class AdministrationService {
                 comptes.infos(admin).map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank())
                         .ifPresent(email -> {
                             try {
-                                courriel.envoyer(email, "Tabibi — " + quoi, message
+                                courriel.envoyer(email, "Ndawik — " + quoi, message
                                         + "\n\nÀ examiner ici : https://tabibi.doctor/admin/candidatures");
                             } catch (RuntimeException e) {
                                 org.slf4j.LoggerFactory.getLogger(AdministrationService.class)
@@ -162,7 +162,7 @@ public class AdministrationService {
         medecins.enregistrer(fichePublique(validee));
         roles.accorder(validee.medecinId());
         notifieur.notifier(validee.medecinId(), "Candidature validée",
-                "Votre candidature a été validée : vous figurez désormais sur la plateforme Tabibi. "
+                "Votre candidature a été validée : vous figurez désormais sur la plateforme Ndawik. "
                         + "Reconnectez-vous pour ouvrir votre espace médecin.", "/medecin/agenda");
         return validee;
     }

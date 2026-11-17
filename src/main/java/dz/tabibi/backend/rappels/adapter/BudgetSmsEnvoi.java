@@ -41,7 +41,7 @@ public class BudgetSmsEnvoi implements EnvoiSms {
                           @Value("${TABIBI_BUDGETSMS_USERNAME:}") String username,
                           @Value("${TABIBI_BUDGETSMS_USERID:}") String userid,
                           @Value("${TABIBI_BUDGETSMS_HANDLE:}") String handle,
-                          @Value("${TABIBI_SMS_SENDER:Tabibi}") String expediteur) {
+                          @Value("${TABIBI_SMS_SENDER:Ndawik}") String expediteur) {
         this.actif = "budgetsms".equalsIgnoreCase(mode == null ? "" : mode.trim())
                 && !username.isBlank() && !userid.isBlank() && !handle.isBlank();
         this.url = url;

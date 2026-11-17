@@ -63,7 +63,7 @@ class SmsSenderTest {
         sms.send("+213550123456", "سلعة: رمزك هو 482913. لا تعطه لأي شخص.");
         Map<String, String> p = received.get();
         assertEquals("213550123456", p.get("to"));
-        assertEquals("Tabibi", p.get("from"), "expéditeur par défaut");
+        assertEquals("Ndawik", p.get("from"), "expéditeur par défaut");
         assertEquals("سلعة: رمزك هو 482913. لا تعطه لأي شخص.", p.get("msg"));
         assertEquals("tabibi", p.get("username"));
         assertEquals("21547", p.get("userid"));
@@ -74,7 +74,7 @@ class SmsSenderTest {
     void budgetSmsRefusEstUneErreurSansLeHandle() {
         reply.set("ERR 1001");
         SmsSender sms = SmsSender.fromEnv(budgetEnv());
-        var e = assertThrows(IllegalStateException.class, () -> sms.send("+213550123456", "Tabibi : votre code est 482913."));
+        var e = assertThrows(IllegalStateException.class, () -> sms.send("+213550123456", "Ndawik : votre code est 482913."));
         assertEquals("Passerelle SMS : 1001", e.getMessage());
         assertTrue(!e.getMessage().contains("1e753da74"));
     }

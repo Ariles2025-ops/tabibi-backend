@@ -153,7 +153,7 @@ class RealmKeycloakTest {
             assertThat(m.getProperty("emailVerifiedAlreadyMessage")).isNotBlank().doesNotContain("verified");
             assertThat(m.values()).as("marque Sel3a").noneMatch(v -> v.toString().contains("سلعة"));
         }
-        assertThat(messages("ar").getProperty("app.name")).isEqualTo("طبيبي");
+        assertThat(messages("ar").getProperty("app.name")).isEqualTo("نداويك");
         String gabarit = java.nio.file.Files.readString(THEME.resolve("template.ftl"));
         assertThat(gabarit).contains("69 ولاية").doesNotContain("58 ولاية");
     }

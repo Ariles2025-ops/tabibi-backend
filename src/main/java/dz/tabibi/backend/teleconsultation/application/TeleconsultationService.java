@@ -69,7 +69,7 @@ public class TeleconsultationService {
     @Transactional
     public Teleconsultation planifier(UUID medecinId, UUID rendezVousId) {
         if (!active) {
-            throw new TransitionInvalideException("La téléconsultation arrive bientôt sur Tabibi.");
+            throw new TransitionInvalideException("La téléconsultation arrive bientôt sur Ndawik.");
         }
         RendezVous rdv = rendezVous.parId(rendezVousId)
                 .orElseThrow(() -> new RendezVousIntrouvableException(rendezVousId));
@@ -85,7 +85,7 @@ public class TeleconsultationService {
             throw new TransitionInvalideException("Ce rendez-vous est déjà passé : la téléconsultation ne peut plus être proposée.");
         }
         if (rdv.patientId() == null) {
-            throw new TransitionInvalideException("Ce rendez-vous a été pris par téléphone : le patient n'a pas de compte Tabibi.");
+            throw new TransitionInvalideException("Ce rendez-vous a été pris par téléphone : le patient n'a pas de compte Ndawik.");
         }
         if (repository.parRendezVous(rendezVousId).isPresent()) {
             throw new TransitionInvalideException("Une téléconsultation existe déjà pour ce rendez-vous.");
@@ -150,7 +150,7 @@ public class TeleconsultationService {
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
         notifieur.notifier(demarree.patientId(), "Téléconsultation démarrée",
-                "Votre médecin a démarré la téléconsultation : rejoignez la salle depuis votre espace Tabibi.", "/teleconsultations");
+                "Votre médecin a démarré la téléconsultation : rejoignez la salle depuis votre espace Ndawik.", "/teleconsultations");
         return demarree;
     }
 

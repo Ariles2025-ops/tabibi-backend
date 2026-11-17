@@ -41,7 +41,7 @@
           </ul>
         </#if>
       </div>
-      <div class="kc-brand__foot">© 2026 Tabibi</div>
+      <div class="kc-brand__foot">© 2026 Ndawik</div>
     </aside>
     <div class="kc-shell">
       <header class="kc-top">

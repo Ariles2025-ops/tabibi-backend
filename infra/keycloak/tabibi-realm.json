@@ -1,7 +1,7 @@
 {
   "realm": "tabibi",
   "enabled": true,
-  "displayName": "Tabibi",
+  "displayName": "Ndawik",
   "sslRequired": "external",
   "bruteForceProtected": true,
   "permanentLockout": false,
@@ -86,7 +86,7 @@
   "clients": [
     {
       "clientId": "tabibi-web",
-      "name": "Tabibi web (Angular)",
+      "name": "Ndawik web (Angular)",
       "publicClient": true,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
@@ -106,7 +106,7 @@
     },
     {
       "clientId": "tabibi-mobile",
-      "name": "Tabibi mobile (Flutter)",
+      "name": "Ndawik mobile (Flutter)",
       "publicClient": true,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
