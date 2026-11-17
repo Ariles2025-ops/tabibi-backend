@@ -175,6 +175,14 @@ public class CabinetService {
         return creneaux.ouvrir(medecinId, debut, dureeMinutes);
     }
 
+    /** Une secretaire rattachee ouvre une semaine type dans l'agenda du medecin (403 si non rattachee). */
+    @Transactional
+    public dz.tabibi.backend.creneaux.domain.ResultatSemaineType ouvrirSemaineTypePour(
+            UUID secretaireId, UUID medecinId, dz.tabibi.backend.creneaux.domain.SemaineType modele) {
+        verifierAcces(secretaireId, medecinId);
+        return creneaux.ouvrirSemaineType(medecinId, modele);
+    }
+
     /** Creneaux a venir d'un medecin, vus par une secretaire rattachee. */
     public List<Creneau> creneauxPour(UUID secretaireId, UUID medecinId) {
         verifierAcces(secretaireId, medecinId);

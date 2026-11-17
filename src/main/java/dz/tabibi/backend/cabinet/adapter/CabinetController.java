@@ -160,6 +160,16 @@ public class CabinetController {
         return ResponseEntity.status(HttpStatus.CREATED).body(creneau);
     }
 
+    /** Ouverture d'une semaine type par une secretaire rattachee (403 sinon, 400 si invalide). */
+    @PostMapping("/api/secretaire/medecins/{medecinId}/creneaux/semaine-type")
+    @PreAuthorize("hasRole('SECRETAIRE')")
+    public dz.tabibi.backend.creneaux.domain.ResultatSemaineType ouvrirSemaineType(
+            @PathVariable UUID medecinId,
+            @RequestBody dz.tabibi.backend.creneaux.adapter.CreneauController.DemandeSemaineType demande,
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.ouvrirSemaineTypePour(identifiant(jwt), medecinId, demande.modele());
+    }
+
     @GetMapping("/api/secretaire/medecins/{medecinId}/creneaux")
     @PreAuthorize("hasRole('SECRETAIRE')")
     public List<Creneau> creneaux(@PathVariable UUID medecinId, @AuthenticationPrincipal Jwt jwt) {
