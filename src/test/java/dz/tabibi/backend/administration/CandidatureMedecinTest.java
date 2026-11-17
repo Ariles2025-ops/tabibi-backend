@@ -48,6 +48,24 @@ class CandidatureMedecinTest {
     }
 
     @Test
+    void deposer_refuse_un_champ_trop_long_avec_un_message_precis() {
+        DemandeCandidature demande = new DemandeCandidature(
+                "Dr Nadia Bensalem", "cardiologue", "Cardiologue", "16", "Alger", "Hydra", "1".repeat(41), "0550000000");
+
+        assertThatThrownBy(() -> CandidatureMedecin.deposer(MEDECIN, demande, DEPOSEE_LE))
+                .isInstanceOf(CandidatureInvalideException.class)
+                .hasMessage("Le numéro d'inscription à l'ordre est trop long (40 caractères au plus).");
+    }
+
+    @Test
+    void deposer_accepte_un_champ_a_la_longueur_maximale() {
+        DemandeCandidature demande = new DemandeCandidature(
+                "Dr Nadia Bensalem", "cardiologue", "Cardiologue", "16", "Alger", "Hydra", "1".repeat(40), "0".repeat(30));
+
+        assertThat(CandidatureMedecin.deposer(MEDECIN, demande, DEPOSEE_LE).numeroOrdre()).hasSize(40);
+    }
+
+    @Test
     void deposer_nettoie_les_espaces_et_vide_les_champs_facultatifs_blancs() {
         DemandeCandidature demande = new DemandeCandidature(
                 "  Dr Nadia Bensalem ", " cardiologue", "  ", "16 ", null, " ", " 16-12345 ", "");
