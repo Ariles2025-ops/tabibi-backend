@@ -70,9 +70,20 @@ class TeleconsultationTest {
         Teleconsultation annulee = planifiee();
         annulee.annuler();
 
-        assertThatThrownBy(() -> terminee.consentir(T3)).isInstanceOf(TransitionInvalideException.class);
-        assertThatThrownBy(() -> annulee.consentir(T3)).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> terminee.consentir(T3)).isInstanceOf(TransitionInvalideException.class)
+                .hasMessage("Cette téléconsultation est terminée : vous ne pouvez plus donner votre consentement.");
+        assertThatThrownBy(() -> annulee.consentir(T3)).isInstanceOf(TransitionInvalideException.class)
+                .hasMessage("Cette téléconsultation est annulée : vous ne pouvez plus donner votre consentement.");
         assertThat(annulee.patientAConsenti()).isFalse();
+    }
+
+    @Test
+    void les_messages_de_statut_utilisent_un_libelle_francais() {
+        assertThatThrownBy(() -> planifiee().terminer(T3))
+                .hasMessage("Seule une téléconsultation en cours peut être terminée (elle est actuellement : planifiée).");
+        Teleconsultation enCours = enCours();
+        assertThatThrownBy(() -> enCours.annuler())
+                .hasMessage("Seule une téléconsultation planifiée peut être annulée (elle est actuellement : en cours).");
     }
 
     @Test
