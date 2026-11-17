@@ -51,3 +51,5 @@ databaseChangeLog:
       file: db/changelog/026-rdv-telephone.yaml
   - include:
       file: db/changelog/027-reclassement-autre-nom-complet.yaml
+  - include:
+      file: db/changelog/028-creneau-unique.yaml

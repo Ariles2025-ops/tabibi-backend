@@ -40,6 +40,12 @@ public class JpaReponseRepository implements ReponseRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void supprimerParBesoin(UUID besoinId) {
+        jpa.supprimerParBesoin(besoinId);
+    }
+
+    @Override
     public long compterParBesoin(UUID besoinId) {
         return jpa.countByBesoinId(besoinId);
     }

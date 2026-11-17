@@ -12,7 +12,7 @@ import java.util.UUID;
 public class RendezVous {
 
     private final UUID id;
-    private final UUID patientId;
+    private UUID patientId;
     private final UUID medecinId;
     private final Instant debut;
     /** Creneau de l'agenda reserve, ou null pour un rendez-vous pris sur un horaire libre. */
@@ -105,7 +105,23 @@ public class RendezVous {
             throw new TransitionInvalideException(
                     "Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : " + statut + ").");
         }
+        if (!debut.isAfter(Instant.now())) {
+            throw new TransitionInvalideException(
+                    "Ce rendez-vous est déjà passé : il ne peut plus être annulé par le cabinet.");
+        }
         this.statut = StatutRdv.ANNULE;
+    }
+
+    /**
+     * Suppression du compte du patient : le rendez-vous reste dans l'agenda du medecin (trace) mais n'est plus
+     * lie a aucun compte et n'a plus aucune donnee personnelle (nom remplace, telephone et motif effaces).
+     * Irreversible : l'identifiant du patient est perdu.
+     */
+    public void anonymiserPatient(String nomAnonyme) {
+        this.patientId = null;
+        this.nomPatient = nomAnonyme;
+        this.telephonePatient = null;
+        this.motif = null;
     }
 
     /**

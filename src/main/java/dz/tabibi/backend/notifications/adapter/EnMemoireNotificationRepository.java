@@ -43,6 +43,13 @@ public class EnMemoireNotificationRepository implements NotificationRepository {
     }
 
     @Override
+    public int supprimerDuDestinataire(UUID destinataireId) {
+        int avant = parId.size();
+        parId.values().removeIf(n -> n.destinataireId().equals(destinataireId));
+        return avant - parId.size();
+    }
+
+    @Override
     public long nombreNonLues(UUID destinataireId) {
         return parId.values().stream()
                 .filter(n -> n.destinataireId().equals(destinataireId) && !n.lue())

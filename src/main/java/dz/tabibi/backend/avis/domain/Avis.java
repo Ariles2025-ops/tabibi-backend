@@ -78,6 +78,11 @@ public record Avis(
         return avecStatut(StatutAvis.PUBLIE);
     }
 
+    /** Suppression du compte du patient : le commentaire est efface (irreversible), la note anonyme reste. */
+    public Avis sansCommentaire() {
+        return new Avis(id, rendezVousId, patientId, medecinId, note, null, statut, deposeLe);
+    }
+
     public boolean estPublie() {
         return statut == StatutAvis.PUBLIE;
     }

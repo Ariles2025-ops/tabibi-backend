@@ -55,6 +55,8 @@ class ReservationConcurrenteTest {
         @Override public Creneau enregistrer(Creneau creneau) { return depot.enregistrer(creneau); }
         @Override public List<Creneau> aVenirPour(UUID medecinId, Instant depuis) { return depot.aVenirPour(medecinId, depuis); }
         @Override public void supprimer(UUID id) { depot.supprimer(id); }
+        @Override public boolean supprimerSiDisponible(UUID id) { return depot.supprimerSiDisponible(id); }
+        @Override public int supprimerLibresDuMedecin(UUID medecinId) { return depot.supprimerLibresDuMedecin(medecinId); }
         @Override public boolean reserverSiDisponible(UUID id) { return depot.reserverSiDisponible(id); }
     }
 

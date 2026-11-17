@@ -19,4 +19,7 @@ public interface NotificationRepository {
 
     /** Nombre de notifications non lues d'un destinataire. */
     long nombreNonLues(UUID destinataireId);
+
+    /** Supprime definitivement toutes les notifications d'un destinataire (suppression de compte). @return leur nombre. */
+    int supprimerDuDestinataire(UUID destinataireId);
 }

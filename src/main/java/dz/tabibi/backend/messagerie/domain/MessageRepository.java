@@ -18,6 +18,9 @@ public interface MessageRepository {
     /** Nombre de messages de la conversation ecrits par un autre que ce lecteur et non encore lus. */
     long nonLus(UUID conversationId, UUID lecteurId);
 
+    /** Supprime definitivement tous les messages d'une conversation (suppression de compte). */
+    void supprimerParConversation(UUID conversationId);
+
     /**
      * Marque lus, a cette date, les messages de la conversation ecrits par un autre que ce lecteur
      * et non encore lus ; renvoie les messages ainsi marques (vide s'il n'y en avait aucun).

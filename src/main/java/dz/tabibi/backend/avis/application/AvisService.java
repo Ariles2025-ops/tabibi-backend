@@ -37,6 +37,17 @@ public class AvisService {
     }
 
     /**
+     * Suppression du compte du patient : le commentaire de chacun de ses avis est efface (la note reste,
+     * sans lien lisible avec une personne : son profil est anonymise). @return le nombre d'avis modifies.
+     */
+    @Transactional
+    public int effacerCommentairesDuPatient(UUID patientId) {
+        List<Avis> aEffacer = avis.parPatient(patientId).stream().filter(a -> a.commentaire() != null).toList();
+        aEffacer.forEach(a -> avis.enregistrer(a.sansCommentaire()));
+        return aEffacer.size();
+    }
+
+    /**
      * Depose l'avis du patient sur le medecin d'un de ses rendez-vous honores.
      * @throws AvisInvalideException si le rendez-vous manque, si la note est hors bornes ou le commentaire trop long.
      * @throws RendezVousIntrouvableException si le rendez-vous n'existe pas.

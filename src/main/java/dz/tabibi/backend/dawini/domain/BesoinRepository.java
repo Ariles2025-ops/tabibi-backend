@@ -17,6 +17,9 @@ public interface BesoinRepository {
     /** Besoins d'un patient, tous statuts, les plus recents d'abord. */
     List<BesoinMedicament> parPatient(UUID patientId);
 
+    /** Supprime definitivement un besoin (suppression de compte) ; sans effet s'il n'existe pas. */
+    void supprimer(UUID id);
+
     /** Besoins ouverts d'une wilaya, les plus recents d'abord. */
     List<BesoinMedicament> ouvertsParWilaya(String wilayaCode);
 }

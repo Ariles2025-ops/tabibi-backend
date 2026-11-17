@@ -19,4 +19,7 @@ public interface ReponseRepository {
     Optional<ReponsePharmacie> parBesoinEtPharmacie(UUID besoinId, UUID pharmacieId);
 
     long compterParBesoin(UUID besoinId);
+
+    /** Supprime definitivement toutes les reponses a un besoin (suppression du compte du patient). */
+    void supprimerParBesoin(UUID besoinId);
 }

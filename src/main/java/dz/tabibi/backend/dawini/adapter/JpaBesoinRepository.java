@@ -41,6 +41,11 @@ public class JpaBesoinRepository implements BesoinRepository {
     }
 
     @Override
+    public void supprimer(UUID id) {
+        jpa.deleteById(id);
+    }
+
+    @Override
     public List<BesoinMedicament> ouvertsParWilaya(String wilayaCode) {
         return jpa.findByWilayaCodeAndStatutOrderByPublieLeDesc(wilayaCode, StatutBesoin.OUVERT)
                 .stream().map(BesoinEntity::versDomaine).toList();

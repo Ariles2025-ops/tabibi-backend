@@ -36,6 +36,12 @@ public class JpaMessageRepository implements MessageRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void supprimerParConversation(UUID conversationId) {
+        jpa.supprimerParConversation(conversationId);
+    }
+
+    @Override
     public long nonLus(UUID conversationId, UUID lecteurId) {
         return jpa.countByConversationIdAndAuteurIdNotAndLuLeIsNull(conversationId, lecteurId);
     }

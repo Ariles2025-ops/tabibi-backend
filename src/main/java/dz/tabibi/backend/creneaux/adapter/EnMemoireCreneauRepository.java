@@ -3,6 +3,7 @@ package dz.tabibi.backend.creneaux.adapter;
 import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
 import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.creneaux.domain.Creneau;
+import dz.tabibi.backend.creneaux.domain.CreneauExistantException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -68,7 +69,13 @@ public class EnMemoireCreneauRepository implements CreneauRepository {
     }
 
     @Override
-    public Creneau enregistrer(Creneau creneau) {
+    public synchronized Creneau enregistrer(Creneau creneau) {
+        // Meme regle que l'index unique (medecin_id, debut) de la base.
+        boolean doublon = parId.values().stream().anyMatch(c -> !c.id().equals(creneau.id())
+                && c.medecinId().equals(creneau.medecinId()) && c.debut().equals(creneau.debut()));
+        if (doublon) {
+            throw new CreneauExistantException("Un créneau existe déjà à cette heure-là.");
+        }
         parId.put(creneau.id(), creneau);
         return creneau;
     }
@@ -84,6 +91,26 @@ public class EnMemoireCreneauRepository implements CreneauRepository {
     @Override
     public void supprimer(UUID id) {
         parId.remove(id);
+    }
+
+    @Override
+    public boolean supprimerSiDisponible(UUID id) {
+        boolean[] supprime = {false};
+        parId.computeIfPresent(id, (cle, c) -> {
+            if (!c.disponible()) {
+                return c;
+            }
+            supprime[0] = true;
+            return null;
+        });
+        return supprime[0];
+    }
+
+    @Override
+    public int supprimerLibresDuMedecin(UUID medecinId) {
+        int avant = parId.size();
+        parId.values().removeIf(c -> c.medecinId().equals(medecinId) && c.disponible());
+        return avant - parId.size();
     }
 
     @Override
