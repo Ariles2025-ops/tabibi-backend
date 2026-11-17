@@ -91,8 +91,10 @@ class AvisTest {
         Avis signale = avis(2, null).signaler();
         Avis masque = avis(2, null).masquer();
 
-        assertThatThrownBy(signale::signaler).isInstanceOf(TransitionInvalideException.class);
-        assertThatThrownBy(masque::signaler).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(signale::signaler).isInstanceOf(TransitionInvalideException.class)
+                .hasMessage("Cet avis a déjà été signalé ou masqué.");
+        assertThatThrownBy(masque::signaler).isInstanceOf(TransitionInvalideException.class)
+                .hasMessage("Cet avis a déjà été signalé ou masqué.");
     }
 
     @Test

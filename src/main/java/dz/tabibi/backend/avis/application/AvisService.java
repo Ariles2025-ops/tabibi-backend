@@ -66,7 +66,7 @@ public class AvisService {
         }
         if (rdv.statut() != StatutRdv.HONORE) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous honoré peut recevoir un avis (statut actuel : " + rdv.statut() + ").");
+                    "Vous pourrez donner votre avis une fois la consultation effectuée.");
         }
         if (avis.parRendezVous(rendezVousId).isPresent()) {
             throw new TransitionInvalideException("Un avis a déjà été déposé pour ce rendez-vous.");
