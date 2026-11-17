@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-reclassement-autre-motifs
+      author: tabibi
+      dbms: postgresql
+      comment: >-
+        Suite de 023 : variantes et fautes courantes (francais et arabe) pour les fiches « autre » dont la specialite
+        figure apres la virgule du nom. Fiche ambigue (plusieurs specialites), pharmacie, labo, optique : laissee « autre ».
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/024-reclassement-autre-motifs.sql
+            encoding: UTF-8
+            splitStatements: false
+            stripComments: false

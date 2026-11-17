@@ -3,13 +3,22 @@ package dz.tabibi.backend.creneaux.application;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
+import dz.tabibi.backend.creneaux.domain.ResultatSemaineType;
+import dz.tabibi.backend.creneaux.domain.SemaineType;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import org.springframework.stereotype.Service;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,6 +31,9 @@ public class CreneauService {
 
     public static final int DUREE_MIN_MINUTES = 5;
     public static final int DUREE_MAX_MINUTES = 120;
+    public static final int SEMAINES_MAX = 8;
+    public static final int CRENEAUX_MAX_PAR_APPEL = 500;
+    public static final ZoneId FUSEAU = ZoneId.of("Africa/Algiers");
 
     private final CreneauRepository repository;
     private final AlerteCreneau alerteCreneau;
@@ -83,5 +95,65 @@ public class CreneauService {
             throw new TransitionInvalideException("Ce créneau est réservé : annulez d'abord le rendez-vous.");
         }
         repository.supprimer(creneauId);
+    }
+
+    /**
+     * Ouvre en une fois les creneaux d'une semaine type (heure d'Alger). Un creneau deja passe ou qui chevauche
+     * un creneau existant (ou un autre creneau du meme appel) est ignore.
+     * @throws CreneauInvalideException si le modele est invalide, depasse 8 semaines ou 500 creneaux.
+     */
+    public ResultatSemaineType ouvrirSemaineType(UUID medecinId, SemaineType modele) {
+        if (modele == null || modele.jours() == null || modele.jours().isEmpty() || modele.jours().stream().anyMatch(java.util.Objects::isNull)) {
+            throw new CreneauInvalideException("Choisissez au moins un jour de la semaine.");
+        }
+        if (modele.debut() == null || modele.fin() == null || !modele.debut().isBefore(modele.fin())) {
+            throw new CreneauInvalideException("L'heure de début doit précéder l'heure de fin.");
+        }
+        if (modele.dureeMinutes() < DUREE_MIN_MINUTES || modele.dureeMinutes() > DUREE_MAX_MINUTES) {
+            throw new CreneauInvalideException("La durée doit être comprise entre "
+                    + DUREE_MIN_MINUTES + " et " + DUREE_MAX_MINUTES + " minutes.");
+        }
+        if (modele.aPartirDu() == null) {
+            throw new CreneauInvalideException("La date de départ est obligatoire.");
+        }
+        if (modele.nombreSemaines() < 1 || modele.nombreSemaines() > SEMAINES_MAX) {
+            throw new CreneauInvalideException("Le nombre de semaines doit être compris entre 1 et " + SEMAINES_MAX + ".");
+        }
+        Set<DayOfWeek> jours = modele.jours().stream().map(j -> j.jour()).collect(Collectors.toSet());
+        List<Instant> debuts = new ArrayList<>();
+        LocalDate fin = modele.aPartirDu().plusDays(7L * modele.nombreSemaines());
+        for (LocalDate date = modele.aPartirDu(); date.isBefore(fin); date = date.plusDays(1)) {
+            if (!jours.contains(date.getDayOfWeek())) {
+                continue;
+            }
+            for (LocalTime t = modele.debut();
+                 !t.plusMinutes(modele.dureeMinutes()).isAfter(modele.fin()) && !t.plusMinutes(modele.dureeMinutes()).isBefore(t);
+                 t = t.plusMinutes(modele.dureeMinutes())) {
+                debuts.add(date.atTime(t).atZone(FUSEAU).toInstant());
+                if (debuts.size() > CRENEAUX_MAX_PAR_APPEL) {
+                    throw new CreneauInvalideException("Au plus " + CRENEAUX_MAX_PAR_APPEL + " créneaux par appel.");
+                }
+            }
+        }
+        long dureeSecondes = 60L * modele.dureeMinutes();
+        Instant maintenant = Instant.now();
+        List<Creneau> existants = new ArrayList<>(repository.aVenirPour(medecinId,
+                maintenant.minusSeconds(60L * DUREE_MAX_MINUTES)));
+        int crees = 0;
+        int ignores = 0;
+        for (Instant debut : debuts) {
+            Instant finCreneau = debut.plusSeconds(dureeSecondes);
+            boolean chevauche = existants.stream()
+                    .anyMatch(c -> c.debut().isBefore(finCreneau) && debut.isBefore(c.debut().plusSeconds(60L * c.dureeMinutes())));
+            if (!debut.isAfter(maintenant) || chevauche) {
+                ignores++;
+                continue;
+            }
+            Creneau creneau = repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, modele.dureeMinutes(), true));
+            existants.add(creneau);
+            alerteCreneau.creneauLibere(creneau.medecinId(), creneau.debut());
+            crees++;
+        }
+        return new ResultatSemaineType(crees, ignores);
     }
 }

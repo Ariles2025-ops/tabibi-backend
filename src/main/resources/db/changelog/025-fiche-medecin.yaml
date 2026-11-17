@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 024-fiche-medecin
+      id: 025-fiche-medecin
       author: tabibi
       comment: >-
         Fiche publique modifiable par le praticien : colonnes facultatives ajoutees, aucune donnee existante modifiee.
