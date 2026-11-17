@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: 029-ville-slug
       author: tabibi
-      comment: Commune normalisee (slug : minuscules, sans accents, tirets) pour filtrer en SQL les pages par commune.
+      comment: "Commune normalisee (slug en minuscules, sans accents, avec tirets) pour filtrer en SQL les pages par commune."
       changes:
         - addColumn:
             tableName: medecin
