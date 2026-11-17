@@ -153,6 +153,10 @@ class AdministrationServiceTest {
         assertThat(medecins.rechercher(CritereRecherche.de("cardiologue", "16", "nadia"))).containsExactly(publie);
         assertThat(notificationsDe(MEDECIN)).hasSize(1);
         assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature validée");
+        assertThat(notificationsDe(MEDECIN).get(0).message())
+                .isEqualTo("Votre candidature a été validée : vous figurez désormais sur la plateforme Tabibi. "
+                        + "Reconnectez-vous pour ouvrir votre espace médecin.")
+                .doesNotContainIgnoringCase("annuaire");
         assertThat(comptesMedecins).containsExactly(MEDECIN);
     }
 
