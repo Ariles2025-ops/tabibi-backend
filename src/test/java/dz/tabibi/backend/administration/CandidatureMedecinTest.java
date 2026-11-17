@@ -144,4 +144,15 @@ class CandidatureMedecinTest {
         assertThatThrownBy(() -> refusee.valider(TRAITEE_LE)).isInstanceOf(TransitionInvalideException.class);
         assertThatThrownBy(() -> refusee.refuser("Motif.", TRAITEE_LE)).isInstanceOf(TransitionInvalideException.class);
     }
+
+    @Test
+    void le_message_de_transition_invalide_est_accentue_avec_un_statut_lisible() {
+        CandidatureMedecin validee = deposee().valider(TRAITEE_LE);
+        CandidatureMedecin refusee = deposee().refuser("Motif.", TRAITEE_LE);
+
+        assertThatThrownBy(() -> refusee.valider(TRAITEE_LE))
+                .hasMessage("Seule une candidature en attente peut être validée (statut actuel : Refusée).");
+        assertThatThrownBy(() -> validee.refuser("Motif.", TRAITEE_LE))
+                .hasMessage("Seule une candidature en attente peut être refusée (statut actuel : Validée).");
+    }
 }
