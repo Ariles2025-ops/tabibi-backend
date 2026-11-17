@@ -41,14 +41,15 @@ public record CandidatureMedecin(
         return new CandidatureMedecin(
                 UUID.randomUUID(),
                 medecinId,
-                obligatoire(demande.nomComplet(), "Le nom complet est obligatoire."),
-                obligatoire(demande.specialiteSlug(), "La spécialité est obligatoire."),
+                obligatoire(demande.nomComplet(), "Le nom complet est obligatoire.", 160, "Le nom complet"),
+                obligatoire(demande.specialiteSlug(), "La spécialité est obligatoire.", 60, "La spécialité"),
                 facultatif(demande.specialiteFr()),
-                obligatoire(demande.wilayaCode(), "La wilaya est obligatoire."),
+                obligatoire(demande.wilayaCode(), "La wilaya est obligatoire.", 4, "La wilaya"),
                 facultatif(demande.wilayaFr()),
-                facultatif(demande.ville()),
-                obligatoire(demande.numeroOrdre(), "Le numéro d'inscription à l'ordre est obligatoire."),
-                facultatif(demande.telephone()),
+                facultatif(demande.ville(), 80, "La ville"),
+                obligatoire(demande.numeroOrdre(), "Le numéro d'inscription à l'ordre est obligatoire.", 40,
+                        "Le numéro d'inscription à l'ordre"),
+                facultatif(demande.telephone(), 30, "Le téléphone"),
                 StatutCandidature.EN_ATTENTE,
                 null,
                 deposeeLe,
@@ -99,6 +100,22 @@ public record CandidatureMedecin(
             throw new CandidatureInvalideException(message);
         }
         return valeur.strip();
+    }
+
+    private static String obligatoire(String valeur, String message, int max, String champ) {
+        return limiter(obligatoire(valeur, message), max, champ);
+    }
+
+    private static String facultatif(String valeur, int max, String champ) {
+        return limiter(facultatif(valeur), max, champ);
+    }
+
+    /** Evite une violation de contrainte en base (colonnes varchar) : message precis plutot qu'un faux conflit. */
+    private static String limiter(String valeur, int max, String champ) {
+        if (valeur != null && valeur.length() > max) {
+            throw new CandidatureInvalideException(champ + " est trop long (" + max + " caractères au plus).");
+        }
+        return valeur;
     }
 
     private static String facultatif(String valeur) {
