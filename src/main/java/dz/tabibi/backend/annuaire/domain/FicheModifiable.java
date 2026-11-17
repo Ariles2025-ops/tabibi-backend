@@ -16,7 +16,7 @@ public record FicheModifiable(String adresse, String telephoneCabinet, String ho
     public static final List<String> LANGUES_AUTORISEES = List.of("fr", "ar", "en", "tamazight");
 
     /** Fixe algerien (0XX XX XX XX), mobile (05/06/07 XX XX XX XX) ou international (+213...), espaces/points/tirets tolerés. */
-    private static final Pattern TELEPHONE = Pattern.compile("^(?:\\+213|0)[1-9]\\d{7,8}$");
+    private static final Pattern TELEPHONE = Pattern.compile("^(?:\\+213|00213|0)[1-9]\\d{7,8}$");
 
     /** Controle et normalise (espaces superflus retirés, vide = absent, langues sans doublon). */
     public FicheModifiable valider() {
@@ -31,9 +31,9 @@ public record FicheModifiable(String adresse, String telephoneCabinet, String ho
         if (tel != null) {
             String compact = tel.replaceAll("[\\s.\\-]", "");
             if (!TELEPHONE.matcher(compact).matches()) {
-                throw new FicheInvalideException("Telephone du cabinet invalide : attendu 0XX XX XX XX ou +213...");
+                throw new FicheInvalideException("Téléphone du cabinet invalide : attendu 0XX XX XX XX, +213… ou 00213…");
             }
-            tel = compact;
+            tel = compact.startsWith("00213") ? "+" + compact.substring(2) : compact;
         }
 
         List<String> langs = langues == null ? List.of() : langues.stream()
