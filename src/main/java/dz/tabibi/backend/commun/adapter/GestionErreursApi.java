@@ -68,7 +68,8 @@ public class GestionErreursApi {
             BesoinInvalideException.class,
             ReponseInvalideException.class,
             ProfilInvalideException.class,
-            CabinetInvalideException.class})
+            CabinetInvalideException.class,
+            dz.tabibi.backend.annuaire.domain.FicheInvalideException.class})
     public ResponseEntity<ErreurApi> invalide(RuntimeException ex) {
         return reponse(HttpStatus.BAD_REQUEST, ex);
     }

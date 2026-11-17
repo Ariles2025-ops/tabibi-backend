@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-fiche-medecin
+      author: tabibi
+      comment: >-
+        Fiche publique modifiable par le praticien : colonnes facultatives ajoutees, aucune donnee existante modifiee.
+      changes:
+        - addColumn:
+            tableName: medecin
+            columns:
+              - column: { name: adresse, type: varchar(200) }
+              - column: { name: telephone_cabinet, type: varchar(20) }
+              - column: { name: horaires, type: varchar(300) }
+              - column: { name: presentation, type: varchar(600) }
+              - column: { name: langues, type: varchar(40) }

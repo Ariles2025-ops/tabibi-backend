@@ -1,7 +1,9 @@
 package dz.tabibi.backend.annuaire.application;
 
 import dz.tabibi.backend.annuaire.domain.CritereRecherche;
+import dz.tabibi.backend.annuaire.domain.FicheModifiable;
 import dz.tabibi.backend.annuaire.domain.Medecin;
+import dz.tabibi.backend.annuaire.domain.MedecinIntrouvableException;
 import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import org.springframework.stereotype.Service;
 
@@ -56,5 +58,16 @@ public class AnnuaireService {
 
     public long nombre() {
         return repository.nombre();
+    }
+
+    /** Fiche du praticien connecte (son identifiant est celui de son compte) ; introuvable s'il n'est pas publie. */
+    public Medecin maFiche(UUID medecinId) {
+        return repository.parId(medecinId).orElseThrow(() -> new MedecinIntrouvableException(medecinId));
+    }
+
+    /** Met a jour les informations modifiables de SA fiche, apres validation. Nom, specialite, wilaya inchanges. */
+    public Medecin modifierMaFiche(UUID medecinId, FicheModifiable demande) {
+        FicheModifiable valide = demande.valider();
+        return repository.enregistrer(maFiche(medecinId).avec(valide));
     }
 }
