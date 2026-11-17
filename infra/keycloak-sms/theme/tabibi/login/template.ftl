@@ -16,12 +16,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap">
   <#-- ?v= force le navigateur a recharger le CSS apres une mise a jour (sinon Safari garde l'ancien). -->
-  <#list properties.styles?split(' ') as style><link rel="stylesheet" href="${url.resourcesPath}/${style}?v=20261115d"></#list>
+  <link rel="icon" href="${url.resourcesPath}/img/logo-ndawik.svg" type="image/svg+xml">
+  <#list properties.styles?split(' ') as style><link rel="stylesheet" href="${url.resourcesPath}/${style}?v=20261117logo"></#list>
 </head>
 <body class="n-root">
   <div class="kc-page">
     <aside class="kc-brand" aria-hidden="true">
-      <div class="kc-brand__logo">${msg("app.name")}<i>.</i></div>
+      <div class="kc-brand__logo"><img class="kc-marque" src="${url.resourcesPath}/img/marque-blanche.svg" alt="" width="34" height="34">${msg("app.name")}</div>
       <div class="kc-brand__pitch">
         <#if rtl>
           <h2>صحتك لا يجب أن <span class="acc">تنتظر أبدًا.</span></h2>
@@ -45,7 +46,7 @@
     </aside>
     <div class="kc-shell">
       <header class="kc-top">
-        <span class="kc-logo">${msg("app.name")}<i>.</i></span>
+        <span class="kc-logo"><img class="kc-marque" src="${url.resourcesPath}/img/logo-ndawik.svg" alt="" width="30" height="30">${msg("app.name")}</span>
         <#if locale?? && locale.supported?size gt 1>
           <#list locale.supported as l>
             <#if l.languageTag != lang><a class="kc-lang" href="${l.url}" hreflang="${l.languageTag}">${msg("common.language")}</a></#if>
