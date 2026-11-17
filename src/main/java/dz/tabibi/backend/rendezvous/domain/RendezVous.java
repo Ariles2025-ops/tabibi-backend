@@ -131,10 +131,10 @@ public class RendezVous {
     public void honorer() {
         if (statut != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirmé peut être honoré (statut actuel : " + statut + ").");
+                    "Seul un rendez-vous confirmé peut être honoré (statut actuel : " + statut.libelle() + ").");
         }
         if (debut.isAfter(Instant.now())) {
-            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : il ne peut pas être marque comme honoré.");
+            throw new TransitionInvalideException("Ce rendez-vous n'a pas encore eu lieu : il ne peut pas être marqué comme honoré.");
         }
         this.statut = StatutRdv.HONORE;
     }
