@@ -62,7 +62,7 @@ public record CandidatureMedecin(
      * @throws TransitionInvalideException si elle n'est pas en attente.
      */
     public CandidatureMedecin valider(Instant quand) {
-        exigerEnAttente("validee");
+        exigerEnAttente("validée");
         return new CandidatureMedecin(id, medecinId, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr,
                 ville, numeroOrdre, telephone, StatutCandidature.VALIDEE, null, deposeeLe, quand, ficheReclamee);
     }
@@ -74,7 +74,7 @@ public record CandidatureMedecin(
      */
     public CandidatureMedecin refuser(String motif, Instant quand) {
         String motifRenseigne = obligatoire(motif, "Le motif du refus est obligatoire.");
-        exigerEnAttente("refusee");
+        exigerEnAttente("refusée");
         return new CandidatureMedecin(id, medecinId, nomComplet, specialiteSlug, specialiteFr, wilayaCode, wilayaFr,
                 ville, numeroOrdre, telephone, StatutCandidature.REFUSEE, motifRenseigne, deposeeLe, quand, ficheReclamee);
     }
@@ -91,7 +91,7 @@ public record CandidatureMedecin(
     private void exigerEnAttente(String action) {
         if (!estEnAttente()) {
             throw new TransitionInvalideException(
-                    "Seule une candidature en attente peut être " + action + " (statut actuel : " + statut + ").");
+                    "Seule une candidature en attente peut être " + action + " (statut actuel : " + statut.libelle() + ").");
         }
     }
 
