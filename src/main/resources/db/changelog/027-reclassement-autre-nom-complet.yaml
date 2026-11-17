@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-reclassement-autre-nom-complet
+      author: tabibi
+      dbms: postgresql
+      comment: >-
+        Reclasse les fiches « autre » d'apres un mot-cle lu dans tout le nom (pharmacie, hopital, clinique, labo,
+        dentiste, specialites...). Veto pour ce qui n'est pas un lieu de soin ; praticien a plusieurs specialites laisse « autre ».
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/027-reclassement-autre-nom-complet.sql
+            encoding: UTF-8
+            splitStatements: false
+            stripComments: false

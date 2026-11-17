@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/024-reclassement-autre-motifs.yaml
   - include:
       file: db/changelog/026-rdv-telephone.yaml
+  - include:
+      file: db/changelog/027-reclassement-autre-nom-complet.yaml
