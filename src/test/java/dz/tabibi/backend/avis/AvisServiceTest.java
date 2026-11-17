@@ -103,7 +103,8 @@ class AvisServiceTest {
         annule.annuler();
         rendezVous.enregistrer(annule);
 
-        assertThatThrownBy(() -> service.deposer(PATIENT, confirme.id(), 4, null)).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.deposer(PATIENT, confirme.id(), 4, null)).isInstanceOf(TransitionInvalideException.class)
+                .hasMessage("Vous pourrez donner votre avis une fois la consultation effectuée.");
         assertThatThrownBy(() -> service.deposer(PATIENT, annule.id(), 4, null)).isInstanceOf(TransitionInvalideException.class);
         assertThat(service.mesAvis(PATIENT)).isEmpty();
     }

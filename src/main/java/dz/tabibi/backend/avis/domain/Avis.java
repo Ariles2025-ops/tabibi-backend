@@ -51,7 +51,7 @@ public record Avis(
     public Avis signaler() {
         if (statut != StatutAvis.PUBLIE) {
             throw new TransitionInvalideException(
-                    "Seul un avis publié peut être signalé (statut actuel : " + statut + ").");
+                    "Cet avis a déjà été signalé ou masqué.");
         }
         return avecStatut(StatutAvis.SIGNALE);
     }
