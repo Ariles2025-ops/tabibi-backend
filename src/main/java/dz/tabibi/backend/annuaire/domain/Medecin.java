@@ -14,6 +14,19 @@ public record Medecin(
         String wilayaFr,
         String ville
 ) {
+    private static final Pattern NON_ALNUM = Pattern.compile("[^a-z0-9]+");
+    private static final Pattern DIACRITIQUES = Pattern.compile("\\p{M}+");
+
+    /** Slug d'une commune : minuscules, sans accents, tout ce qui n'est pas alphanumerique devient un tiret. */
+    public static String slugCommune(String ville) {
+        if (ville == null) {
+            return "";
+        }
+        String s = DIACRITIQUES.matcher(java.text.Normalizer.normalize(ville, java.text.Normalizer.Form.NFD))
+                .replaceAll("").toLowerCase(Locale.ROOT).replace("œ", "oe").replace("æ", "ae");
+        return NON_ALNUM.matcher(s).replaceAll("-").replaceAll("^-+|-+$", "");
+    }
+
     private static final Pattern PONCTUATION_INITIALE = Pattern.compile("^[^\\p{L}]+");
 
     /**

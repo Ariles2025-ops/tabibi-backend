@@ -30,8 +30,28 @@ public class JpaMedecinRepository implements MedecinRepository {
     @Override
     public List<Medecin> rechercher(CritereRecherche c) {
         String motif = c.texte() == null ? "%" : "%" + c.texte().toLowerCase(Locale.ROOT) + "%";
-        return jpa.rechercher(c.specialite(), c.wilaya(), motif, java.time.Instant.now(), PageRequest.of(0, RESULTATS_MAX))
+        return jpa.rechercher(c.specialite(), c.wilaya(), c.commune(), motif, java.time.Instant.now(), PageRequest.of(0, RESULTATS_MAX))
                 .stream().map(MedecinEntity::versDomaine).toList();
+    }
+
+    @Override
+    public List<CommuneNombre> communes(String specialite, String wilaya, int minimum) {
+        // Groupe par (commune, wilaya) : sans wilaya demandee, une meme commune de deux wilayas n'est pas fusionnee a tort.
+        java.util.Map<String, long[]> total = new java.util.LinkedHashMap<>();
+        java.util.Map<String, String> noms = new java.util.HashMap<>();
+        for (Object[] r : jpa.communes(specialite, wilaya, 1)) {
+            String slug = (String) r[0];
+            if (slug.equals(Medecin.slugCommune((String) r[3]))) {
+                continue; // ville egale au nom de la wilaya
+            }
+            total.computeIfAbsent(slug, k -> new long[1])[0] += (Long) r[2];
+            noms.merge(slug, (String) r[1], (a, b) -> a.compareTo(b) <= 0 ? a : b);
+        }
+        return total.entrySet().stream()
+                .filter(e -> e.getValue()[0] >= minimum)
+                .map(e -> new CommuneNombre(e.getKey(), noms.get(e.getKey()), e.getValue()[0]))
+                .sorted(java.util.Comparator.comparingLong(CommuneNombre::nombre).reversed().thenComparing(CommuneNombre::slug))
+                .toList();
     }
 
     @Override

@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-ville-slug
+      author: tabibi
+      comment: Commune normalisee (slug : minuscules, sans accents, tirets) pour filtrer en SQL les pages par commune.
+      changes:
+        - addColumn:
+            tableName: medecin
+            columns:
+              - column: { name: ville_slug, type: varchar(160) }
+        - createIndex:
+            tableName: medecin
+            indexName: idx_medecin_spec_wilaya_ville_slug
+            columns:
+              - column: { name: specialite_slug }
+              - column: { name: wilaya_code }
+              - column: { name: ville_slug }
+  - changeSet:
+      id: 029-ville-slug-remplissage
+      author: tabibi
+      dbms: postgresql
+      comment: Meme normalisation que Medecin.slugCommune (accents retires, tout non alphanumerique devient un tiret).
+      changes:
+        - sql:
+            sql: >-
+              update medecin set ville_slug = trim(both '-' from regexp_replace(
+              translate(lower(coalesce(ville, '')),
+              'àáâãäåçèéêëìíîïñòóôõöùúûüýÿœæ', 'aaaaaaceeeeiiiinooooouuuuyyoa'),
+              '[^a-z0-9]+', '-', 'g'))
+              where ville is not null
