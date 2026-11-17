@@ -84,7 +84,11 @@ class RealmKeycloakTest {
     @Test
     void la_politique_de_mot_de_passe_et_les_sessions_sont_durcies() {
         assertThat(realm.get("passwordPolicy").asText())
-                .isEqualTo("length(10) and digits(1) and lowerCase(1) and upperCase(1) and notUsername");
+                .isEqualTo("length(10) and maxLength(64) and lowerCase(1) and upperCase(1) and digits(1) and specialChars(1) and notUsername and notEmail");
+        // Plateforme médicale : chaque exigence doit rester présente (le test casse si quelqu'un affaiblit la règle).
+        assertThat(realm.get("passwordPolicy").asText())
+                .contains("length(10)", "upperCase(1)", "lowerCase(1)", "digits(1)", "specialChars(1)", "notUsername", "notEmail");
+        assertThat(realm.get("bruteForceProtected").asBoolean()).isTrue();
         assertThat(realm.get("otpPolicyType").asText()).isEqualTo("totp");
         assertThat(realm.get("sslRequired").asText()).isEqualTo("external");
         assertThat(realm.get("accessTokenLifespan").asInt()).isEqualTo(300);
