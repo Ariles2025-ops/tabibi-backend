@@ -84,7 +84,7 @@ class RappelServiceTest {
 
         assertThat(service.executer()).isEqualTo(3);
 
-        assertThat(envoyes).containsExactly("+213550123456 | Tabibi : rappel de votre rendez-vous le 06/12/2026 à 13:00. Pour annuler : tabibi.doctor/mes-rendez-vous");
+        assertThat(envoyes).containsExactly("+213550123456 | Ndawik : rappel de votre rendez-vous le 06/12/2026 à 13:00. Pour annuler : tabibi.doctor/mes-rendez-vous");
         assertThat(notifieur.appels).hasSize(3);
         for (RendezVous r : List.of(avecTel, sansTel, passerelleKo)) {
             assertThat(recharge(r).rappelEnvoye()).isTrue();

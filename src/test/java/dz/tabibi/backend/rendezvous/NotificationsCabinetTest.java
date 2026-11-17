@@ -105,7 +105,7 @@ class NotificationsCabinetTest {
 
         assertThat(sujetsPour(PATIENT)).containsExactly("Rendez-vous annulé par le cabinet");
         assertThat(sms.envois).hasSize(1);
-        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Tabibi").contains("annule par le cabinet");
+        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Ndawik").contains("annule par le cabinet");
         assertThat(sujetsPour(MEDECIN)).isEmpty();
     }
 

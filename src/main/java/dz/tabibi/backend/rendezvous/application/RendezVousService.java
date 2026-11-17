@@ -425,7 +425,7 @@ public class RendezVousService {
             if (tel == null) {
                 return;
             }
-            sms.envoyer(tel, "Tabibi : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
+            sms.envoyer(tel, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
                     + " a ete annule par le cabinet. Reprenez un creneau sur tabibi.doctor");
         } catch (RuntimeException e) {
             log.warn("SMS d'annulation non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());

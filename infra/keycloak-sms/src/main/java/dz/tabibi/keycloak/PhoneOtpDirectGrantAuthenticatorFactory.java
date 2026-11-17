@@ -41,7 +41,7 @@ public class PhoneOtpDirectGrantAuthenticatorFactory implements AuthenticatorFac
 
     @Override
     public String getDisplayType() {
-        return "Tabibi : téléphone + code SMS depuis l'appli";
+        return "Ndawik : téléphone + code SMS depuis l'appli";
     }
 
     @Override

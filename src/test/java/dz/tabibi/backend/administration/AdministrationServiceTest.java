@@ -74,7 +74,7 @@ class AdministrationServiceTest {
 
         // e-mail seulement aux administrateurs qui ont une adresse
         assertThat(emails).hasSize(1);
-        assertThat(emails.get(0)).startsWith("admin1@tabibi.doctor | Tabibi — Nouvelle candidature médecin |")
+        assertThat(emails.get(0)).startsWith("admin1@tabibi.doctor | Ndawik — Nouvelle candidature médecin |")
                 .contains("Dr Nadia Bensalem").contains("https://tabibi.doctor/admin/candidatures");
 
         for (UUID admin : List.of(admin1, admin2)) {
@@ -154,7 +154,7 @@ class AdministrationServiceTest {
         assertThat(notificationsDe(MEDECIN)).hasSize(1);
         assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("Candidature validée");
         assertThat(notificationsDe(MEDECIN).get(0).message())
-                .isEqualTo("Votre candidature a été validée : vous figurez désormais sur la plateforme Tabibi. "
+                .isEqualTo("Votre candidature a été validée : vous figurez désormais sur la plateforme Ndawik. "
                         + "Reconnectez-vous pour ouvrir votre espace médecin.")
                 .doesNotContainIgnoringCase("annuaire");
         assertThat(comptesMedecins).containsExactly(MEDECIN);

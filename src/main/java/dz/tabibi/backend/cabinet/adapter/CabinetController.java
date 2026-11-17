@@ -42,7 +42,7 @@ public class CabinetController {
         this.comptes = comptes;
     }
 
-    /** La secretaire est designee par l'e-mail de son compte Tabibi (ou, a defaut, par son identifiant). */
+    /** La secretaire est designee par l'e-mail de son compte Ndawik (ou, a defaut, par son identifiant). */
     public record DemandeRattachement(UUID secretaireId, String email) {}
 
     /** Vue d'un rattachement telle que renvoyee par l'API (au medecin comme a la secretaire). */
@@ -68,9 +68,9 @@ public class CabinetController {
         UUID secretaireId = demande.secretaireId();
         if (demande.email() != null && !demande.email().isBlank()) {
             secretaireId = comptes.parEmail(demande.email()).orElseThrow(() ->
-                    new CabinetInvalideException("Aucun compte Tabibi n'utilise cette adresse e-mail : la secrétaire doit d'abord créer son compte."));
+                    new CabinetInvalideException("Aucun compte Ndawik n'utilise cette adresse e-mail : la secrétaire doit d'abord créer son compte."));
         } else if (secretaireId != null && comptes.disponible() && comptes.infos(secretaireId).isEmpty()) {
-            throw new CabinetInvalideException("Aucun compte Tabibi ne correspond à cet identifiant.");
+            throw new CabinetInvalideException("Aucun compte Ndawik ne correspond à cet identifiant.");
         }
         // Simple invitation : aucun role ni acces tant que la personne n'a pas accepte.
         Rattachement rattachement = service.rattacher(identifiant(jwt), secretaireId);

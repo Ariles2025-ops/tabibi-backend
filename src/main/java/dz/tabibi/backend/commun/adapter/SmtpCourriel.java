@@ -27,7 +27,7 @@ public class SmtpCourriel implements Courriel {
                         @Value("${TABIBI_SMTP_PORT:587}") int port,
                         @Value("${TABIBI_SMTP_USER:no-reply@tabibi.doctor}") String utilisateur,
                         @Value("${TABIBI_SMTP_PASSWORD:}") String motDePasse,
-                        @Value("${TABIBI_SMTP_FROM:Tabibi <no-reply@tabibi.doctor>}") String expediteur) {
+                        @Value("${TABIBI_SMTP_FROM:Ndawik <no-reply@tabibi.doctor>}") String expediteur) {
         this.actif = !motDePasse.isBlank();
         this.expediteur = expediteur;
         envoi.setHost(hote);

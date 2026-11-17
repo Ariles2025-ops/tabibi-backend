@@ -15,7 +15,7 @@ import org.jboss.logging.Logger;
  * Envoi des SMS. Fournisseur choisi par {@code TABIBI_SMS_MODE} :
  * <ul>
  *   <li>{@code budgetsms} : API HTTP de BudgetSMS ({@code TABIBI_BUDGETSMS_USERNAME}, {@code TABIBI_BUDGETSMS_USERID},
- *       {@code TABIBI_BUDGETSMS_HANDLE}, expéditeur {@code TABIBI_SMS_SENDER}, « Tabibi » par défaut).</li>
+ *       {@code TABIBI_BUDGETSMS_HANDLE}, expéditeur {@code TABIBI_SMS_SENDER}, « Ndawik » par défaut).</li>
  *   <li>{@code http} : POST JSON {@code {"to": "+213…", "text": "…"}} vers {@code TABIBI_SMS_URL},
  *       avec {@code Authorization: Bearer TABIBI_SMS_TOKEN}, pour un autre fournisseur derrière un petit adaptateur.</li>
  *   <li>{@code console} (dev seulement) : le code est écrit dans les logs Keycloak.</li>
@@ -36,7 +36,7 @@ interface SmsSender {
             case "console" -> new Console();
             case "budgetsms" -> new BudgetSms(env.getOrDefault("TABIBI_BUDGETSMS_URL", BudgetSms.URL),
                     env.get("TABIBI_BUDGETSMS_USERNAME"), env.get("TABIBI_BUDGETSMS_USERID"), env.get("TABIBI_BUDGETSMS_HANDLE"),
-                    env.getOrDefault("TABIBI_SMS_SENDER", "Tabibi"));
+                    env.getOrDefault("TABIBI_SMS_SENDER", "Ndawik"));
             case "http" -> new Http(env.get("TABIBI_SMS_URL"), env.get("TABIBI_SMS_TOKEN"));
             default -> throw new IllegalStateException("TABIBI_SMS_MODE inconnu « " + mode + " » (budgetsms, http ou console)");
         };
