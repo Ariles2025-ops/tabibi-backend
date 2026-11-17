@@ -13,4 +13,8 @@ interface ReponseJpa extends JpaRepository<ReponseEntity, UUID> {
     Optional<ReponseEntity> findByBesoinIdAndPharmacieId(UUID besoinId, UUID pharmacieId);
 
     long countByBesoinId(UUID besoinId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("delete from ReponseEntity r where r.besoinId = :besoinId")
+    int supprimerParBesoin(@org.springframework.data.repository.query.Param("besoinId") UUID besoinId);
 }

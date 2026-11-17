@@ -40,6 +40,11 @@ public class JpaConversationRepository implements ConversationRepository {
     }
 
     @Override
+    public void supprimer(UUID id) {
+        jpa.deleteById(id);
+    }
+
+    @Override
     public List<Conversation> parParticipant(UUID utilisateurId) {
         return jpa.findByPatientIdOrMedecinIdOrderByDernierMessageLeDesc(utilisateurId, utilisateurId)
                 .stream().map(ConversationEntity::versDomaine).toList();

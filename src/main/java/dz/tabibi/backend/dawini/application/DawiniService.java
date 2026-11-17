@@ -38,6 +38,20 @@ public class DawiniService {
     }
 
     /**
+     * Suppression du compte du patient : ses demandes de medicaments sont supprimees avec les reponses des
+     * pharmacies. @return le nombre de demandes supprimees.
+     */
+    @Transactional
+    public int supprimerDemandesDe(UUID patientId) {
+        List<BesoinMedicament> siennes = besoins.parPatient(patientId);
+        siennes.forEach(b -> {
+            reponses.supprimerParBesoin(b.id());
+            besoins.supprimer(b.id());
+        });
+        return siennes.size();
+    }
+
+    /**
      * Publie un besoin ouvert pour le patient connecte.
      * @throws BesoinInvalideException si le medicament ou la wilaya manque, ou si une donnee est trop longue.
      */

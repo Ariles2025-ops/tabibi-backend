@@ -75,7 +75,8 @@ public class GestionErreursApi {
     }
 
     /** Conflit avec l'etat courant (creneau deja pris, transition de statut interdite). */
-    @ExceptionHandler({CreneauDejaReserveException.class, TransitionInvalideException.class})
+    @ExceptionHandler({CreneauDejaReserveException.class, TransitionInvalideException.class,
+            dz.tabibi.backend.creneaux.domain.CreneauExistantException.class})
     public ResponseEntity<ErreurApi> conflit(RuntimeException ex) {
         return reponse(HttpStatus.CONFLICT, ex);
     }

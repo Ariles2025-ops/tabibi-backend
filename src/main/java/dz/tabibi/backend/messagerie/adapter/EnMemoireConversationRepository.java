@@ -42,6 +42,11 @@ public class EnMemoireConversationRepository implements ConversationRepository {
     }
 
     @Override
+    public void supprimer(UUID id) {
+        parId.remove(id);
+    }
+
+    @Override
     public List<Conversation> parParticipant(UUID utilisateurId) {
         return parId.values().stream()
                 .filter(c -> c.participe(utilisateurId))

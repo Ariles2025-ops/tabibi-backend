@@ -25,6 +25,12 @@ public class NotificationService {
         return repository.parDestinataire(sujet);
     }
 
+    /** Suppression du compte : toutes les notifications de l'utilisateur sont effacees. @return leur nombre. */
+    @Transactional
+    public int supprimerToutesDe(UUID utilisateurId) {
+        return repository.supprimerDuDestinataire(utilisateurId);
+    }
+
     public long nombreNonLues(UUID sujet) {
         return repository.nombreNonLues(sujet);
     }

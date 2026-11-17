@@ -58,6 +58,9 @@ public class RappelService {
         Instant maintenant = horloge.instant();
         List<RendezVous> aRappeler = rendezVous.confirmesSansRappelEntre(maintenant, maintenant.plus(HORIZON));
         for (RendezVous rdv : aRappeler) {
+            if (rdv.patientId() == null) {
+                continue; // rendez-vous pris par telephone : aucun compte, aucun envoi
+            }
             notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
                     "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
                             + ". Pensez à vous présenter 10 minutes en avance.", "/mes-rendez-vous");
@@ -65,7 +68,7 @@ public class RappelService {
             rdv.marquerRappelEnvoye(maintenant);
             rendezVous.enregistrer(rdv);
         }
-        return aRappeler.size();
+        return (int) aRappeler.stream().filter(r -> r.patientId() != null).count();
     }
 
     /** SMS de rappel ; un echec (numero absent, passerelle) n'empeche jamais la notification ni les autres rappels. */

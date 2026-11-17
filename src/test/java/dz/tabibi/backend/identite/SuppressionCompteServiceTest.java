@@ -1,7 +1,25 @@
 package dz.tabibi.backend.identite;
 
 import dz.tabibi.backend.commun.FauxComptes;
+import dz.tabibi.backend.avis.adapter.EnMemoireAvisRepository;
+import dz.tabibi.backend.avis.application.AvisService;
+import dz.tabibi.backend.avis.domain.Avis;
 import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
+import dz.tabibi.backend.dawini.adapter.EnMemoireBesoinRepository;
+import dz.tabibi.backend.dawini.adapter.EnMemoireReponseRepository;
+import dz.tabibi.backend.dawini.application.DawiniService;
+import dz.tabibi.backend.dawini.domain.BesoinMedicament;
+import dz.tabibi.backend.dawini.domain.DemandeBesoin;
+import dz.tabibi.backend.dawini.domain.DemandeReponse;
+import dz.tabibi.backend.messagerie.adapter.EnMemoireConversationRepository;
+import dz.tabibi.backend.messagerie.adapter.EnMemoireMessageRepository;
+import dz.tabibi.backend.messagerie.application.MessagerieService;
+import dz.tabibi.backend.messagerie.domain.Conversation;
+import dz.tabibi.backend.messagerie.domain.Message;
+import dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository;
+import dz.tabibi.backend.notifications.application.NotificationService;
+import dz.tabibi.backend.notifications.domain.Notification;
+import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.listeattente.adapter.EnMemoireListeAttenteRepository;
 import dz.tabibi.backend.listeattente.application.ListeAttenteService;
@@ -41,7 +59,22 @@ class SuppressionCompteServiceTest {
             (d, s, m) -> notifications.add(new Appel(d, s)));
     private final RendezVousService rendezVous = new RendezVousService(rdvs, creneaux,
             (d, s, m) -> notifications.add(new Appel(d, s)), listeAttente);
-    private final SuppressionCompteService service = new SuppressionCompteService(rendezVous, listeAttente, profils, comptes);
+    private final EnMemoireConversationRepository conversations = new EnMemoireConversationRepository();
+    private final EnMemoireMessageRepository messages = new EnMemoireMessageRepository();
+    private final EnMemoireBesoinRepository besoins = new EnMemoireBesoinRepository();
+    private final EnMemoireReponseRepository reponses = new EnMemoireReponseRepository();
+    private final EnMemoireNotificationRepository notifs = new EnMemoireNotificationRepository();
+    private final EnMemoireAvisRepository avis = new EnMemoireAvisRepository();
+    private final SuppressionCompteService service = new SuppressionCompteService(rendezVous, listeAttente, profils, comptes,
+            new MessagerieService(conversations, messages, rdvs, (d, s, m) -> { }),
+            new DawiniService(besoins, reponses, (d, s, m) -> { }),
+            new NotificationService(notifs),
+            new AvisService(avis, rdvs));
+
+    {
+        // Un medecin dont le compte est supprime n'est plus reservable (profil anonyme).
+        rendezVous.setProfils(profils);
+    }
 
     @Test
     void annule_les_rdv_a_venir_retire_des_listes_anonymise_le_profil_et_supprime_le_compte() {
@@ -59,7 +92,15 @@ class SuppressionCompteServiceTest {
 
         assertThat(rdvs.parId(aVenir.id()).orElseThrow().statut()).isEqualTo(StatutRdv.ANNULE);
         assertThat(creneaux.parId(creneau.id()).orElseThrow().disponible()).isTrue();
-        assertThat(rdvs.parId(passe.id()).orElseThrow().statut()).isEqualTo(StatutRdv.HONORE);
+        // Le rendez-vous passe reste dans l'agenda du medecin mais le patient est anonymise (irreversible).
+        RendezVous passeApres = rdvs.parId(passe.id()).orElseThrow();
+        assertThat(passeApres.statut()).isEqualTo(StatutRdv.HONORE);
+        assertThat(passeApres.patientId()).isNull();
+        assertThat(passeApres.nomPatient()).isEqualTo("Compte supprimé");
+        assertThat(passeApres.telephonePatient()).isNull();
+        assertThat(rdvs.parPatient(PATIENT)).isEmpty();
+        assertThat(rdvs.parMedecin(MEDECIN)).hasSize(2);
+        assertThat(rdvs.parId(aVenir.id()).orElseThrow().patientId()).isNull();
         assertThat(notifications).contains(new Appel(MEDECIN, "Rendez-vous annulé"));
         assertThat(attente.parPatient(PATIENT)).isEmpty();
         Profil anonyme = profils.parUtilisateur(PATIENT).orElseThrow();
@@ -84,5 +125,76 @@ class SuppressionCompteServiceTest {
         comptes.panne = new IllegalStateException("Keycloak injoignable");
 
         assertThatThrownBy(() -> service.supprimer(PATIENT)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void supprime_conversations_messages_demandes_dawini_et_notifications_du_patient_sans_toucher_aux_autres() {
+        UUID autrePatient = UUID.randomUUID();
+        Conversation sienne = conversations.enregistrer(Conversation.ouvrir(PATIENT, MEDECIN, Instant.now()));
+        messages.enregistrer(Message.envoyer(sienne.id(), PATIENT, "J'ai mal au dos", Instant.now()));
+        messages.enregistrer(Message.envoyer(sienne.id(), MEDECIN, "Venez demain", Instant.now()));
+        Conversation autre = conversations.enregistrer(Conversation.ouvrir(autrePatient, MEDECIN, Instant.now()));
+        messages.enregistrer(Message.envoyer(autre.id(), autrePatient, "Bonjour", Instant.now()));
+        DawiniService dawini = new DawiniService(besoins, reponses, (d, s, m) -> { });
+        BesoinMedicament besoin = dawini.publier(PATIENT, new DemandeBesoin("Insuline", "16", null, null));
+        dawini.repondre(UUID.randomUUID(), besoin.id(), new DemandeReponse("Pharmacie X", true, 800, null));
+        BesoinMedicament besoinAutre = dawini.publier(autrePatient, new DemandeBesoin("Paracetamol", "16", null, null));
+        notifs.enregistrer(Notification.interne(PATIENT, "Rappel", "Demain 9h", Instant.now()));
+        notifs.enregistrer(Notification.interne(autrePatient, "Rappel", "Demain 10h", Instant.now()));
+
+        service.supprimer(PATIENT);
+
+        assertThat(conversations.parParticipant(PATIENT)).isEmpty();
+        assertThat(messages.parConversation(sienne.id())).isEmpty();
+        assertThat(conversations.parId(autre.id())).isPresent();
+        assertThat(messages.parConversation(autre.id())).hasSize(1);
+        assertThat(besoins.parPatient(PATIENT)).isEmpty();
+        assertThat(besoins.parId(besoin.id())).isEmpty();
+        assertThat(reponses.parBesoin(besoin.id())).isEmpty();
+        assertThat(besoins.parId(besoinAutre.id())).isPresent();
+        assertThat(notifs.parDestinataire(PATIENT)).isEmpty();
+        assertThat(notifs.parDestinataire(autrePatient)).hasSize(1);
+    }
+
+    @Test
+    void efface_le_commentaire_des_avis_du_patient_mais_garde_la_note() {
+        RendezVous honore = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN,
+                Instant.now().minusSeconds(86_400), StatutRdv.HONORE));
+        Avis depose = avis.enregistrer(Avis.deposer(honore.id(), PATIENT, MEDECIN, 4, "Très bon médecin, mais attente longue", Instant.now()));
+
+        service.supprimer(PATIENT);
+
+        Avis apres = avis.parId(depose.id()).orElseThrow();
+        assertThat(apres.commentaire()).isNull();
+        assertThat(apres.note()).isEqualTo(4);
+    }
+
+    @Test
+    void suppression_d_un_medecin_annule_ses_rdv_a_venir_supprime_ses_creneaux_libres_et_le_rend_non_reservable() {
+        UUID autrePatient = UUID.randomUUID();
+        Creneau reserve = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN, Instant.now().plusSeconds(86_400), 20, true));
+        Creneau libre = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN, Instant.now().plusSeconds(172_800), 20, true));
+        Creneau libreAutreMedecin = creneaux.enregistrer(new Creneau(UUID.randomUUID(), UUID.randomUUID(), Instant.now().plusSeconds(172_800), 20, true));
+        RendezVous aVenir = rendezVous.reserverCreneau(autrePatient, reserve.id());
+        RendezVous passe = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN,
+                Instant.now().minusSeconds(86_400), StatutRdv.HONORE));
+        notifications.clear();
+
+        service.supprimer(MEDECIN);
+
+        assertThat(rdvs.parId(aVenir.id()).orElseThrow().statut()).isEqualTo(StatutRdv.ANNULE);
+        assertThat(notifications).contains(new Appel(autrePatient, "Rendez-vous annulé par le cabinet"));
+        assertThat(rdvs.parId(passe.id()).orElseThrow().statut()).isEqualTo(StatutRdv.HONORE);
+        assertThat(creneaux.parId(libre.id())).isEmpty();
+        assertThat(creneaux.parId(reserve.id())).isEmpty();
+        assertThat(creneaux.parId(libreAutreMedecin.id())).isPresent();
+        assertThat(creneaux.disponiblesPour(MEDECIN)).isEmpty();
+        // Non reservable meme si un creneau subsiste (course) : le service refuse un medecin supprime.
+        Creneau tardif = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN, Instant.now().plusSeconds(300_000), 20, true));
+        assertThatThrownBy(() -> rendezVous.reserverCreneau(autrePatient, tardif.id()))
+                .isInstanceOf(CreneauDejaReserveException.class);
+        assertThatThrownBy(() -> rendezVous.prendreParTelephone(MEDECIN, tardif.id(), "Karim", "0550123456", null))
+                .isInstanceOf(CreneauDejaReserveException.class);
+        assertThat(creneaux.parId(tardif.id()).orElseThrow().disponible()).isTrue();
     }
 }

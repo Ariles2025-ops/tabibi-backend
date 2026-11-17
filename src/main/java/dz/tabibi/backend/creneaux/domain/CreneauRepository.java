@@ -24,6 +24,16 @@ public interface CreneauRepository {
     void supprimer(UUID id);
 
     /**
+     * Supprime le creneau seulement s'il est encore libre, en une seule operation atomique
+     * (delete ... where id = ? and disponible = true).
+     * @return vrai si une ligne a ete supprimee, faux si le creneau est reserve ou n'existe plus.
+     */
+    boolean supprimerSiDisponible(UUID id);
+
+    /** Supprime tous les creneaux libres d'un medecin (suppression de son compte). @return leur nombre. */
+    int supprimerLibresDuMedecin(UUID medecinId);
+
+    /**
      * Prend le creneau s'il est encore disponible, en une seule operation atomique (disponible -> pris) :
      * de deux reservations simultanees, une seule obtient vrai.
      * @return vrai si le creneau etait disponible et vient d'etre pris, faux sinon (deja pris ou inconnu).

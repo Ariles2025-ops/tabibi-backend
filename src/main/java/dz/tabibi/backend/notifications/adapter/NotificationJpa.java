@@ -10,4 +10,8 @@ interface NotificationJpa extends JpaRepository<NotificationEntity, UUID> {
     List<NotificationEntity> findByDestinataireIdOrderByCreeLeDesc(UUID destinataireId);
 
     long countByDestinataireIdAndLueFalse(UUID destinataireId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("delete from NotificationEntity n where n.destinataireId = :destinataireId")
+    int supprimerDuDestinataire(@org.springframework.data.repository.query.Param("destinataireId") UUID destinataireId);
 }

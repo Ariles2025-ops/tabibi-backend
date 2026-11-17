@@ -1,6 +1,7 @@
 package dz.tabibi.backend.creneaux.application;
 
 import dz.tabibi.backend.creneaux.domain.Creneau;
+import dz.tabibi.backend.creneaux.domain.CreneauExistantException;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import dz.tabibi.backend.creneaux.domain.ResultatSemaineType;
@@ -70,6 +71,7 @@ public class CreneauService {
         if (chevauche) {
             throw new CreneauInvalideException("Ce créneau chevauche un créneau déjà ouvert à cette heure-là.");
         }
+        // Deux ouvertures simultanees a la meme heure : l'index unique (medecin, debut) refuse la seconde (409).
         Creneau creneau = repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, dureeMinutes, true));
         alerteCreneau.creneauLibere(creneau.medecinId(), creneau.debut());
         return creneau;
@@ -94,7 +96,10 @@ public class CreneauService {
         if (!creneau.disponible()) {
             throw new TransitionInvalideException("Ce créneau est réservé : annulez d'abord le rendez-vous.");
         }
-        repository.supprimer(creneauId);
+        // Suppression conditionnelle (where id = ? and disponible = true) : un creneau reserve entre-temps n'est jamais supprime.
+        if (!repository.supprimerSiDisponible(creneauId)) {
+            throw new TransitionInvalideException("Ce créneau vient d'être réservé : annulez d'abord le rendez-vous.");
+        }
     }
 
     /**
@@ -141,6 +146,7 @@ public class CreneauService {
                 maintenant.minusSeconds(60L * DUREE_MAX_MINUTES)));
         int crees = 0;
         int ignores = 0;
+        Instant premierCree = null;
         for (Instant debut : debuts) {
             Instant finCreneau = debut.plusSeconds(dureeSecondes);
             boolean chevauche = existants.stream()
@@ -149,10 +155,23 @@ public class CreneauService {
                 ignores++;
                 continue;
             }
-            Creneau creneau = repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, modele.dureeMinutes(), true));
+            Creneau creneau;
+            try {
+                creneau = repository.enregistrer(new Creneau(UUID.randomUUID(), medecinId, debut, modele.dureeMinutes(), true));
+            } catch (CreneauExistantException e) {
+                // Un creneau a la meme heure a ete ouvert entre-temps : ignore comme un chevauchement.
+                ignores++;
+                continue;
+            }
             existants.add(creneau);
-            alerteCreneau.creneauLibere(creneau.medecinId(), creneau.debut());
+            if (premierCree == null) {
+                premierCree = creneau.debut();
+            }
             crees++;
+        }
+        // Une seule alerte liste d'attente par appel (pas une par creneau) : les inscrits ne recoivent qu'un message.
+        if (premierCree != null) {
+            alerteCreneau.creneauLibere(medecinId, premierCree);
         }
         return new ResultatSemaineType(crees, ignores);
     }

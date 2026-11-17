@@ -15,7 +15,9 @@ permissions:
   contents: read
 jobs:
   deployer:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    # CI verte sur main : envoi direct (push) ou CI relancee sur main par le homelab quand un agent a fusionne
+    # (une fusion faite par GITHUB_TOKEN ne declenche pas la CI ; workflow_run ne regarde deja que la branche main).
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -27,4 +29,7 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$CLE" > ~/.ssh/cle && chmod 600 ~/.ssh/cle
           echo '129.151.227.16 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOliVdxVmjQnoT9IOqIPOtCWsM+d5Cw/uYP5U4XKs6xz' > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/cle -o StrictHostKeyChecking=yes ubuntu@129.151.227.16 "backend $SHA"
+          code=0; ssh -i ~/.ssh/cle -o StrictHostKeyChecking=yes ubuntu@129.151.227.16 "backend $SHA" || code=$?
+          # 3 = ce commit n'est plus la tête de main : une fusion plus récente arrive et sera déployée par son propre passage. Pas une panne.
+          if [ "$code" = 3 ]; then echo "Version dépassée par une fusion plus récente : rien à faire."; exit 0; fi
+          exit "$code"

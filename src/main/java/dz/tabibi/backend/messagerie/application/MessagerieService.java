@@ -42,6 +42,20 @@ public class MessagerieService {
     }
 
     /**
+     * Suppression du compte : toutes les conversations de l'utilisateur (patient ou medecin) sont supprimees
+     * avec leurs messages. @return le nombre de conversations supprimees.
+     */
+    @Transactional
+    public int supprimerToutesDe(UUID utilisateurId) {
+        List<Conversation> siennes = conversations.parParticipant(utilisateurId);
+        siennes.forEach(c -> {
+            messages.supprimerParConversation(c.id());
+            conversations.supprimer(c.id());
+        });
+        return siennes.size();
+    }
+
+    /**
      * Ouvre la conversation du patient avec un medecin, ou renvoie celle qui existe deja pour ce couple.
      * @throws MessageInvalideException si le medecin manque.
      * @throws AccesRefuseException si le patient n'a aucun rendez-vous (tout statut) avec ce medecin.

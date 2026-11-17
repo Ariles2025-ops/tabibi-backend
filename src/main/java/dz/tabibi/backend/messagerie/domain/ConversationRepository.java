@@ -19,4 +19,7 @@ public interface ConversationRepository {
 
     /** Conversations ou l'utilisateur est patient ou medecin, de la plus recente activite a la plus ancienne. */
     List<Conversation> parParticipant(UUID utilisateurId);
+
+    /** Supprime definitivement une conversation (suppression de compte) ; sans effet si elle n'existe pas. */
+    void supprimer(UUID id);
 }
