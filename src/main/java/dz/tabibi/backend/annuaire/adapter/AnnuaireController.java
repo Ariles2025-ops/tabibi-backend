@@ -43,12 +43,23 @@ public class AnnuaireController {
     public List<MedecinVue> rechercher(
             @RequestParam(required = false) String specialite,
             @RequestParam(required = false) String wilaya,
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String commune) {
         // Les medecins reservables en ligne passent en tete (ordre d'origine conserve dans chaque groupe).
-        return service.rechercher(CritereRecherche.de(specialite, wilaya, q)).stream()
+        return service.rechercher(CritereRecherche.de(specialite, wilaya, q, commune)).stream()
                 .map(m -> MedecinVue.de(m, creneaux != null && !creneaux.disponiblesPour(m.id()).isEmpty()))
                 .sorted(java.util.Comparator.comparing((MedecinVue v) -> !v.reservable()))
                 .toList();
+    }
+
+    public record CommuneVue(String slug, String nom, long nombre) {}
+
+    /** Communes d'une wilaya (pour une specialite) ayant au moins 3 fiches, les plus fournies d'abord. */
+    @GetMapping("/api/medecins/communes")
+    public List<CommuneVue> communes(@RequestParam(required = false) String specialite,
+                                     @RequestParam(required = false) String wilaya) {
+        return service.communes(specialite, wilaya).stream()
+                .map(c -> new CommuneVue(c.slug(), c.nom(), c.nombre())).toList();
     }
 
     /** Taille d'une page du plan des fiches (un fichier sitemap par page). */

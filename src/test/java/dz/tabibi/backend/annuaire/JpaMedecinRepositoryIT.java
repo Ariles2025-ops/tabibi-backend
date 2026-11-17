@@ -60,6 +60,31 @@ class JpaMedecinRepositoryIT {
     }
 
     @Test
+    void commune_filtree_avant_la_limite_et_liste_des_communes() {
+        for (int i = 0; i < 60; i++) {
+            repository.enregistrer(new Medecin(UUID.randomUUID(), "Dr Aaa " + i,
+                    "cardiologue-it", "Cardiologue", "16", "Alger", "Alger-Centre"));
+        }
+        for (int i = 0; i < 8; i++) {
+            repository.enregistrer(new Medecin(UUID.randomUUID(), "Dr Zzz " + i,
+                    "cardiologue-it", "Cardiologue", "16", "Alger", "Bab Ezzouar"));
+        }
+        repository.enregistrer(new Medecin(UUID.randomUUID(), "Dr Beni 1", "cardiologue-it", "Cardiologue", "16", "Alger", "Béni Messous"));
+        repository.enregistrer(new Medecin(UUID.randomUUID(), "Dr Wil 1", "cardiologue-it", "Cardiologue", "16", "Alger", "Alger"));
+
+        assertThat(repository.rechercher(CritereRecherche.de("cardiologue-it", "16", null))).hasSize(50);
+        assertThat(repository.rechercher(CritereRecherche.de("cardiologue-it", "16", null, "bab-ezzouar")))
+                .hasSize(8).allMatch(m -> m.ville().equals("Bab Ezzouar"));
+        assertThat(repository.rechercher(CritereRecherche.de("cardiologue-it", "16", null, "beni-messous"))).hasSize(1);
+        assertThat(repository.rechercher(CritereRecherche.de("cardiologue-it", "16", null, "alger-centre"))).hasSize(50);
+
+        assertThat(repository.communes("cardiologue-it", "16", 3))
+                .extracting(MedecinRepository.CommuneNombre::slug, MedecinRepository.CommuneNombre::nombre)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("alger-centre", 60L),
+                        org.assertj.core.groups.Tuple.tuple("bab-ezzouar", 8L));
+    }
+
+    @Test
     void alias_d_une_fiche_reclamee() {
         UUID ancien = UUID.randomUUID();
         UUID nouveau = UUID.randomUUID();

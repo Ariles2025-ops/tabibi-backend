@@ -337,7 +337,8 @@ class RendezVousServiceTest {
         RendezVous honore = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), patient, UUID.randomUUID(),
                 Instant.now().plusSeconds(7200), StatutRdv.HONORE));
 
-        assertThatThrownBy(() -> avecRdvs.annuler(patient, passe.id())).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> avecRdvs.annuler(patient, passe.id())).isInstanceOf(TransitionInvalideException.class)
+                .hasMessage("Ce rendez-vous est déjà passé : il ne peut plus être annulé.");
         assertThatThrownBy(() -> avecRdvs.annuler(patient, honore.id())).isInstanceOf(TransitionInvalideException.class);
         assertThat(alerte.alertes).isEmpty();
     }

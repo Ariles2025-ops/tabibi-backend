@@ -78,8 +78,8 @@ public class TeleconsultationService {
         }
         if (rdv.statut() != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirmé peut donner lieu à une téléconsultation (statut actuel : "
-                            + rdv.statut() + ").");
+                    "Seul un rendez-vous confirmé peut donner lieu à une téléconsultation (il est actuellement : "
+                            + rdv.statut().libelle() + ").");
         }
         if (!rdv.debut().isAfter(Instant.now())) {
             throw new TransitionInvalideException("Ce rendez-vous est déjà passé : la téléconsultation ne peut plus être proposée.");
@@ -130,7 +130,7 @@ public class TeleconsultationService {
     public Teleconsultation consentir(UUID patientId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = charger(teleconsultationId);
         if (!teleconsultation.appartientA(patientId)) {
-            throw new AccesRefuseException("Cette téléconsultation ne vous est pas destinee.");
+            throw new AccesRefuseException("Cette téléconsultation ne vous est pas destinée.");
         }
         teleconsultation.consentir(Instant.now());
         Teleconsultation acceptee = repository.enregistrer(teleconsultation);

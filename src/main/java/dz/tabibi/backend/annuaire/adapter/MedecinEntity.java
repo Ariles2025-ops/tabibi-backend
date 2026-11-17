@@ -24,6 +24,7 @@ class MedecinEntity {
     @Column(name = "horaires") private String horaires;
     @Column(name = "presentation") private String presentation;
     @Column(name = "langues") private String langues;
+    @Column(name = "ville_slug") private String villeSlug;
 
     protected MedecinEntity() {}
 
@@ -42,6 +43,7 @@ class MedecinEntity {
         e.horaires = m.horaires();
         e.presentation = m.presentation();
         e.langues = String.join(",", m.langues());
+        e.villeSlug = Medecin.slugCommune(m.ville());
         return e;
     }
 

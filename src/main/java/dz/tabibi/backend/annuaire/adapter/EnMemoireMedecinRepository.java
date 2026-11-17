@@ -53,9 +53,35 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
                         ? !PHARMACIE.equalsIgnoreCase(m.specialiteSlug())
                         : m.specialiteSlug().equalsIgnoreCase(c.specialite()))
                 .filter(m -> c.wilaya() == null || m.wilayaCode().equals(c.wilaya()))
+                .filter(m -> c.commune() == null || c.commune().equals(Medecin.slugCommune(m.ville())))
                 .filter(m -> c.texte() == null
                         || m.nomComplet().toLowerCase(Locale.ROOT).contains(c.texte().toLowerCase(Locale.ROOT)))
                 .sorted(PAR_NOM)
+                .toList();
+    }
+
+    @Override
+    public List<CommuneNombre> communes(String specialite, String wilaya, int minimum) {
+        Map<String, List<Medecin>> parSlug = new java.util.HashMap<>();
+        for (Medecin m : parId.values()) {
+            if (specialite == null ? PHARMACIE.equalsIgnoreCase(m.specialiteSlug()) : !m.specialiteSlug().equalsIgnoreCase(specialite)) {
+                continue;
+            }
+            if (wilaya != null && !m.wilayaCode().equals(wilaya)) {
+                continue;
+            }
+            String slug = Medecin.slugCommune(m.ville());
+            if (slug.isEmpty() || slug.equals(Medecin.slugCommune(m.wilayaFr()))) {
+                continue;
+            }
+            parSlug.computeIfAbsent(slug, k -> new java.util.ArrayList<>()).add(m);
+        }
+        return parSlug.entrySet().stream()
+                .filter(e -> e.getValue().size() >= minimum)
+                .map(e -> new CommuneNombre(e.getKey(),
+                        e.getValue().stream().map(Medecin::ville).min(Comparator.naturalOrder()).orElse(e.getKey()),
+                        e.getValue().size()))
+                .sorted(Comparator.comparingLong(CommuneNombre::nombre).reversed().thenComparing(CommuneNombre::slug))
                 .toList();
     }
 
