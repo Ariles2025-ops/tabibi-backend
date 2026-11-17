@@ -127,6 +127,7 @@ class FicheMedecinTest {
                 .containsExactly("fr", "tamazight");
         assertThat(fiche(null, "+213 551 23 45 67", null, null, null).valider().telephoneCabinet()).isEqualTo("+213551234567");
         assertThat(fiche(null, "021 23 45 67", null, null, null).valider().telephoneCabinet()).isEqualTo("021234567");
+        assertThat(fiche(null, "00213 550 12 34 56", null, null, null).valider().telephoneCabinet()).isEqualTo("+213550123456");
         fiche("a".repeat(200), null, "h".repeat(300), "p".repeat(600), List.of()).valider();
 
         assertThatThrownBy(() -> fiche("a".repeat(201), null, null, null, null).valider()).isInstanceOf(FicheInvalideException.class);
