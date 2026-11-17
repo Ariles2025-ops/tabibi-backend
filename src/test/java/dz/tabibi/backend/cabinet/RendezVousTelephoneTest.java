@@ -225,7 +225,17 @@ class RendezVousTelephoneTest {
         FauxComptes comptes = new FauxComptes().avec(MEDECIN, "Dr Test", "dr@example.dz", "0550999999");
         SuppressionCompteService suppression = new SuppressionCompteService(rendezVous,
                 new ListeAttenteService(new EnMemoireListeAttenteRepository(), notifieur),
-                new EnMemoireProfilRepository(), comptes);
+                new EnMemoireProfilRepository(), comptes,
+                new dz.tabibi.backend.messagerie.application.MessagerieService(
+                        new dz.tabibi.backend.messagerie.adapter.EnMemoireConversationRepository(),
+                        new dz.tabibi.backend.messagerie.adapter.EnMemoireMessageRepository(), rdvs, notifieur),
+                new dz.tabibi.backend.dawini.application.DawiniService(
+                        new dz.tabibi.backend.dawini.adapter.EnMemoireBesoinRepository(),
+                        new dz.tabibi.backend.dawini.adapter.EnMemoireReponseRepository(), notifieur),
+                new dz.tabibi.backend.notifications.application.NotificationService(
+                        new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository()),
+                new dz.tabibi.backend.avis.application.AvisService(
+                        new dz.tabibi.backend.avis.adapter.EnMemoireAvisRepository(), rdvs));
 
         suppression.supprimer(MEDECIN);
 

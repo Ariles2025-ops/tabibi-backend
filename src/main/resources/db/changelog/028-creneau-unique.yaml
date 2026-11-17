@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-creneau-dedoublonnage
+      author: tabibi
+      dbms: postgresql
+      comment: >-
+        Avant l'index unique (medecin_id, debut) : supprime uniquement les creneaux LIBRES en double qu'aucun
+        rendez-vous ne reference (jamais un creneau reserve ni lie a un rendez-vous). A heure egale on garde
+        un creneau reserve s'il y en a un, sinon le plus petit identifiant.
+      changes:
+        - sql:
+            sql: >-
+              delete from creneau c
+              where c.disponible = true
+                and not exists (select 1 from rendez_vous r where r.creneau_id = c.id)
+                and exists (select 1 from creneau k
+                            where k.medecin_id = c.medecin_id and k.debut = c.debut and k.id <> c.id
+                              and (k.disponible = false or k.id < c.id))
+  - changeSet:
+      id: 028-creneau-unique
+      author: tabibi
+      dbms: postgresql
+      comment: >-
+        Un medecin n'a qu'un creneau par heure de debut (index unique). Non destructif : si des doublons
+        restent (creneaux reserves ou lies a un rendez-vous), l'index n'est pas cree (changeset marque comme
+        passe) au lieu de bloquer le demarrage ; l'application refuse de toute facon un doublon (409).
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              select count(*) from (select medecin_id, debut from creneau
+              group by medecin_id, debut having count(*) > 1) doublons
+      changes:
+        - sql:
+            sql: create unique index if not exists ux_creneau_medecin_debut on creneau (medecin_id, debut)

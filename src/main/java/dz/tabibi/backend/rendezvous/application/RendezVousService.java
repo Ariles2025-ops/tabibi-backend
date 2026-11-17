@@ -12,6 +12,7 @@ import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rappels.domain.EnvoiSms;
 import dz.tabibi.backend.rendezvous.domain.CreneauDejaReserveException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
@@ -58,6 +59,26 @@ public class RendezVousService {
     private EnvoiSms sms;
     private ComptesUtilisateurs comptes;
 
+    /** Profils : un medecin dont le compte est supprime (profil anonyme) n'est plus reservable. */
+    private ProfilRepository profils;
+
+    @Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
+
+    /** Vrai si le compte de ce medecin a ete supprime (son profil porte le nom anonyme ecrit a la suppression). */
+    private boolean compteSupprime(UUID medecinId) {
+        return profils != null && profils.parUtilisateur(medecinId)
+                .map(p -> NOM_ANONYME.equals(p.nomComplet())).orElse(false);
+    }
+
+    private void verifierMedecinActif(UUID medecinId) {
+        if (compteSupprime(medecinId)) {
+            throw new CreneauDejaReserveException("Ce médecin n'est plus disponible : son compte a été supprimé.");
+        }
+    }
+
     @Autowired(required = false)
     public void setCabinet(RattachementRepository rattachements) {
         this.rattachements = rattachements;
@@ -79,6 +100,7 @@ public class RendezVousService {
     public RendezVous reserverCreneau(UUID patientId, UUID creneauId) {
         Creneau creneau = creneaux.parId(creneauId)
                 .orElseThrow(() -> new CreneauIntrouvableException(creneauId));
+        verifierMedecinActif(creneau.medecinId());
         if (!creneau.disponible()) {
             throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
         }
@@ -139,6 +161,7 @@ public class RendezVousService {
         Creneau creneau = creneaux.parId(creneauId)
                 .filter(c -> c.medecinId().equals(medecinId))
                 .orElseThrow(() -> new CreneauIntrouvableException(creneauId));
+        verifierMedecinActif(medecinId);
         if (!creneau.disponible()) {
             throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
         }
@@ -232,6 +255,47 @@ public class RendezVousService {
                 .filter(r -> r.statut() == StatutRdv.CONFIRME && r.debut().isAfter(maintenant))
                 .toList();
         aVenir.forEach(r -> annuler(patientId, r.id()));
+        return aVenir.size();
+    }
+
+    /**
+     * Suppression du compte du patient (apres l'annulation de ses rendez-vous a venir) : tous les rendez-vous
+     * qui lui restent (passes, honores, absents, annules) sont anonymises de facon irreversible. Le medecin
+     * garde la trace de la consultation, sans plus aucun lien avec le patient. @return leur nombre.
+     */
+    @Transactional
+    public int anonymiserRendezVousDuPatient(UUID patientId) {
+        List<RendezVous> restants = repository.parPatient(patientId);
+        restants.forEach(r -> {
+            r.anonymiserPatient(NOM_ANONYME);
+            repository.enregistrer(r);
+        });
+        return restants.size();
+    }
+
+    /**
+     * Suppression du compte du medecin : chacun de ses rendez-vous confirmes a venir est annule « par le cabinet »
+     * (le patient est prevenu dans l'appli et par SMS), puis tous ses creneaux libres sont supprimes. Son agenda
+     * n'est plus reservable ; la liste d'attente n'est pas alertee (le medecin n'existe plus).
+     * @return le nombre de rendez-vous annules.
+     */
+    @Transactional
+    public int annulerAVenirDuMedecin(UUID medecinId) {
+        Instant maintenant = Instant.now();
+        List<RendezVous> aVenir = repository.parMedecin(medecinId).stream()
+                .filter(r -> r.statut() == StatutRdv.CONFIRME && r.debut().isAfter(maintenant))
+                .toList();
+        for (RendezVous rdv : aVenir) {
+            rdv.annulerParCabinet();
+            if (rdv.creneauId() != null) {
+                creneaux.parId(rdv.creneauId()).map(Creneau::liberer).ifPresent(creneaux::enregistrer);
+            }
+            RendezVous annule = repository.enregistrer(rdv);
+            if (annule.patientId() != null) {
+                notifierAnnulationParCabinet(annule);
+            }
+        }
+        creneaux.supprimerLibresDuMedecin(medecinId);
         return aVenir.size();
     }
 
@@ -330,16 +394,21 @@ public class RendezVousService {
         RendezVous annule = repository.enregistrer(rdv);
         // Patient sans compte (rendez-vous pris par telephone) : aucun message, le cabinet le previent lui-meme.
         if (annule.patientId() != null) {
-            notifieur.notifier(annule.patientId(), "Rendez-vous annulé par le cabinet",
-                    "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                            + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
-            smsAnnulationParCabinet(annule);
+            notifierAnnulationParCabinet(annule);
         }
         if (!medecinId.equals(auteurId)) {
             notifieur.notifier(medecinId, "Rendez-vous annulé par votre secrétaire",
                     "Votre secrétaire a annulé le rendez-vous du " + FormatDate.lisible(annule.debut()) + ".", "/medecin/agenda");
         }
         return annule;
+    }
+
+    /** Previent le patient (appli + SMS) que le cabinet a annule son rendez-vous. */
+    private void notifierAnnulationParCabinet(RendezVous annule) {
+        notifieur.notifier(annule.patientId(), "Rendez-vous annulé par le cabinet",
+                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
+                        + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
+        smsAnnulationParCabinet(annule);
     }
 
     /**

@@ -43,6 +43,11 @@ public class EnMemoireBesoinRepository implements BesoinRepository {
     }
 
     @Override
+    public void supprimer(UUID id) {
+        parId.remove(id);
+    }
+
+    @Override
     public List<BesoinMedicament> ouvertsParWilaya(String wilayaCode) {
         return tries(b -> b.estOuvert() && b.wilayaCode().equals(wilayaCode));
     }

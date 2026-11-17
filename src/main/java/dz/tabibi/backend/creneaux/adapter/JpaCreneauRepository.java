@@ -1,6 +1,7 @@
 package dz.tabibi.backend.creneaux.adapter;
 
 import dz.tabibi.backend.creneaux.domain.Creneau;
+import dz.tabibi.backend.creneaux.domain.CreneauExistantException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -36,7 +37,12 @@ public class JpaCreneauRepository implements CreneauRepository {
 
     @Override
     public Creneau enregistrer(Creneau creneau) {
-        jpa.save(CreneauEntity.de(creneau));
+        try {
+            // saveAndFlush : l'index unique (medecin_id, debut) est verifie ici, pas a la fin d'une transaction lointaine.
+            jpa.saveAndFlush(CreneauEntity.de(creneau));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new CreneauExistantException("Un créneau existe déjà à cette heure-là.");
+        }
         return creneau;
     }
 
@@ -49,6 +55,18 @@ public class JpaCreneauRepository implements CreneauRepository {
     @Override
     public void supprimer(UUID id) {
         jpa.deleteById(id);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public boolean supprimerSiDisponible(UUID id) {
+        return jpa.supprimerSiDisponible(id) == 1;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public int supprimerLibresDuMedecin(UUID medecinId) {
+        return jpa.supprimerLibresDuMedecin(medecinId);
     }
 
     @Override

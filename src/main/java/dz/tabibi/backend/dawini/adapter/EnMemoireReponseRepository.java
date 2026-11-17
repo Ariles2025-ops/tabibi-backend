@@ -47,6 +47,13 @@ public class EnMemoireReponseRepository implements ReponseRepository {
     }
 
     @Override
+    public void supprimerParBesoin(UUID besoinId) {
+        synchronized (parId) {
+            parId.values().removeIf(r -> r.besoinId().equals(besoinId));
+        }
+    }
+
+    @Override
     public long compterParBesoin(UUID besoinId) {
         return toutes().stream().filter(r -> r.besoinId().equals(besoinId)).count();
     }

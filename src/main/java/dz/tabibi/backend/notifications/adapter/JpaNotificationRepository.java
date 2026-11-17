@@ -41,6 +41,12 @@ public class JpaNotificationRepository implements NotificationRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
+    public int supprimerDuDestinataire(UUID destinataireId) {
+        return jpa.supprimerDuDestinataire(destinataireId);
+    }
+
+    @Override
     public long nombreNonLues(UUID destinataireId) {
         return jpa.countByDestinataireIdAndLueFalse(destinataireId);
     }

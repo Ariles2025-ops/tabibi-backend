@@ -39,6 +39,13 @@ public class EnMemoireMessageRepository implements MessageRepository {
     }
 
     @Override
+    public void supprimerParConversation(UUID conversationId) {
+        synchronized (parId) {
+            parId.values().removeIf(m -> m.conversationId().equals(conversationId));
+        }
+    }
+
+    @Override
     public long nonLus(UUID conversationId, UUID lecteurId) {
         return recusNonLus(conversationId, lecteurId).size();
     }
