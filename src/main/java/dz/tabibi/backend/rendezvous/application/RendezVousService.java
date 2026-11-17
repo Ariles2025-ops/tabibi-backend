@@ -231,7 +231,7 @@ public class RendezVousService {
             throw new TransitionInvalideException("Ce rendez-vous a déjà eu lieu : il ne peut plus être annulé.");
         }
         if (!rdv.debut().isAfter(Instant.now())) {
-            throw new TransitionInvalideException("Ce rendez-vous est déjà passe : il ne peut plus être annulé.");
+            throw new TransitionInvalideException("Ce rendez-vous est déjà passé : il ne peut plus être annulé.");
         }
         rdv.annuler();
         libererCreneau(rdv);
