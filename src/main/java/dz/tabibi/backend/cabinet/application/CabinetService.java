@@ -196,6 +196,17 @@ public class CabinetService {
         creneaux.supprimer(medecinId, creneauId);
     }
 
+    /**
+     * Une secretaire rattachee prend un rendez-vous par telephone pour un patient sans compte.
+     * @throws AccesRefuseException si la secretaire n'est pas rattachee a ce medecin.
+     */
+    @Transactional
+    public RendezVous prendreRendezVousTelephone(UUID secretaireId, UUID medecinId, UUID creneauId,
+                                                 String nomPatient, String telephonePatient, String motif) {
+        verifierAcces(secretaireId, medecinId);
+        return rendezVous.prendreParTelephone(medecinId, creneauId, nomPatient, telephonePatient, motif);
+    }
+
     /** Une secretaire rattachee constate l'absence du patient. */
     @Transactional
     public RendezVous absentPour(UUID secretaireId, UUID rendezVousId) {

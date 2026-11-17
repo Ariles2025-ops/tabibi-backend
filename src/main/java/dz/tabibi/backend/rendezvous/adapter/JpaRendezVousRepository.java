@@ -52,6 +52,8 @@ public class JpaRendezVousRepository implements RendezVousRepository {
     public List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a) {
         return jpa.findByStatutAndRappelEnvoyeLeIsNullAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
                         StatutRdv.CONFIRME, de, a)
-                .stream().map(RendezVousEntity::versDomaine).toList();
+                .stream().map(RendezVousEntity::versDomaine)
+                // Pas de rappel pour les rendez-vous pris par telephone (aucun compte, aucun envoi).
+                .filter(r -> r.patientId() != null).toList();
     }
 }

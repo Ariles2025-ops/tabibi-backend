@@ -1,6 +1,7 @@
 package dz.tabibi.backend.rendezvous.adapter;
 
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
+import dz.tabibi.backend.rendezvous.domain.SourceRdv;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +22,7 @@ class RendezVousEntity {
     @Column(name = "id")
     private UUID id;
 
-    @Column(name = "patient_id", nullable = false)
+    @Column(name = "patient_id")
     private UUID patientId;
 
     @Column(name = "medecin_id", nullable = false)
@@ -42,6 +43,19 @@ class RendezVousEntity {
     @Column(name = "rappel_envoye_le")
     private Instant rappelEnvoyeLe;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 20)
+    private SourceRdv source;
+
+    @Column(name = "nom_patient", length = 200)
+    private String nomPatient;
+
+    @Column(name = "telephone_patient", length = 40)
+    private String telephonePatient;
+
+    @Column(name = "motif", length = 500)
+    private String motif;
+
     protected RendezVousEntity() { }
 
     static RendezVousEntity de(RendezVous r) {
@@ -53,11 +67,16 @@ class RendezVousEntity {
         e.statut = r.statut();
         e.creneauId = r.creneauId();
         e.rappelEnvoyeLe = r.rappelEnvoyeLe();
+        e.source = r.source();
+        e.nomPatient = r.nomPatient();
+        e.telephonePatient = r.telephonePatient();
+        e.motif = r.motif();
         return e;
     }
 
     RendezVous versDomaine() {
-        return new RendezVous(id, patientId, medecinId, debut, statut, creneauId, rappelEnvoyeLe);
+        return new RendezVous(id, patientId, medecinId, debut, statut, creneauId, rappelEnvoyeLe,
+                source, nomPatient, telephonePatient, motif);
     }
 
     UUID getMedecinId() { return medecinId; }

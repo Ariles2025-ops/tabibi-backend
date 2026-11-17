@@ -84,6 +84,9 @@ public class TeleconsultationService {
         if (!rdv.debut().isAfter(Instant.now())) {
             throw new TransitionInvalideException("Ce rendez-vous est déjà passé : la téléconsultation ne peut plus être proposée.");
         }
+        if (rdv.patientId() == null) {
+            throw new TransitionInvalideException("Ce rendez-vous a été pris par téléphone : le patient n'a pas de compte Tabibi.");
+        }
         if (repository.parRendezVous(rendezVousId).isPresent()) {
             throw new TransitionInvalideException("Une téléconsultation existe déjà pour ce rendez-vous.");
         }

@@ -39,7 +39,7 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
     @Override
     public List<RendezVous> parPatient(UUID patientId) {
         return parId.values().stream()
-                .filter(r -> r.patientId().equals(patientId))
+                .filter(r -> patientId.equals(r.patientId()))
                 .sorted(Comparator.comparing(RendezVous::debut))
                 .toList();
     }
@@ -55,7 +55,7 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
     @Override
     public List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a) {
         return parId.values().stream()
-                .filter(r -> r.statut() == StatutRdv.CONFIRME && !r.rappelEnvoye())
+                .filter(r -> r.statut() == StatutRdv.CONFIRME && !r.rappelEnvoye() && r.patientId() != null)
                 .filter(r -> !r.debut().isBefore(de) && r.debut().isBefore(a))
                 .sorted(Comparator.comparing(RendezVous::debut))
                 .toList();

@@ -45,7 +45,7 @@ public class PatientsService {
      */
     public List<PatientResume> patientsDuMedecin(UUID medecinId) {
         Set<UUID> avecRendezVous = new LinkedHashSet<>();
-        rendezVous.parMedecin(medecinId).stream().map(RendezVous::patientId).forEach(avecRendezVous::add);
+        rendezVous.parMedecin(medecinId).stream().map(RendezVous::patientId).filter(java.util.Objects::nonNull).forEach(avecRendezVous::add);
         Set<UUID> enAttenteSeulement = new LinkedHashSet<>();
         listeAttente.parMedecin(medecinId).stream().map(i -> i.patientId())
                 .filter(id -> !avecRendezVous.contains(id)).forEach(enAttenteSeulement::add);

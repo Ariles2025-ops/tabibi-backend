@@ -32,8 +32,21 @@ public class RendezVousController {
     }
 
     /** Vue d'un rendez-vous telle que renvoyee par l'API (au patient, au medecin comme a sa secretaire). */
-    public record RendezVousVue(UUID id, UUID patientId, UUID medecinId, UUID creneauId, Instant debut, String statut) {
+    public record RendezVousVue(UUID id, UUID patientId, UUID medecinId, UUID creneauId, Instant debut, String statut,
+                                String source, String nomPatient, String telephonePatient, String motif) {
+        /** Un rendez-vous ordinaire (nom/telephone/motif absents). Ne sert qu'aux vues patient et aux tests. */
+        public RendezVousVue(UUID id, UUID patientId, UUID medecinId, UUID creneauId, Instant debut, String statut) {
+            this(id, patientId, medecinId, creneauId, debut, statut, "APPLICATION", null, null, null);
+        }
+
+        /** Vue du cabinet (medecin, secretaire) : nom, telephone et motif d'un rendez-vous telephonique y figurent. */
         public static RendezVousVue de(RendezVous r) {
+            return new RendezVousVue(r.id(), r.patientId(), r.medecinId(), r.creneauId(), r.debut(), r.statut().name(),
+                    r.source().name(), r.nomPatient(), r.telephonePatient(), r.motif());
+        }
+
+        /** Vue du patient : jamais de donnees saisies par le cabinet (il n'a de toute facon que ses propres rendez-vous). */
+        public static RendezVousVue pourPatient(RendezVous r) {
             return new RendezVousVue(r.id(), r.patientId(), r.medecinId(), r.creneauId(), r.debut(), r.statut().name());
         }
     }
@@ -46,19 +59,19 @@ public class RendezVousController {
     public ResponseEntity<RendezVousVue> reserverCreneau(@PathVariable UUID id,
                                                          @AuthenticationPrincipal Jwt jwt) {
         RendezVous rdv = service.reserverCreneau(identifiant(jwt), id);
-        return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.de(rdv));
+        return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.pourPatient(rdv));
     }
 
     @GetMapping("/api/rendezvous/mes")
     @PreAuthorize("hasRole('PATIENT')")
     public List<RendezVousVue> mesRendezVous(@AuthenticationPrincipal Jwt jwt) {
-        return service.mesRendezVous(identifiant(jwt)).stream().map(RendezVousVue::de).toList();
+        return service.mesRendezVous(identifiant(jwt)).stream().map(RendezVousVue::pourPatient).toList();
     }
 
     @PostMapping("/api/rendezvous/{id}/annuler")
     @PreAuthorize("hasRole('PATIENT')")
     public RendezVousVue annuler(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-        return RendezVousVue.de(service.annuler(identifiant(jwt), id));
+        return RendezVousVue.pourPatient(service.annuler(identifiant(jwt), id));
     }
 
     /** Agenda du medecin connecte : ses rendez-vous, tous statuts, du plus proche au plus lointain. */

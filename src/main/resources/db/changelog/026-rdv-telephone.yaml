@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-rdv-telephone
+      author: tabibi
+      changes:
+        - dropNotNullConstraint:
+            tableName: rendez_vous
+            columnName: patient_id
+            columnDataType: uuid
+        - addColumn:
+            tableName: rendez_vous
+            columns:
+              - column: { name: source, type: varchar(20), defaultValue: APPLICATION, constraints: { nullable: false } }
+              - column: { name: nom_patient, type: varchar(200) }
+              - column: { name: telephone_patient, type: varchar(40) }
+              - column: { name: motif, type: varchar(500) }
