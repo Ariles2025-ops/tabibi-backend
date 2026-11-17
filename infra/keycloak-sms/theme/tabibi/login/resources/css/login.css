@@ -77,3 +77,6 @@ html, body { margin: 0; min-block-size: 100%; background: var(--n-color-bg-app);
 /* Liens du formulaire (mot de passe oublie, retour) aux couleurs Tabibi, pas le bleu par defaut. */
 .kc-links a, .kc-muted a { color: var(--n-color-text-brand); font-weight: var(--n-weight-semibold); text-decoration: none; }
 .kc-links a:hover, .kc-muted a:hover { text-decoration: underline; }
+
+.kc-logo, .kc-brand__logo { display: inline-flex; align-items: center; gap: 10px; }
+.kc-marque { flex: none; }
