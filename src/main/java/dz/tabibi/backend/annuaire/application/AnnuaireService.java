@@ -42,6 +42,14 @@ public class AnnuaireService {
         return fiche;
     }
 
+    public List<MedecinRepository.CommuneNombre> communes(String specialite, String wilaya) {
+        return repository.communes(blanc(specialite), blanc(wilaya), 3);
+    }
+
+    private static String blanc(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
+    }
+
     public List<Medecin> page(int numero, int taille) {
         return repository.page(numero, taille);
     }

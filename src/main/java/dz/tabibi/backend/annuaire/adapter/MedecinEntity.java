@@ -19,6 +19,7 @@ class MedecinEntity {
     @Column(name = "wilaya_code", nullable = false) private String wilayaCode;
     @Column(name = "wilaya_fr", nullable = false) private String wilayaFr;
     @Column(name = "ville") private String ville;
+    @Column(name = "ville_slug") private String villeSlug;
 
     protected MedecinEntity() {}
 
@@ -32,6 +33,7 @@ class MedecinEntity {
         e.wilayaCode = m.wilayaCode();
         e.wilayaFr = m.wilayaFr();
         e.ville = m.ville();
+        e.villeSlug = Medecin.slugCommune(m.ville());
         return e;
     }
 

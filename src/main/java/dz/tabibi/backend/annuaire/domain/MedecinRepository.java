@@ -9,6 +9,12 @@ public interface MedecinRepository {
 
     List<Medecin> rechercher(CritereRecherche critere);
 
+    /** Une commune d'une wilaya pour une specialite, avec son nombre de fiches. */
+    record CommuneNombre(String slug, String nom, long nombre) {}
+
+    /** Communes ayant au moins {@code minimum} fiches (hors ville vide ou egale a la wilaya), par nombre decroissant. */
+    List<CommuneNombre> communes(String specialite, String wilaya, int minimum);
+
     Optional<Medecin> parId(UUID id);
 
     /** Publie ou met a jour la fiche d'un praticien (meme identifiant = meme fiche). */

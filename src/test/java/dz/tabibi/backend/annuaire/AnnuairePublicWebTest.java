@@ -38,6 +38,17 @@ class AnnuairePublicWebTest {
     }
 
     @Test
+    void communes_accessibles_sans_jeton() throws Exception {
+        when(service.communes("cardiologue", "16")).thenReturn(List.of(
+                new dz.tabibi.backend.annuaire.domain.MedecinRepository.CommuneNombre("bab-ezzouar", "Bab Ezzouar", 8)));
+        mvc.perform(get("/api/medecins/communes?specialite=cardiologue&wilaya=16"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$[0].slug").value("bab-ezzouar"))
+           .andExpect(jsonPath("$[0].nom").value("Bab Ezzouar"))
+           .andExpect(jsonPath("$[0].nombre").value(8));
+    }
+
+    @Test
     void fiche_accessible_sans_jeton() throws Exception {
         Medecin medecin = new Medecin(UUID.randomUUID(), "Dr Test", "cardiologue", "Cardiologue", "16", "Alger", "Alger");
         when(service.parId(medecin.id())).thenReturn(Optional.of(medecin));

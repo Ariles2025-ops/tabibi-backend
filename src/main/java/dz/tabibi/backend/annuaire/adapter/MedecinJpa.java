@@ -22,6 +22,7 @@ interface MedecinJpa extends JpaRepository<MedecinEntity, UUID> {
            where ((cast(:spec as string) is null and m.specialiteSlug <> 'pharmacie')
                   or m.specialiteSlug = cast(:spec as string))
              and (cast(:wil as string)  is null or m.wilayaCode = cast(:wil as string))
+             and (cast(:commune as string) is null or m.villeSlug = cast(:commune as string))
              and lower(m.nomComplet) like cast(:motif as string)
            order by case when exists (select c.id from CreneauEntity c
                                       where c.medecinId = m.id and c.disponible = true and c.debut > :maintenant)
@@ -30,7 +31,20 @@ interface MedecinJpa extends JpaRepository<MedecinEntity, UUID> {
            """)
     List<MedecinEntity> rechercher(@Param("spec") String spec,
                                    @Param("wil") String wil,
+                                   @Param("commune") String commune,
                                    @Param("motif") String motif,
                                    @Param("maintenant") java.time.Instant maintenant,
                                    Pageable page);
+
+    /** Lignes (slug, nom d'affichage, nombre, nom de wilaya en slug-brut) des communes ayant au moins {@code minimum} fiches. */
+    @Query("""
+           select m.villeSlug, min(m.ville), count(m), min(m.wilayaFr) from MedecinEntity m
+           where ((cast(:spec as string) is null and m.specialiteSlug <> 'pharmacie')
+                  or m.specialiteSlug = cast(:spec as string))
+             and (cast(:wil as string) is null or m.wilayaCode = cast(:wil as string))
+             and m.villeSlug is not null and m.villeSlug <> ''
+           group by m.villeSlug, m.wilayaCode
+           having count(m) >= :minimum
+           """)
+    List<Object[]> communes(@Param("spec") String spec, @Param("wil") String wil, @Param("minimum") long minimum);
 }
