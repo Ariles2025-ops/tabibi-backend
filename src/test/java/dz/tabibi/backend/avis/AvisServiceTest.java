@@ -253,4 +253,32 @@ class AvisServiceTest {
         service.retablir(a.id());
         assertThat(notifications.parDestinataire(MEDECIN)).hasSize(2);
     }
+
+    @Test
+    void masquer_un_avis_simplement_publie_envoie_un_message_neutre_au_medecin() {
+        var notifications = new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository();
+        service.setNotifieur(new dz.tabibi.backend.notifications.application.NotifieurInterne(notifications));
+        Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
+
+        service.masquer(a.id());
+
+        var n = notifications.parDestinataire(MEDECIN).get(0);
+        assertThat(n.message()).doesNotContain("signalé").contains("masqué un avis vous concernant");
+        assertThat(n.sujet()).doesNotContain("signalé");
+
+        service.retablir(a.id());
+        assertThat(notifications.parDestinataire(MEDECIN).get(1).sujet()).doesNotContain("signalé");
+    }
+
+    @Test
+    void masquer_un_avis_signale_garde_la_formulation_du_signalement() {
+        var notifications = new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository();
+        service.setNotifieur(new dz.tabibi.backend.notifications.application.NotifieurInterne(notifications));
+        Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
+        service.signaler(MEDECIN, a.id());
+
+        service.masquer(a.id());
+
+        assertThat(notifications.parDestinataire(MEDECIN).get(0).message()).contains("que vous aviez signalé");
+    }
 }

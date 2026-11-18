@@ -145,14 +145,20 @@ public class AvisService {
      */
     @Transactional
     public Avis masquer(UUID avisId) {
-        Avis masque = avis.enregistrer(charger(avisId).masquer());
-        prevenirLeMedecin(masque, "L'équipe Ndawik a masqué l'avis que vous aviez signalé : il n'est plus visible sur votre profil.");
+        Avis avant = charger(avisId);
+        boolean etaitSignale = avant.statut() == StatutAvis.SIGNALE;
+        Avis masque = avis.enregistrer(avant.masquer());
+        prevenirLeMedecin(masque, etaitSignale,
+                etaitSignale
+                        ? "L'équipe Ndawik a masqué l'avis que vous aviez signalé : il n'est plus visible sur votre profil."
+                        : "L'équipe Ndawik a masqué un avis vous concernant : il n'est plus visible sur votre profil.");
         return masque;
     }
 
-    private void prevenirLeMedecin(Avis a, String message) {
+    private void prevenirLeMedecin(Avis a, boolean etaitSignale, String message) {
         if (notifieur != null) {
-            notifieur.notifier(a.medecinId(), "Avis signalé : décision de l'équipe", message, "/medecin/avis");
+            String titre = etaitSignale ? "Avis signalé : décision de l'équipe" : "Avis : décision de l'équipe";
+            notifieur.notifier(a.medecinId(), titre, message, "/medecin/avis");
         }
     }
 
@@ -165,7 +171,8 @@ public class AvisService {
     public Avis retablir(UUID avisId) {
         Avis avant = charger(avisId);
         Avis retabli = avis.enregistrer(avant.retablir());
-        prevenirLeMedecin(retabli, "L'équipe Ndawik a rétabli l'avis : il est visible sur votre profil.");
+        boolean etaitSignale = avant.statut() == StatutAvis.SIGNALE;
+        prevenirLeMedecin(retabli, etaitSignale, "L'équipe Ndawik a rétabli l'avis : il est visible sur votre profil.");
         return retabli;
     }
 
