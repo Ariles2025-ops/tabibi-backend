@@ -56,4 +56,10 @@ public class JpaRendezVousRepository implements RendezVousRepository {
                 // Pas de rappel pour les rendez-vous pris par telephone (aucun compte, aucun envoi).
                 .filter(r -> r.patientId() != null).toList();
     }
+
+    @Override
+    public List<RendezVous> confirmesDebutantAvant(Instant limite) {
+        return jpa.findByStatutAndDebutLessThanOrderByDebut(StatutRdv.CONFIRME, limite)
+                .stream().map(RendezVousEntity::versDomaine).toList();
+    }
 }

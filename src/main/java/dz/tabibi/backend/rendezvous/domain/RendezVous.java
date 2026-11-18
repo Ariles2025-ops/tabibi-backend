@@ -139,7 +139,18 @@ public class RendezVous {
         this.statut = StatutRdv.HONORE;
     }
 
-    /** Vrai si le rendez-vous a ete pris par ce patient. */
+    /**
+     * Cloture automatique (tache planifiee) : un rendez-vous confirme que le cabinet n'a jamais marque passe a HONORE.
+     * Sans effet s'il n'est plus confirme. @return vrai si le statut a change.
+     */
+    public boolean cloturerAutomatiquement() {
+        if (statut != StatutRdv.CONFIRME) {
+            return false;
+        }
+        this.statut = StatutRdv.HONORE;
+        return true;
+    }
+
     /**
      * Le patient n'est pas venu : le cabinet le constate une fois l'heure passee.
      * @throws TransitionInvalideException s'il n'est pas confirme ou n'a pas encore commence.
