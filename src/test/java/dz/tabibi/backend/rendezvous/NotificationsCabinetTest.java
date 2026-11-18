@@ -67,6 +67,7 @@ class NotificationsCabinetTest {
         Creneau c = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN, Instant.now().plusSeconds(86_400), 20, true));
         RendezVous rdv = service.reserverCreneau(PATIENT, c.id());
         appels.clear();
+        sms.envois.clear();
         return rdv;
     }
 
@@ -141,5 +142,22 @@ class NotificationsCabinetTest {
         }, comptes);
 
         assertThat(service.annulerParCabinet(MEDECIN, rdv.id()).statut()).isEqualTo(StatutRdv.ANNULE);
+    }
+
+    @Test
+    void la_reservation_est_confirmee_au_patient_par_sms_et_par_email() {
+        List<String> courriels = new ArrayList<>();
+        comptes.avec(PATIENT, "Amina", "amina@exemple.dz", "0550 12 34 56");
+        service.setCourriel(new dz.tabibi.backend.commun.domain.Courriel() {
+            public boolean disponible() { return true; }
+            public void envoyer(String d, String sujet, String texte) { courriels.add(d + " | " + sujet); }
+        });
+
+        Creneau c = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN, Instant.now().plusSeconds(86_400), 20, true));
+        service.reserverCreneau(PATIENT, c.id());
+
+        assertThat(sms.envois).hasSize(1);
+        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Ndawik : votre rendez-vous du ").contains("est confirme");
+        assertThat(courriels).containsExactly("amina@exemple.dz | Ndawik : rendez-vous confirmé");
     }
 }

@@ -92,6 +92,29 @@ class RappelServiceTest {
     }
 
     @Test
+    void sans_numero_de_compte_le_sms_part_au_numero_du_profil_et_un_email_est_envoye() {
+        RendezVous rdv = confirmeDans(Duration.ofHours(2));
+        dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(rdv.patientId(), "Amina", "0661234567", null, null, "fr", MAINTENANT));
+        List<String> sms = new ArrayList<>();
+        List<String> courriels = new ArrayList<>();
+        service.setProfils(profils);
+        service.setSms(new dz.tabibi.backend.rappels.domain.EnvoiSms() {
+            public boolean disponible() { return true; }
+            public void envoyer(String tel, String texte) { sms.add(tel); }
+        }, new dz.tabibi.backend.commun.FauxComptes().avec(rdv.patientId(), "Amina", "amina@exemple.dz", null));
+        service.setCourriel(new dz.tabibi.backend.commun.domain.Courriel() {
+            public boolean disponible() { return true; }
+            public void envoyer(String d, String sujet, String texte) { courriels.add(d); }
+        });
+
+        service.executer();
+
+        assertThat(sms).containsExactly("+213661234567");
+        assertThat(courriels).containsExactly("amina@exemple.dz");
+    }
+
+    @Test
     void normalise_les_numeros_algeriens() {
         assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser("0550 12 34 56")).isEqualTo("+213550123456");
         assertThat(dz.tabibi.backend.rappels.domain.EnvoiSms.normaliser("213661234567")).isEqualTo("+213661234567");

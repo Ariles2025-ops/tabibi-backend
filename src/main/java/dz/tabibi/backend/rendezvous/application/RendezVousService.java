@@ -4,6 +4,7 @@ import dz.tabibi.backend.cabinet.domain.Rattachement;
 import dz.tabibi.backend.cabinet.domain.RattachementRepository;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
+import dz.tabibi.backend.commun.domain.Courriel;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.domain.Creneau;
@@ -77,6 +78,14 @@ public class RendezVousService {
         if (compteSupprime(medecinId)) {
             throw new CreneauDejaReserveException("Ce médecin n'est plus disponible : son compte a été supprimé.");
         }
+    }
+
+    private Courriel courriel;
+
+    /** E-mail de confirmation au patient quand son compte a une adresse (si un serveur SMTP est configure). */
+    @Autowired(required = false)
+    public void setCourriel(Courriel courriel) {
+        this.courriel = courriel;
     }
 
     @Autowired(required = false)
@@ -527,6 +536,33 @@ public class RendezVousService {
         }
     }
 
+    /**
+     * Confirmation de reservation par SMS (numero du compte, sinon du profil) et par e-mail. Un echec
+     * n'empeche jamais la reservation.
+     */
+    private void confirmationHorsApplication(RendezVous rdv, String date) {
+        try {
+            var compte = comptes != null ? comptes.infos(rdv.patientId()) : java.util.Optional.<ComptesUtilisateurs.InfosCompte>empty();
+            if (sms != null && sms.disponible()) {
+                String tel = compte.map(ComptesUtilisateurs.InfosCompte::telephone).map(EnvoiSms::normaliser).orElse(null);
+                if (tel == null && profils != null) {
+                    tel = profils.parUtilisateur(rdv.patientId()).map(dz.tabibi.backend.profil.domain.Profil::telephone)
+                            .map(EnvoiSms::normaliser).orElse(null);
+                }
+                if (tel != null) {
+                    sms.envoyer(tel, "Ndawik : votre rendez-vous du " + date + " est confirme. Pour annuler : tabibi.doctor/mes-rendez-vous");
+                }
+            }
+            String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
+            if (courriel != null && courriel.disponible() && email != null) {
+                courriel.envoyer(email, "Ndawik : rendez-vous confirmé",
+                        "Votre rendez-vous du " + date + " est confirmé.\nPour l'annuler : tabibi.doctor/mes-rendez-vous");
+            }
+        } catch (RuntimeException e) {
+            log.warn("Confirmation hors application non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+        }
+    }
+
     /** Secretaires qui ont accepte de gerer l'agenda de ce medecin. */
     private List<UUID> secretairesDe(UUID medecinId) {
         if (rattachements == null) {
@@ -555,6 +591,7 @@ public class RendezVousService {
         String date = FormatDate.lisible(rdv.debut());
         notifieur.notifier(rdv.patientId(), "Rendez-vous confirmé",
                 "Votre rendez-vous du " + date + " est confirmé.", "/mes-rendez-vous");
+        confirmationHorsApplication(rdv, date);
         String message = "Un patient a réservé un rendez-vous le " + date + ".";
         notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous", message, "/medecin/agenda");
         secretairesDe(rdv.medecinId()).forEach(s ->

@@ -94,4 +94,25 @@ class KeycloakComptesUtilisateursTest {
 
         serveur.verify();
     }
+
+    @Test
+    void reponse_admin_sans_attributes_donne_un_telephone_null() {
+        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret", java.time.Clock.systemUTC());
+        attendJeton();
+        serveur.expect(requestTo("http://kc/admin/realms/tabibi/users/" + COMPTE))
+               .andRespond(withSuccess("{\"id\":\"" + COMPTE + "\",\"firstName\":\"Amina\"}", MediaType.APPLICATION_JSON));
+
+        org.assertj.core.api.Assertions.assertThat(comptes.infos(COMPTE).orElseThrow().telephone()).isNull();
+    }
+
+    @Test
+    void attribut_phone_number_est_lu() {
+        KeycloakComptesUtilisateurs comptes = new KeycloakComptesUtilisateurs(builder, "tabibi", "c", "secret", java.time.Clock.systemUTC());
+        attendJeton();
+        serveur.expect(requestTo("http://kc/admin/realms/tabibi/users/" + COMPTE))
+               .andRespond(withSuccess("{\"id\":\"" + COMPTE + "\",\"attributes\":{\"phone_number\":[\"+213550123456\"]}}",
+                       MediaType.APPLICATION_JSON));
+
+        org.assertj.core.api.Assertions.assertThat(comptes.infos(COMPTE).orElseThrow().telephone()).isEqualTo("+213550123456");
+    }
 }
