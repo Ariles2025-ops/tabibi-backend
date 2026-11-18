@@ -236,7 +236,7 @@ class RendezVousTelephoneTest {
                         new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository()),
                 new dz.tabibi.backend.avis.application.AvisService(
                         new dz.tabibi.backend.avis.adapter.EnMemoireAvisRepository(), rdvs),
-                cabinet);
+                cabinet, new dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository());
 
         suppression.supprimer(MEDECIN);
 

@@ -1,6 +1,9 @@
 package dz.tabibi.backend.identite;
 
 import dz.tabibi.backend.commun.FauxComptes;
+import dz.tabibi.backend.annuaire.adapter.EnMemoireMedecinRepository;
+import dz.tabibi.backend.annuaire.domain.CritereRecherche;
+import dz.tabibi.backend.annuaire.domain.Medecin;
 import dz.tabibi.backend.avis.adapter.EnMemoireAvisRepository;
 import dz.tabibi.backend.avis.application.AvisService;
 import dz.tabibi.backend.avis.domain.Avis;
@@ -71,11 +74,12 @@ class SuppressionCompteServiceTest {
     private final EnMemoireRattachementRepository rattachements = new EnMemoireRattachementRepository();
     private final CabinetService cabinet = new CabinetService(rattachements, null, null,
             (d, s, m) -> notifications.add(new Appel(d, s)));
+    private final EnMemoireMedecinRepository fiches = new EnMemoireMedecinRepository();
     private final SuppressionCompteService service =new SuppressionCompteService(rendezVous, listeAttente, profils, comptes,
             new MessagerieService(conversations, messages, rdvs, (d, s, m) -> { }),
             new DawiniService(besoins, reponses, (d, s, m) -> { }),
             new NotificationService(notifs),
-            new AvisService(avis, rdvs), cabinet);
+            new AvisService(avis, rdvs), cabinet, fiches);
 
     {
         // Un medecin dont le compte est supprime n'est plus reservable (profil anonyme).
@@ -202,6 +206,19 @@ class SuppressionCompteServiceTest {
         Avis apres = avis.parId(depose.id()).orElseThrow();
         assertThat(apres.commentaire()).isNull();
         assertThat(apres.note()).isEqualTo(4);
+    }
+
+    @Test
+    void suppression_d_un_medecin_retire_sa_fiche_publique_de_l_annuaire_et_du_plan_du_site() {
+        UUID autre = UUID.randomUUID();
+        fiches.enregistrer(new Medecin(MEDECIN, "Dr Test", "generaliste", "Médecin généraliste", "16", "Alger", "Alger-Centre"));
+        fiches.enregistrer(new Medecin(autre, "Dr Autre", "generaliste", "Médecin généraliste", "16", "Alger", "Alger-Centre"));
+
+        service.supprimer(MEDECIN);
+
+        assertThat(fiches.parId(MEDECIN)).isEmpty();
+        assertThat(fiches.rechercher(CritereRecherche.de("generaliste", "16", "Dr Test"))).isEmpty();
+        assertThat(fiches.page(0, 1000)).extracting(Medecin::id).doesNotContain(MEDECIN).contains(autre);
     }
 
     @Test

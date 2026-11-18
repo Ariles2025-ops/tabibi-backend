@@ -2,6 +2,7 @@ package dz.tabibi.backend.identite;
 
 import dz.tabibi.backend.cabinet.application.CabinetService;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
+import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.avis.application.AvisService;
 import dz.tabibi.backend.dawini.application.DawiniService;
 import dz.tabibi.backend.listeattente.application.ListeAttenteService;
@@ -48,12 +49,14 @@ public class SuppressionCompteService {
     private final NotificationService notifications;
     private final AvisService avis;
     private final CabinetService cabinet;
+    private final MedecinRepository medecins;
 
     public SuppressionCompteService(RendezVousService rendezVous, ListeAttenteService listeAttente,
                                     ProfilRepository profils, ComptesUtilisateurs comptes,
                                     MessagerieService messagerie, DawiniService dawini,
                                     NotificationService notifications, AvisService avis,
-                                    CabinetService cabinet) {
+                                    CabinetService cabinet, MedecinRepository medecins) {
+        this.medecins = medecins;
         this.cabinet = cabinet;
         this.rendezVous = rendezVous;
         this.listeAttente = listeAttente;
@@ -83,6 +86,9 @@ public class SuppressionCompteService {
         int conversations = messagerie.supprimerToutesDe(utilisateurId);
         int demandes = dawini.supprimerDemandesDe(utilisateurId);
         int avisEfface = avis.effacerCommentairesDuPatient(utilisateurId);
+        // Medecin : la fiche publique (nom, adresse, telephone du cabinet...) est retiree de l'annuaire et du plan
+        // du site (droit a l'effacement) ; ses avis, rattaches a cette fiche, ne sont plus affiches nulle part.
+        medecins.supprimer(utilisateurId);
         // Cabinet : rattachements retires (medecin prevenu), avant les notifications du compte et la suppression Keycloak.
         cabinet.retirerTousRattachementsDe(utilisateurId);
         // En dernier : les notifications creees pendant la suppression (annulations...) sont effacees aussi.
