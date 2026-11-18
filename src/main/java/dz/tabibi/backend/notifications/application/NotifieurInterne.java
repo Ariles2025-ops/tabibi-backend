@@ -5,6 +5,7 @@ import dz.tabibi.backend.notifications.domain.NotificationRepository;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -22,8 +23,16 @@ public class NotifieurInterne implements Notifieur {
 
     private final NotificationRepository repository;
 
+    private final PousseNotifications push;
+
     public NotifieurInterne(NotificationRepository repository) {
+        this(repository, null);
+    }
+
+    @Autowired
+    public NotifieurInterne(NotificationRepository repository, PousseNotifications push) {
         this.repository = repository;
+        this.push = push;
     }
 
     @Override
@@ -36,5 +45,6 @@ public class NotifieurInterne implements Notifieur {
         Notification notification = repository.enregistrer(
                 Notification.interne(destinataireId, sujet, message, Instant.now(), lien));
         LOG.info("Notification interne {} deposee pour {} : {}", notification.id(), destinataireId, sujet);
+        if (push != null) push.pousser(destinataireId, sujet, message, lien);
     }
 }
