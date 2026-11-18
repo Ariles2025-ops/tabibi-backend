@@ -178,6 +178,22 @@ class AdministrationWebTest {
     }
 
     @Test
+    void suspension_et_retablissement_interdits_aux_non_admin_et_ouverts_a_l_admin() throws Exception {
+        for (RequestPostProcessor non_admin : List.of(patient(), medecin())) {
+            mvc.perform(post("/api/admin/medecins/{id}/suspendre", MEDECIN).with(non_admin)
+                    .contentType(MediaType.APPLICATION_JSON).content(CORPS_REFUS)).andExpect(status().isForbidden());
+            mvc.perform(post("/api/admin/medecins/{id}/retablir", MEDECIN).with(non_admin))
+               .andExpect(status().isForbidden());
+        }
+        when(service.suspendre(eq(MEDECIN), any())).thenReturn(2);
+        mvc.perform(post("/api/admin/medecins/{id}/suspendre", MEDECIN).with(admin())
+                .contentType(MediaType.APPLICATION_JSON).content(CORPS_REFUS))
+           .andExpect(status().isOk()).andExpect(jsonPath("$.rendezVousAnnules").value(2));
+        mvc.perform(post("/api/admin/medecins/{id}/retablir", MEDECIN).with(admin()))
+           .andExpect(status().isNoContent());
+    }
+
+    @Test
     void candidatures_accessibles_a_l_admin_avec_filtre_par_statut() throws Exception {
         CandidatureMedecin c = candidature();
         when(service.lister(Optional.of(StatutCandidature.EN_ATTENTE))).thenReturn(List.of(c));
