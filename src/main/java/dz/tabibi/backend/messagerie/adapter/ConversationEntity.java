@@ -33,6 +33,9 @@ class ConversationEntity {
     @Column(name = "dernier_message_le", nullable = false)
     private Instant dernierMessageLe;
 
+    @Column(name = "fermee", nullable = false)
+    private boolean fermee;
+
     protected ConversationEntity() { }
 
     static ConversationEntity de(Conversation c) {
@@ -42,10 +45,11 @@ class ConversationEntity {
         e.medecinId = c.medecinId();
         e.creeLe = c.creeLe();
         e.dernierMessageLe = c.dernierMessageLe();
+        e.fermee = c.fermee();
         return e;
     }
 
     Conversation versDomaine() {
-        return new Conversation(id, patientId, medecinId, creeLe, dernierMessageLe);
+        return new Conversation(id, patientId, medecinId, creeLe, dernierMessageLe, fermee);
     }
 }

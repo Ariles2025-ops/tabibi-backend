@@ -85,10 +85,8 @@ class MessagerieServiceTest {
     }
 
     @Test
-    void ouvre_une_conversation_apres_un_rendezvous_quel_que_soit_son_statut() {
-        RendezVous annule = rendezVousEntre(PATIENT, MEDECIN);
-        annule.annuler();
-        rendezVous.enregistrer(annule);
+    void ouvre_une_conversation_apres_un_rendezvous_confirme() {
+        rendezVousEntre(PATIENT, MEDECIN);
 
         ResultatOuverture resultat = service.ouvrir(PATIENT, MEDECIN);
 
@@ -101,6 +99,55 @@ class MessagerieServiceTest {
         assertThat(c.dernierMessageLe()).isEqualTo(c.creeLe());
         assertThat(conversations.parId(c.id())).contains(c);
         assertThat(notifieur.appels).isEmpty();
+    }
+
+    @Test
+    void refuse_d_ouvrir_quand_le_seul_rendezvous_est_annule_ou_absent() {
+        RendezVous annule = rendezVousEntre(PATIENT, MEDECIN);
+        annule.annuler();
+        rendezVous.enregistrer(annule);
+
+        assertThatThrownBy(() -> service.ouvrir(PATIENT, MEDECIN)).isInstanceOf(AccesRefuseException.class);
+        assertThat(conversations.parParticipants(PATIENT, MEDECIN)).isEmpty();
+    }
+
+    @Test
+    void refuse_d_ouvrir_trente_jours_apres_le_dernier_rendezvous() {
+        rendezVous.enregistrer(new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN,
+                Instant.now().minus(java.time.Duration.ofDays(31)), dz.tabibi.backend.rendezvous.domain.StatutRdv.HONORE));
+
+        assertThatThrownBy(() -> service.ouvrir(PATIENT, MEDECIN)).isInstanceOf(AccesRefuseException.class);
+    }
+
+    @Test
+    void conversation_fermee_par_le_medecin_le_patient_ne_peut_plus_ecrire_mais_le_medecin_lit() {
+        Conversation c = conversationOuverte();
+        service.envoyer(PATIENT, c.id(), "Bonjour");
+
+        assertThat(service.fermer(MEDECIN, c.id()).fermee()).isTrue();
+
+        assertThatThrownBy(() -> service.envoyer(PATIENT, c.id(), "Encore"))
+                .isInstanceOf(dz.tabibi.backend.commun.domain.TransitionInvalideException.class);
+        assertThat(service.messages(MEDECIN, c.id())).hasSize(1);
+        assertThat(service.envoyer(MEDECIN, c.id(), "Réponse").contenu()).isEqualTo("Réponse");
+    }
+
+    @Test
+    void seul_le_medecin_de_la_conversation_peut_la_fermer() {
+        Conversation c = conversationOuverte();
+
+        assertThatThrownBy(() -> service.fermer(PATIENT, c.id())).isInstanceOf(AccesRefuseException.class);
+        assertThatThrownBy(() -> service.fermer(UUID.randomUUID(), c.id())).isInstanceOf(AccesRefuseException.class);
+    }
+
+    @Test
+    void le_patient_ne_peut_plus_ecrire_quand_son_rendezvous_est_annule_apres_l_ouverture() {
+        RendezVous rdv = rendezVousEntre(PATIENT, MEDECIN);
+        Conversation c = service.ouvrir(PATIENT, MEDECIN).conversation();
+        rdv.annuler();
+        rendezVous.enregistrer(rdv);
+
+        assertThatThrownBy(() -> service.envoyer(PATIENT, c.id(), "Bonjour")).isInstanceOf(AccesRefuseException.class);
     }
 
     @Test
@@ -117,6 +164,7 @@ class MessagerieServiceTest {
 
     @Test
     void liste_les_conversations_par_activite_recente_avec_les_non_lus_du_lecteur() {
+        rendezVousEntre(PATIENT, MEDECIN);
         Conversation ancienne = ouverteLe(PATIENT, MEDECIN, "2025-01-10T09:00:00Z");
         Conversation recente = ouverteLe(PATIENT, UUID.randomUUID(), "2025-03-01T09:00:00Z");
         Conversation autrePatient = ouverteLe(UUID.randomUUID(), MEDECIN, "2025-02-01T09:00:00Z");

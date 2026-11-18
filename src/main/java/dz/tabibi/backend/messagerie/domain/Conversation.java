@@ -14,8 +14,14 @@ public record Conversation(
         UUID patientId,
         UUID medecinId,
         Instant creeLe,
-        Instant dernierMessageLe
+        Instant dernierMessageLe,
+        /** Vrai quand le medecin a clos la conversation : le patient ne peut plus y ecrire. */
+        boolean fermee
 ) {
+
+    public Conversation(UUID id, UUID patientId, UUID medecinId, Instant creeLe, Instant dernierMessageLe) {
+        this(id, patientId, medecinId, creeLe, dernierMessageLe, false);
+    }
 
     /** Ouvre une conversation entre un patient et un medecin. */
     public static Conversation ouvrir(UUID patientId, UUID medecinId, Instant quand) {
@@ -24,7 +30,12 @@ public record Conversation(
 
     /** Copie de la conversation apres l'envoi d'un message a cette date. */
     public Conversation avecDernierMessageLe(Instant quand) {
-        return new Conversation(id, patientId, medecinId, creeLe, quand);
+        return new Conversation(id, patientId, medecinId, creeLe, quand, fermee);
+    }
+
+    /** Copie de la conversation close par le medecin. */
+    public Conversation fermer() {
+        return new Conversation(id, patientId, medecinId, creeLe, dernierMessageLe, true);
     }
 
     /** Vrai si cet utilisateur est le patient ou le medecin de la conversation. */
