@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -519,11 +521,28 @@ public class RendezVousService {
                 + " a ete annule par le cabinet. Reprenez un creneau sur tabibi.doctor");
     }
 
-    /** SMS au numero verifie du compte du patient du rendez-vous ; un echec n'empeche jamais l'operation. */
+    /**
+     * SMS au numero verifie du compte du patient du rendez-vous ; un echec n'empeche jamais l'operation.
+     * Dans une transaction, l'envoi attend la validation (un SMS ne s'annule pas) : si la transaction est
+     * annulee (ex. suppression Keycloak refusee), aucun SMS ne part.
+     */
     private void smsPatient(RendezVous rdv, String texte) {
         if (sms == null || comptes == null || !sms.disponible()) {
             return;
         }
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    envoyerSmsPatient(rdv, texte);
+                }
+            });
+        } else {
+            envoyerSmsPatient(rdv, texte);
+        }
+    }
+
+    private void envoyerSmsPatient(RendezVous rdv, String texte) {
         try {
             String tel = comptes.infos(rdv.patientId()).map(ComptesUtilisateurs.InfosCompte::telephone)
                     .map(EnvoiSms::normaliser).orElse(null);
