@@ -12,7 +12,6 @@ import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -71,32 +70,110 @@ public class RappelService {
         this.profils = profils;
     }
 
+    /** Nombre maximal d'envois SMS refuses par la passerelle avant d'abandonner un rendez-vous. */
+    public static final int MAX_ECHECS_SMS = 5;
+
+    private int smsEnEchec;
+
     /**
      * Envoie le rappel de chaque rendez-vous confirme, sans rappel deja envoye, qui commence entre
-     * maintenant et maintenant + 24 h, et le marque ; renvoie le nombre de rappels envoyes.
+     * maintenant et maintenant + 24 h ; renvoie le nombre de rappels envoyes. Pas de transaction globale :
+     * chaque rendez-vous est marque et enregistre seul AVANT l'envoi (un echec d'enregistrement n'annule pas
+     * les autres, et un SMS parti n'est jamais renvoye). Un SMS refuse par la passerelle est repris aux
+     * passages suivants (jusqu'a {@link #MAX_ECHECS_SMS} echecs) tant que le rendez-vous est a venir.
      */
-    @Transactional
     public int executer() {
         Instant maintenant = horloge.instant();
         smsEnvoyes = 0;
         courrielsEnvoyes = 0;
-        List<RendezVous> aRappeler = rendezVous.confirmesSansRappelEntre(maintenant, maintenant.plus(HORIZON));
-        for (RendezVous rdv : aRappeler) {
+        smsEnEchec = 0;
+        Instant fin = maintenant.plus(HORIZON);
+        int total = 0;
+        // Reprises d'abord : un SMS qui vient d'echouer dans ce passage n'est pas retente aussitot.
+        int repris = reprendreSmsEnEchec(maintenant, fin);
+        for (RendezVous rdv : rendezVous.confirmesSansRappelEntre(maintenant, fin)) {
             if (rdv.patientId() == null) {
                 continue; // rendez-vous pris par telephone : aucun compte, aucun envoi
             }
-            notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
-                    "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
-                            + ". Pensez à vous présenter 10 minutes en avance.", "/mes-rendez-vous");
-            envoyerHorsApplication(rdv);
-            rdv.marquerRappelEnvoye(maintenant);
-            rendezVous.enregistrer(rdv);
+            try {
+                rdv.marquerRappelEnvoye(maintenant);
+                rendezVous.enregistrer(rdv); // transaction courte, validee avant tout envoi
+            } catch (RuntimeException e) {
+                log.warn("Rappel non enregistre pour le rendez-vous {} (reessai au prochain passage) : {}", rdv.id(), e.getMessage());
+                continue;
+            }
+            total++;
+            try {
+                notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
+                        "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
+                                + ". Pensez à vous présenter 10 minutes en avance.", "/mes-rendez-vous");
+            } catch (RuntimeException e) {
+                log.warn("Notification de rappel non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+            }
+            try {
+                envoyerHorsApplication(rdv);
+            } catch (RuntimeException e) {
+                log.warn("Rappel hors application en erreur pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+            }
         }
-        int total = (int) aRappeler.stream().filter(r -> r.patientId() != null).count();
         if (total > 0) {
             log.info("Rappels : {} rendez-vous rappelés, dont {} par SMS et {} par e-mail.", total, smsEnvoyes, courrielsEnvoyes);
         }
+        if (smsEnEchec > 0) {
+            log.warn("Rappels : {} SMS en échec ce passage (dont {} repris avec succès) ; reprise au prochain passage, abandon après {} échecs.",
+                    smsEnEchec, repris, MAX_ECHECS_SMS);
+        }
         return total;
+    }
+
+    /** Reprend les SMS refuses (rendez-vous a venir, moins de MAX_ECHECS_SMS echecs) ; renvoie le nombre reussis. */
+    private int reprendreSmsEnEchec(Instant maintenant, Instant fin) {
+        if (sms == null || comptes == null || !sms.disponible()) {
+            return 0;
+        }
+        int reussis = 0;
+        for (RendezVous rdv : rendezVous.confirmesAvecSmsAReprendre(maintenant, fin, MAX_ECHECS_SMS)) {
+            if (rdv.patientId() == null) {
+                continue;
+            }
+            try {
+                String tel = telephone(rdv.patientId(), infos(rdv));
+                if (tel == null) {
+                    rdv.marquerSmsEnvoye(); // plus de numero : rien a reprendre
+                } else {
+                    sms.envoyer(tel, texteSms(FormatDate.lisible(rdv.debut())));
+                    smsEnvoyes++;
+                    reussis++;
+                    rdv.marquerSmsEnvoye();
+                }
+            } catch (RuntimeException e) {
+                smsEnEchec++;
+                rdv.marquerSmsEnEchec();
+                log.warn("Reprise du SMS de rappel en échec pour le rendez-vous {} (échec {}/{}) : {}",
+                        rdv.id(), rdv.smsEchecs(), MAX_ECHECS_SMS, e.getMessage());
+            }
+            try {
+                rendezVous.enregistrer(rdv);
+            } catch (RuntimeException e) {
+                log.warn("Etat du SMS non enregistre pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+            }
+        }
+        return reussis;
+    }
+
+    private Optional<ComptesUtilisateurs.InfosCompte> infos(RendezVous rdv) {
+        try {
+            if (comptes != null) {
+                return comptes.infos(rdv.patientId());
+            }
+        } catch (RuntimeException e) {
+            log.warn("Compte du patient introuvable pour le rappel du rendez-vous {} : {}", rdv.id(), e.getMessage());
+        }
+        return Optional.empty();
+    }
+
+    private static String texteSms(String date) {
+        return "Ndawik : rappel de votre rendez-vous le " + date + ". Pour annuler : tabibi.doctor/mes-rendez-vous";
     }
 
     /** SMS et e-mail de rappel ; un echec (coordonnee absente, passerelle) n'empeche jamais la notification ni les autres rappels. */
@@ -106,17 +183,10 @@ public class RappelService {
         if (!smsPossible && !courrielPossible) {
             return;
         }
-        Optional<ComptesUtilisateurs.InfosCompte> compte = Optional.empty();
-        try {
-            if (comptes != null) {
-                compte = comptes.infos(rdv.patientId());
-            }
-        } catch (RuntimeException e) {
-            log.warn("Compte du patient introuvable pour le rappel du rendez-vous {} : {}", rdv.id(), e.getMessage());
-        }
+        Optional<ComptesUtilisateurs.InfosCompte> compte = infos(rdv);
         String date = FormatDate.lisible(rdv.debut());
         if (smsPossible) {
-            envoyerSms(rdv.id(), telephone(rdv.patientId(), compte), date);
+            envoyerSms(rdv, telephone(rdv.patientId(), compte), date);
         }
         String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
         if (courrielPossible && email != null) {
@@ -145,16 +215,23 @@ public class RappelService {
         return tel;
     }
 
-    private void envoyerSms(UUID rdvId, String tel, String date) {
+    /** Envoie le SMS ; s'il est refuse, le rendez-vous est marque « SMS en echec » (repris au prochain passage). */
+    private void envoyerSms(RendezVous rdv, String tel, String date) {
         if (tel == null) {
             return;
         }
         try {
-            sms.envoyer(tel, "Ndawik : rappel de votre rendez-vous le " + date
-                    + ". Pour annuler : tabibi.doctor/mes-rendez-vous");
+            sms.envoyer(tel, texteSms(date));
             smsEnvoyes++;
         } catch (RuntimeException e) {
-            log.warn("Rappel SMS non envoye pour le rendez-vous {} : {}", rdvId, e.getMessage());
+            smsEnEchec++;
+            log.warn("Rappel SMS non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+            rdv.marquerSmsEnEchec();
+            try {
+                rendezVous.enregistrer(rdv);
+            } catch (RuntimeException e2) {
+                log.warn("Echec du SMS non enregistre pour le rendez-vous {} : {}", rdv.id(), e2.getMessage());
+            }
         }
     }
 }

@@ -206,4 +206,87 @@ class RappelServiceTest {
         assertThat(service.executer()).isEqualTo(0);
         assertThat(notifieur.appels).isEmpty();
     }
+
+    /** Passerelle SMS commandable : echoue tant que {@code panne} est vrai. */
+    static class SmsCommandable implements dz.tabibi.backend.rappels.domain.EnvoiSms {
+        boolean panne = true;
+        int tentatives;
+        final List<String> envoyes = new ArrayList<>();
+        public boolean disponible() { return true; }
+        public void envoyer(String tel, String texte) {
+            tentatives++;
+            if (panne) throw new IllegalStateException("ERR credit epuise");
+            envoyes.add(tel);
+        }
+    }
+
+    @Test
+    void un_sms_en_echec_est_marque_puis_repris_au_passage_suivant_sans_renvoyer_la_notification() {
+        RendezVous rdv = confirmeDans(Duration.ofHours(2));
+        SmsCommandable passerelle = new SmsCommandable();
+        service.setSms(passerelle, new dz.tabibi.backend.commun.FauxComptes().avec(rdv.patientId(), "A", null, "0550123456"));
+
+        service.executer();
+        assertThat(recharge(rdv).rappelEnvoye()).isTrue();
+        assertThat(recharge(rdv).smsAReprendre()).isTrue();
+        assertThat(recharge(rdv).smsEchecs()).isEqualTo(1);
+
+        passerelle.panne = false;
+        assertThat(service.executer()).isEqualTo(0);
+
+        assertThat(passerelle.envoyes).containsExactly("+213550123456");
+        assertThat(recharge(rdv).smsAReprendre()).isFalse();
+        assertThat(notifieur.appels).hasSize(1);
+
+        service.executer();
+        assertThat(passerelle.tentatives).isEqualTo(2);
+    }
+
+    @Test
+    void la_reprise_du_sms_s_arrete_apres_le_nombre_maximal_d_echecs() {
+        RendezVous rdv = confirmeDans(Duration.ofHours(2));
+        SmsCommandable passerelle = new SmsCommandable();
+        service.setSms(passerelle, new dz.tabibi.backend.commun.FauxComptes().avec(rdv.patientId(), "A", null, "0550123456"));
+
+        for (int i = 0; i < RappelService.MAX_ECHECS_SMS + 3; i++) {
+            service.executer();
+        }
+
+        assertThat(passerelle.tentatives).isEqualTo(RappelService.MAX_ECHECS_SMS);
+        assertThat(recharge(rdv).smsEchecs()).isEqualTo(RappelService.MAX_ECHECS_SMS);
+    }
+
+    @Test
+    void un_echec_d_enregistrement_du_second_rendezvous_laisse_le_premier_marque_et_non_renvoye() {
+        RendezVous premier = confirmeDans(Duration.ofHours(2));
+        RendezVous second = confirmeDans(Duration.ofHours(3));
+        boolean[] panne = {true};
+        RendezVousRepository base = rendezVous;
+        RendezVousRepository fragile = new EnMemoireRendezVousRepository() {
+            @Override
+            public RendezVous enregistrer(RendezVous r) {
+                if (panne[0] && r.id().equals(second.id())) throw new IllegalStateException("base indisponible");
+                return base.enregistrer(r);
+            }
+            @Override
+            public List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a) {
+                // Copies, comme une relecture en base : un echec d'enregistrement ne laisse aucune trace.
+                return base.confirmesSansRappelEntre(de, a).stream()
+                        .map(r -> new RendezVous(r.id(), r.patientId(), r.medecinId(), r.debut(), r.statut(),
+                                r.creneauId(), r.rappelEnvoyeLe()))
+                        .toList();
+            }
+        };
+        RappelService svc = new RappelService(fragile, notifieur, Clock.fixed(MAINTENANT, ZoneOffset.UTC));
+
+        assertThat(svc.executer()).isEqualTo(1);
+        assertThat(recharge(premier).rappelEnvoye()).isTrue();
+        assertThat(recharge(second).rappelEnvoye()).isFalse();
+
+        panne[0] = false;
+        assertThat(svc.executer()).isEqualTo(1);
+
+        assertThat(notifieur.pour(premier.patientId())).hasSize(1);
+        assertThat(notifieur.pour(second.patientId())).hasSize(1);
+    }
 }

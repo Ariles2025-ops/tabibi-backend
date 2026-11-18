@@ -27,6 +27,12 @@ public interface RendezVousRepository {
      */
     List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a);
 
+    /**
+     * Rendez-vous confirmes dont le SMS de rappel a echoue (moins de {@code maxEchecs} fois) et dont le
+     * debut est dans [de, a[ : a reprendre.
+     */
+    List<RendezVous> confirmesAvecSmsAReprendre(Instant de, Instant a, int maxEchecs);
+
     /** Rendez-vous encore confirmes dont le debut est strictement avant l'instant donne. */
     List<RendezVous> confirmesDebutantAvant(Instant limite);
 }
