@@ -28,10 +28,19 @@ public class JpaMedecinRepository implements MedecinRepository {
     }
 
     @Override
-    public List<Medecin> rechercher(CritereRecherche c) {
-        String motif = c.texte() == null ? "%" : "%" + c.texte().toLowerCase(Locale.ROOT) + "%";
-        return jpa.rechercher(c.specialite(), c.wilaya(), c.commune(), motif, java.time.Instant.now(), PageRequest.of(0, RESULTATS_MAX))
+    public List<Medecin> rechercher(CritereRecherche c, int page, int taille) {
+        return jpa.rechercher(c.specialite(), c.wilaya(), c.commune(), motif(c), java.time.Instant.now(),
+                        PageRequest.of(Math.max(0, page), Math.min(Math.max(1, taille), RESULTATS_MAX)))
                 .stream().map(MedecinEntity::versDomaine).toList();
+    }
+
+    @Override
+    public long compter(CritereRecherche c) {
+        return jpa.compter(c.specialite(), c.wilaya(), c.commune(), motif(c));
+    }
+
+    private static String motif(CritereRecherche c) {
+        return c.texte() == null ? "%" : "%" + c.texte().toLowerCase(Locale.ROOT) + "%";
     }
 
     @Override

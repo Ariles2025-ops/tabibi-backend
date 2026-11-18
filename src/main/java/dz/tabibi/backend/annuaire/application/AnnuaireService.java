@@ -25,6 +25,14 @@ public class AnnuaireService {
         return repository.rechercher(critere);
     }
 
+    public List<Medecin> rechercher(CritereRecherche critere, int page, int taille) {
+        return repository.rechercher(critere, page, taille);
+    }
+
+    public long compter(CritereRecherche critere) {
+        return repository.compter(critere);
+    }
+
     /**
      * Fiche d'un praticien. Un ancien identifiant (fiche importee puis reclamee par le praticien) mene a la
      * fiche actuelle, qui porte son nouvel identifiant : les adresses deja indexees restent valables.

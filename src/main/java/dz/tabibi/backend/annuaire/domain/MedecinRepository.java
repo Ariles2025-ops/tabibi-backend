@@ -7,7 +7,19 @@ import java.util.UUID;
 /** Port de l'annuaire : lecture publique, publication d'un praticien (candidature validee). */
 public interface MedecinRepository {
 
-    List<Medecin> rechercher(CritereRecherche critere);
+    /** Taille de page maximale d'une recherche. */
+    int TAILLE_MAX = 50;
+
+    /** Premiere page (au plus {@link #TAILLE_MAX} fiches). */
+    default List<Medecin> rechercher(CritereRecherche critere) {
+        return rechercher(critere, 0, TAILLE_MAX);
+    }
+
+    /** Une page de resultats (numero a partir de 0), dans un ordre stable : reservables d'abord. */
+    List<Medecin> rechercher(CritereRecherche critere, int page, int taille);
+
+    /** Nombre total de fiches correspondant au critere. */
+    long compter(CritereRecherche critere);
 
     /** Une commune d'une wilaya pour une specialite, avec son nombre de fiches. */
     record CommuneNombre(String slug, String nom, long nombre) {}

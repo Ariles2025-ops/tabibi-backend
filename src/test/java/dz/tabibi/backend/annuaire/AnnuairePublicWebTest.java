@@ -38,6 +38,18 @@ class AnnuairePublicWebTest {
     }
 
     @Test
+    void recherche_transmet_la_page_et_renvoie_le_total_en_entete() throws Exception {
+        when(service.rechercher(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(1),
+                org.mockito.ArgumentMatchers.eq(50))).thenReturn(List.of());
+        when(service.compter(org.mockito.ArgumentMatchers.any())).thenReturn(120L);
+        mvc.perform(get("/api/medecins?specialite=generaliste&wilaya=16&page=1&taille=500"))
+           .andExpect(status().isOk())
+           .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Total-Count", "120"));
+        org.mockito.Mockito.verify(service).rechercher(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(1), org.mockito.ArgumentMatchers.eq(50));
+    }
+
+    @Test
     void communes_accessibles_sans_jeton() throws Exception {
         when(service.communes("cardiologue", "16")).thenReturn(List.of(
                 new dz.tabibi.backend.annuaire.domain.MedecinRepository.CommuneNombre("bab-ezzouar", "Bab Ezzouar", 8)));

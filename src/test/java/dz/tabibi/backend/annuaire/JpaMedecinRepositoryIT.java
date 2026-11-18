@@ -60,6 +60,25 @@ class JpaMedecinRepositoryIT {
     }
 
     @Test
+    void pagination_stable_sans_doublon_avec_total() {
+        for (int i = 0; i < 120; i++) {
+            repository.enregistrer(new Medecin(UUID.randomUUID(), "Dr Page " + i,
+                    "generaliste-pg", "Généraliste", "16", "Alger", null));
+        }
+        var critere = CritereRecherche.de("generaliste-pg", "16", null);
+        var p0 = repository.rechercher(critere, 0, 50);
+        var p1 = repository.rechercher(critere, 1, 50);
+        var p2 = repository.rechercher(critere, 2, 50);
+
+        assertThat(p0).hasSize(50);
+        assertThat(p1).hasSize(50);
+        assertThat(p2).hasSize(20);
+        assertThat(repository.compter(critere)).isEqualTo(120);
+        assertThat(java.util.stream.Stream.of(p0, p1, p2).flatMap(java.util.List::stream).map(Medecin::id).distinct())
+                .hasSize(120);
+    }
+
+    @Test
     void commune_filtree_avant_la_limite_et_liste_des_communes() {
         for (int i = 0; i < 60; i++) {
             repository.enregistrer(new Medecin(UUID.randomUUID(), "Dr Aaa " + i,
