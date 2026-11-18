@@ -101,6 +101,22 @@ public class RendezVousController {
         return service.agendaDuMedecin(identifiant(jwt)).stream().map(RendezVousVue::de).toList();
     }
 
+    /** Corps de la prise de rendez-vous par telephone ; le motif est facultatif. */
+    public record DemandeRendezVousTelephone(UUID creneauId, String nomPatient, String telephonePatient, String motif) {}
+
+    /**
+     * Le medecin (sans secretaire) prend un rendez-vous pour un patient qui a appele (sans compte) dans son propre
+     * agenda : source TELEPHONE, aucun message envoye (400 si invalide, 404 creneau absent ou d'un autre medecin, 409 pris).
+     */
+    @PostMapping("/api/medecin/rendezvous")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<RendezVousVue> prendreParTelephone(@RequestBody DemandeRendezVousTelephone demande,
+                                                             @AuthenticationPrincipal Jwt jwt) {
+        RendezVous rdv = service.prendreParTelephone(identifiant(jwt), demande.creneauId(),
+                demande.nomPatient(), demande.telephonePatient(), demande.motif());
+        return ResponseEntity.status(HttpStatus.CREATED).body(RendezVousVue.de(rdv));
+    }
+
     /** Le patient est venu : le medecin marque le rendez-vous HONORE (409 s'il n'etait pas confirme). */
     @PostMapping("/api/rendezvous/{id}/honorer")
     @PreAuthorize("hasRole('MEDECIN')")
