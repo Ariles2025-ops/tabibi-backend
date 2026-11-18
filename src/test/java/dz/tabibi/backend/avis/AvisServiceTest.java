@@ -70,6 +70,18 @@ class AvisServiceTest {
     }
 
     @Test
+    void accepte_un_avis_sur_un_rendezvous_clos_automatiquement() {
+        RendezVous rdv = rendezVous.enregistrer(RendezVous.confirmer(PATIENT, MEDECIN, DEBUT));
+        new dz.tabibi.backend.rendezvous.application.ClotureRendezVousService(rendezVous,
+                java.time.Clock.fixed(DEBUT.plus(java.time.Duration.ofHours(30)), java.time.ZoneOffset.UTC))
+                .cloturerLesRendezVousPasses();
+
+        Avis a = service.deposer(PATIENT, rdv.id(), 4, null);
+
+        assertThat(a.statut()).isEqualTo(StatutAvis.PUBLIE);
+    }
+
+    @Test
     void refuse_une_note_hors_bornes_ou_un_commentaire_trop_long() {
         RendezVous rdv = honore(PATIENT, MEDECIN);
 

@@ -26,4 +26,7 @@ public interface RendezVousRepository {
      * l'intervalle [de, a[, du plus proche au plus lointain.
      */
     List<RendezVous> confirmesSansRappelEntre(Instant de, Instant a);
+
+    /** Rendez-vous encore confirmes dont le debut est strictement avant l'instant donne. */
+    List<RendezVous> confirmesDebutantAvant(Instant limite);
 }

@@ -16,4 +16,7 @@ interface RendezVousJpa extends JpaRepository<RendezVousEntity, UUID> {
     /** Rendez-vous d'un statut, sans rappel envoye, dont le debut est dans [de, a[, du plus proche au plus lointain. */
     List<RendezVousEntity> findByStatutAndRappelEnvoyeLeIsNullAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
             StatutRdv statut, Instant de, Instant a);
+
+    /** Rendez-vous d'un statut dont le debut est strictement avant la limite. */
+    List<RendezVousEntity> findByStatutAndDebutLessThanOrderByDebut(StatutRdv statut, Instant limite);
 }
