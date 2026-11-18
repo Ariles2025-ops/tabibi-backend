@@ -186,6 +186,19 @@ class CabinetServiceTest {
     }
 
     @Test
+    void annuler_une_invitation_en_attente_previent_par_invitation_annulee() {
+        Rattachement r = service.rattacher(MEDECIN, SECRETAIRE);
+
+        service.retirer(MEDECIN, r.id());
+
+        assertThat(rattachements.parId(r.id())).isEmpty();
+        assertThat(notifieur.pour(SECRETAIRE)).hasSize(2);
+        assertThat(notifieur.pour(SECRETAIRE).get(1).sujet()).isEqualTo("Invitation annulée");
+        assertThat(notifieur.pour(SECRETAIRE).get(1).message())
+                .isEqualTo("Le médecin a annulé son invitation à rejoindre son cabinet.");
+    }
+
+    @Test
     void retirer_est_refuse_a_un_autre_medecin_et_pour_un_rattachement_inconnu() {
         Rattachement r = lier(MEDECIN, SECRETAIRE);
 
