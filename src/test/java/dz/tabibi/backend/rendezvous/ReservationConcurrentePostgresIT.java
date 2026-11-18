@@ -97,6 +97,37 @@ class ReservationConcurrentePostgresIT {
     }
 
     @Test
+    void meme_patient_deux_creneaux_du_meme_medecin_en_parallele_un_seul_reussit() throws Exception {
+        UUID medecin = UUID.randomUUID();
+        UUID patient = UUID.randomUUID();
+        Instant base = Instant.now().plus(4, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES);
+        CountDownLatch depart = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Future<RendezVous>> essais = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            Creneau c = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecin, base.plus(i + 1, ChronoUnit.HOURS), 20, true));
+            essais.add(pool.submit(() -> {
+                depart.await();
+                return service.reserverCreneau(patient, c.id());
+            }));
+        }
+        depart.countDown();
+        int reussites = 0;
+        for (Future<RendezVous> essai : essais) {
+            try {
+                essai.get(30, TimeUnit.SECONDS);
+                reussites++;
+            } catch (ExecutionException e) {
+                assertThat(e.getCause()).isInstanceOf(CreneauDejaReserveException.class);
+            }
+        }
+        pool.shutdownNow();
+
+        assertThat(reussites).isEqualTo(1);
+        assertThat(rendezVous.parPatient(patient)).hasSize(1);
+    }
+
+    @Test
     void deux_deplacements_vers_le_meme_creneau_un_seul_reussit_et_l_autre_ne_change_rien() throws Exception {
         UUID medecin = UUID.randomUUID();
         Instant base = Instant.now().plus(3, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES);

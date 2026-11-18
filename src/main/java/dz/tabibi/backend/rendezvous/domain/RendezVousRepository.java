@@ -35,4 +35,12 @@ public interface RendezVousRepository {
 
     /** Rendez-vous encore confirmes dont le debut est strictement avant l'instant donne. */
     List<RendezVous> confirmesDebutantAvant(Instant limite);
+
+    /**
+     * Serialise, jusqu'a la fin de la transaction en cours, les reservations d'un meme patient (verrou consultatif) :
+     * les regles « un RDV a venir par medecin » et « pas de chevauchement » se verifient alors sans course.
+     * Sans effet pour un adaptateur monoprocessus.
+     */
+    default void verrouillerPatient(UUID patientId) {
+    }
 }
