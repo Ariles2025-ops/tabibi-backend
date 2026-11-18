@@ -135,8 +135,13 @@ public class CabinetService {
             throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.");
         }
         rattachements.supprimer(rattachement.id());
-        notifieur.notifier(rattachement.secretaireId(), "Rattachement retiré",
-                "Un médecin a retiré votre rattachement à son cabinet.");
+        if (rattachement.accepte()) {
+            notifieur.notifier(rattachement.secretaireId(), "Rattachement retiré",
+                    "Un médecin a retiré votre rattachement à son cabinet.");
+        } else {
+            notifieur.notifier(rattachement.secretaireId(), "Invitation annulée",
+                    "Le médecin a annulé son invitation à rejoindre son cabinet.");
+        }
         return rattachement.secretaireId();
     }
 
