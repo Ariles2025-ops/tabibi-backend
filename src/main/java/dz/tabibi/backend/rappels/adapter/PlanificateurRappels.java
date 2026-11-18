@@ -28,7 +28,12 @@ public class PlanificateurRappels {
     /** Toutes les heures, a l'heure pile. */
     @Scheduled(cron = "0 0 * * * *")
     public void executer() {
-        int nombre = service.executer();
-        LOG.info("Rappels de rendez-vous : {} envoye(s).", nombre);
+        try {
+            int nombre = service.executer();
+            LOG.info("Rappels de rendez-vous : {} envoye(s).", nombre);
+        } catch (RuntimeException e) {
+            // Alerte lisible par le rapport du matin (WARN/ERROR), sans patient ni date.
+            LOG.error("Rappels de rendez-vous : passage en erreur, reprise a l'heure suivante : {}", e.toString());
+        }
     }
 }

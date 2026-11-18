@@ -58,6 +58,13 @@ public class JpaRendezVousRepository implements RendezVousRepository {
     }
 
     @Override
+    public List<RendezVous> confirmesAvecSmsAReprendre(Instant de, Instant a, int maxEchecs) {
+        return jpa.findByStatutAndSmsAReprendreTrueAndSmsEchecsLessThanAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
+                        StatutRdv.CONFIRME, maxEchecs, de, a)
+                .stream().map(RendezVousEntity::versDomaine).toList();
+    }
+
+    @Override
     public List<RendezVous> confirmesDebutantAvant(Instant limite) {
         return jpa.findByStatutAndDebutLessThanOrderByDebut(StatutRdv.CONFIRME, limite)
                 .stream().map(RendezVousEntity::versDomaine).toList();

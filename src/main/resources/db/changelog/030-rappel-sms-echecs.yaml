@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-rappel-sms-echecs
+      author: tabibi
+      changes:
+        - addColumn:
+            tableName: rendez_vous
+            columns:
+              - column: { name: sms_echecs, type: int, defaultValueNumeric: 0, constraints: { nullable: false } }
+              - column: { name: sms_a_reprendre, type: boolean, defaultValueBoolean: false, constraints: { nullable: false } }

@@ -62,6 +62,15 @@ public class EnMemoireRendezVousRepository implements RendezVousRepository {
     }
 
     @Override
+    public List<RendezVous> confirmesAvecSmsAReprendre(Instant de, Instant a, int maxEchecs) {
+        return parId.values().stream()
+                .filter(r -> r.statut() == StatutRdv.CONFIRME && r.smsAReprendre() && r.smsEchecs() < maxEchecs)
+                .filter(r -> !r.debut().isBefore(de) && r.debut().isBefore(a))
+                .sorted(Comparator.comparing(RendezVous::debut))
+                .toList();
+    }
+
+    @Override
     public List<RendezVous> confirmesDebutantAvant(Instant limite) {
         return parId.values().stream()
                 .filter(r -> r.statut() == StatutRdv.CONFIRME && r.debut().isBefore(limite))

@@ -17,6 +17,10 @@ interface RendezVousJpa extends JpaRepository<RendezVousEntity, UUID> {
     List<RendezVousEntity> findByStatutAndRappelEnvoyeLeIsNullAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
             StatutRdv statut, Instant de, Instant a);
 
+    /** Rendez-vous d'un statut dont le SMS de rappel est a reprendre (moins de {@code max} echecs), debut dans [de, a[. */
+    List<RendezVousEntity> findByStatutAndSmsAReprendreTrueAndSmsEchecsLessThanAndDebutGreaterThanEqualAndDebutLessThanOrderByDebut(
+            StatutRdv statut, int max, Instant de, Instant a);
+
     /** Rendez-vous d'un statut dont le debut est strictement avant la limite. */
     List<RendezVousEntity> findByStatutAndDebutLessThanOrderByDebut(StatutRdv statut, Instant limite);
 }

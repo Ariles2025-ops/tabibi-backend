@@ -28,6 +28,10 @@ public class RendezVous {
     private String telephonePatient;
     /** Motif facultatif saisi par le cabinet (rendez-vous pris par telephone). */
     private String motif;
+    /** Nombre d'envois SMS de rappel refuses par la passerelle (0 si aucun echec). */
+    private int smsEchecs;
+    /** Vrai tant que le SMS de rappel a echoue et doit etre repris (tant que le rendez-vous est a venir). */
+    private boolean smsAReprendre;
 
     public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut) {
         this(id, patientId, medecinId, debut, statut, null);
@@ -45,6 +49,15 @@ public class RendezVous {
     public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut, UUID creneauId,
                       Instant rappelEnvoyeLe, SourceRdv source, String nomPatient, String telephonePatient,
                       String motif) {
+        this(id, patientId, medecinId, debut, statut, creneauId, rappelEnvoyeLe, source, nomPatient,
+                telephonePatient, motif, 0, false);
+    }
+
+    public RendezVous(UUID id, UUID patientId, UUID medecinId, Instant debut, StatutRdv statut, UUID creneauId,
+                      Instant rappelEnvoyeLe, SourceRdv source, String nomPatient, String telephonePatient,
+                      String motif, int smsEchecs, boolean smsAReprendre) {
+        this.smsEchecs = smsEchecs;
+        this.smsAReprendre = smsAReprendre;
         this.id = id;
         this.source = source == null ? SourceRdv.APPLICATION : source;
         this.nomPatient = nomPatient;
@@ -186,6 +199,20 @@ public class RendezVous {
     public boolean rappelEnvoye() {
         return rappelEnvoyeLe != null;
     }
+
+    /** Le SMS de rappel a ete refuse : il sera repris au passage suivant. */
+    public void marquerSmsEnEchec() {
+        this.smsEchecs++;
+        this.smsAReprendre = true;
+    }
+
+    /** Le SMS de rappel est parti (ou n'est plus a envoyer) : plus de reprise. */
+    public void marquerSmsEnvoye() {
+        this.smsAReprendre = false;
+    }
+
+    public int smsEchecs() { return smsEchecs; }
+    public boolean smsAReprendre() { return smsAReprendre; }
 
     public SourceRdv source() { return source; }
     public String nomPatient() { return nomPatient; }

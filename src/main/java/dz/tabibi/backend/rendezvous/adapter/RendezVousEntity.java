@@ -56,6 +56,12 @@ class RendezVousEntity {
     @Column(name = "motif", length = 500)
     private String motif;
 
+    @Column(name = "sms_echecs", nullable = false)
+    private int smsEchecs;
+
+    @Column(name = "sms_a_reprendre", nullable = false)
+    private boolean smsAReprendre;
+
     protected RendezVousEntity() { }
 
     static RendezVousEntity de(RendezVous r) {
@@ -71,12 +77,14 @@ class RendezVousEntity {
         e.nomPatient = r.nomPatient();
         e.telephonePatient = r.telephonePatient();
         e.motif = r.motif();
+        e.smsEchecs = r.smsEchecs();
+        e.smsAReprendre = r.smsAReprendre();
         return e;
     }
 
     RendezVous versDomaine() {
         return new RendezVous(id, patientId, medecinId, debut, statut, creneauId, rappelEnvoyeLe,
-                source, nomPatient, telephonePatient, motif);
+                source, nomPatient, telephonePatient, motif, smsEchecs, smsAReprendre);
     }
 
     UUID getMedecinId() { return medecinId; }
