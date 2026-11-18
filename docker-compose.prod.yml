@@ -75,6 +75,7 @@ services:
       TABIBI_KEYCLOAK_ISSUER: https://auth.${DOMAINE}/realms/tabibi
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tabibi/protocol/openid-connect/certs
       TABIBI_CORS_ORIGINES: https://${DOMAINE}
+      TABIBI_LIMITE_LECTURES_ANNUAIRE_PAR_MINUTE: ${TABIBI_LIMITE_LECTURES_ANNUAIRE_PAR_MINUTE:-600}
       # Compte de service Keycloak qui donne le role MEDECIN a la validation d'une candidature (vide : role a donner a la main).
       TABIBI_KEYCLOAK_ADMIN_SECRET: ${TABIBI_KEYCLOAK_ADMIN_SECRET:-}
       TABIBI_TELECONSULTATION_BASE_URL: ${TABIBI_TELECONSULTATION_BASE_URL:-https://meet.jit.si}

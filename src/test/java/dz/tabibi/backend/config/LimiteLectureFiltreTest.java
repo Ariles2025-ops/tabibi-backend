@@ -2,6 +2,8 @@ package dz.tabibi.backend.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -50,5 +52,29 @@ class LimiteLectureFiltreTest {
         assertThat(lire(filtre, "/api/ordonnances/verifier/AAAA3333", "41.200.10.7")).isEqualTo(429);
         // les autres lectures d'ordonnances (connecte) ne sont pas concernees
         assertThat(lire(filtre, "/api/ordonnances/mes", "41.200.10.7")).isEqualTo(200);
+    }
+
+    @Test
+    void les_lectures_de_reservation_et_les_requetes_authentifiees_ne_sont_pas_limitees() throws Exception {
+        LimiteLectureFiltre filtre = new LimiteLectureFiltre(60);
+        for (int i = 0; i < 61; i++) {
+            assertThat(lire(filtre, "/api/medecins/42/creneaux", "41.200.10.8")).isEqualTo(200);
+            assertThat(lire(filtre, "/api/medecins/42/avis", "41.200.10.8")).isEqualTo(200);
+            assertThat(lire(filtre, "/api/medecins/42/reclamable", "41.200.10.8")).isEqualTo(200);
+        }
+        // la recherche anonyme n'est limitee qu'au-dela du seuil
+        for (int i = 0; i < 60; i++) {
+            assertThat(lire(filtre, "/api/medecins", "41.200.10.9")).isEqualTo(200);
+        }
+        assertThat(lire(filtre, "/api/medecins", "41.200.10.9")).isEqualTo(429);
+        // authentifie : pas de limite par IP
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("u", "p", "ROLE_PATIENT"));
+        try {
+            for (int i = 0; i < 70; i++) {
+                assertThat(lire(filtre, "/api/medecins", "41.200.10.9")).isEqualTo(200);
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }
