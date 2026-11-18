@@ -27,7 +27,7 @@ interface MedecinJpa extends JpaRepository<MedecinEntity, UUID> {
            order by case when exists (select c.id from CreneauEntity c
                                       where c.medecinId = m.id and c.disponible = true and c.debut > :maintenant)
                          then 0 else 1 end,
-                    case when m.nomTri = '' then 1 else 0 end, m.nomTri, m.nomComplet
+                    case when m.nomTri = '' then 1 else 0 end, m.nomTri, m.nomComplet, m.id
            """)
     List<MedecinEntity> rechercher(@Param("spec") String spec,
                                    @Param("wil") String wil,
@@ -35,6 +35,20 @@ interface MedecinJpa extends JpaRepository<MedecinEntity, UUID> {
                                    @Param("motif") String motif,
                                    @Param("maintenant") java.time.Instant maintenant,
                                    Pageable page);
+
+    /** Nombre total de fiches pour les memes filtres que {@link #rechercher}. */
+    @Query("""
+           select count(m) from MedecinEntity m
+           where ((cast(:spec as string) is null and m.specialiteSlug <> 'pharmacie')
+                  or m.specialiteSlug = cast(:spec as string))
+             and (cast(:wil as string)  is null or m.wilayaCode = cast(:wil as string))
+             and (cast(:commune as string) is null or m.villeSlug = cast(:commune as string))
+             and lower(m.nomComplet) like cast(:motif as string)
+           """)
+    long compter(@Param("spec") String spec,
+                 @Param("wil") String wil,
+                 @Param("commune") String commune,
+                 @Param("motif") String motif);
 
     /** Lignes (slug, nom d'affichage, nombre, nom de wilaya en slug-brut) des communes ayant au moins {@code minimum} fiches. */
     @Query("""

@@ -48,6 +48,20 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
 
     @Override
     public List<Medecin> rechercher(CritereRecherche c) {
+        return correspondants(c).toList();
+    }
+
+    @Override
+    public List<Medecin> rechercher(CritereRecherche c, int page, int taille) {
+        return correspondants(c).skip((long) page * taille).limit(taille).toList();
+    }
+
+    @Override
+    public long compter(CritereRecherche c) {
+        return correspondants(c).count();
+    }
+
+    private java.util.stream.Stream<Medecin> correspondants(CritereRecherche c) {
         return parId.values().stream()
                 .filter(m -> c.specialite() == null
                         ? !PHARMACIE.equalsIgnoreCase(m.specialiteSlug())
@@ -56,8 +70,7 @@ public class EnMemoireMedecinRepository implements MedecinRepository {
                 .filter(m -> c.commune() == null || c.commune().equals(Medecin.slugCommune(m.ville())))
                 .filter(m -> c.texte() == null
                         || m.nomComplet().toLowerCase(Locale.ROOT).contains(c.texte().toLowerCase(Locale.ROOT)))
-                .sorted(PAR_NOM)
-                .toList();
+                .sorted(PAR_NOM.thenComparing(Medecin::id));
     }
 
     @Override

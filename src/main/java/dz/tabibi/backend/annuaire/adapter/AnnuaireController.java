@@ -40,16 +40,24 @@ public class AnnuaireController {
     }
 
     @GetMapping("/api/medecins")
-    public List<MedecinVue> rechercher(
+    public ResponseEntity<List<MedecinVue>> rechercher(
             @RequestParam(required = false) String specialite,
             @RequestParam(required = false) String wilaya,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String commune) {
-        // Les medecins reservables en ligne passent en tete (ordre d'origine conserve dans chaque groupe).
-        return service.rechercher(CritereRecherche.de(specialite, wilaya, q, commune)).stream()
+            @RequestParam(required = false) String commune,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int taille) {
+        CritereRecherche critere = CritereRecherche.de(specialite, wilaya, q, commune);
+        int numero = Math.max(0, page);
+        int limite = Math.min(Math.max(1, taille), dz.tabibi.backend.annuaire.domain.MedecinRepository.TAILLE_MAX);
+        // Les medecins reservables en ligne passent en tete (deja garanti entre pages par le tri du depot).
+        List<MedecinVue> vues = service.rechercher(critere, numero, limite).stream()
                 .map(m -> MedecinVue.de(m, creneaux != null && !creneaux.disponiblesPour(m.id()).isEmpty()))
                 .sorted(java.util.Comparator.comparing((MedecinVue v) -> !v.reservable()))
                 .toList();
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(service.compter(critere)))
+                .body(vues);
     }
 
     public record CommuneVue(String slug, String nom, long nombre) {}
