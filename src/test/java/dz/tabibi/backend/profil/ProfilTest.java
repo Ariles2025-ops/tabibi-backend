@@ -46,6 +46,13 @@ class ProfilTest {
     }
 
     @Test
+    void renseigner_refuse_le_nom_reserve_des_comptes_supprimes() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> renseigne(new DemandeProfil(" Compte supprimé ", null, null, null, null)))
+                .isInstanceOf(ProfilInvalideException.class);
+    }
+
+    @Test
     void renseigner_nettoie_les_espaces_et_vide_les_champs_facultatifs_blancs() {
         Profil p = renseigne(new DemandeProfil("  Amina Belkacem ", "0550 12 34 56", null, "  ", " "));
 

@@ -59,6 +59,16 @@ class CreneauServiceTest {
     }
 
     @Test
+    void refuse_un_creneau_a_plus_de_six_mois() {
+        UUID medecin = UUID.randomUUID();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> service.ouvrir(medecin, Instant.now().plus(200, ChronoUnit.DAYS), 30))
+                .isInstanceOf(CreneauInvalideException.class);
+        assertThat(service.ouvrir(medecin, Instant.now().plus(170, ChronoUnit.DAYS), 30)).isNotNull();
+    }
+
+    @Test
     void ouvre_un_creneau_futur_propose_aux_patients() {
         UUID medecin = UUID.randomUUID();
         Instant debut = Instant.now().plus(2, ChronoUnit.DAYS);
