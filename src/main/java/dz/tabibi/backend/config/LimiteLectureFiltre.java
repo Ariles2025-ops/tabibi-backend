@@ -4,6 +4,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -16,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Anti-copie de l'annuaire (et anti-essais de codes d'ordonnance) : au plus {@code maxParMinute} lectures de
  * /api/medecins… et /api/ordonnances/verifier/… par adresse IP et par minute
  * (429 au-dela). Un visiteur humain n'en fait que quelques-unes ; un robot qui aspire les 75 000 fiches est freine.
+ * Les lectures de reservation (creneaux, avis, reclamable) et les requetes authentifiees ne sont pas limitees.
  * Les adresses du reseau interne (rendu serveur du site, donc aussi les robots des moteurs de recherche qui lisent
  * les pages rendues) ne sont pas limitees. L'adresse du client est celle reconstituee par Tomcat depuis
  * X-Forwarded-For (proxies internes de confiance : Caddy). Fenetre fixe d'une minute, en memoire.
@@ -35,7 +39,21 @@ public class LimiteLectureFiltre extends OncePerRequestFilter {
         String chemin = requete.getRequestURI();
         return maxParMinute <= 0 || !"GET".equals(requete.getMethod())
                 || chemin == null || !(chemin.startsWith("/api/medecins") || chemin.startsWith("/api/ordonnances/verifier"))
+                || estLectureReservation(chemin)
+                || estAuthentifie()
                 || estInterne(requete.getRemoteAddr());
+    }
+
+    /** Lectures necessaires a la reservation : jamais limitees par IP (CGNAT des operateurs mobiles). */
+    static boolean estLectureReservation(String chemin) {
+        return chemin.startsWith("/api/medecins/")
+                && (chemin.endsWith("/creneaux") || chemin.endsWith("/avis") || chemin.endsWith("/reclamable"));
+    }
+
+    /** Requete authentifiee (jeton valide, verifie avant ce filtre) : non limitee par IP. */
+    private static boolean estAuthentifie() {
+        Authentication a = SecurityContextHolder.getContext().getAuthentication();
+        return a != null && a.isAuthenticated() && !(a instanceof AnonymousAuthenticationToken);
     }
 
     @Override
