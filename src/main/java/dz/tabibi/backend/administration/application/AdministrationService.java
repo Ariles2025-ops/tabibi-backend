@@ -75,6 +75,68 @@ public class AdministrationService {
         this.listeAttente = listeAttente;
     }
 
+    /** Rendez-vous : la suspension annule les rendez-vous a venir et supprime les creneaux libres. */
+    private dz.tabibi.backend.rendezvous.application.RendezVousService rendezVous;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setRendezVous(dz.tabibi.backend.rendezvous.application.RendezVousService rendezVous) {
+        this.rendezVous = rendezVous;
+    }
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AdministrationService.class);
+
+    /**
+     * Suspend un medecin valide : role MEDECIN retire, fiche retiree de l'annuaire (plus reservable), rendez-vous
+     * a venir annules « par le cabinet » (patients prevenus), creneaux libres supprimes, medecin prevenu avec le motif.
+     * Les acces de l'administrateur sont traces par le journal d'audit ; le motif est aussi journalise.
+     * @return le nombre de rendez-vous annules.
+     * @throws CandidatureInvalideException si le motif manque.
+     * @throws TransitionInvalideException si le medecin n'est pas valide ou deja suspendu.
+     */
+    @Transactional
+    public int suspendre(UUID medecinId, String motif) {
+        if (motif == null || motif.isBlank()) {
+            throw new CandidatureInvalideException("Le motif de la suspension est obligatoire.");
+        }
+        candidatureValidee(medecinId);
+        if (medecins.parId(medecinId).isEmpty()) {
+            throw new TransitionInvalideException("Ce médecin est déjà suspendu.");
+        }
+        int annules = rendezVous == null ? 0 : rendezVous.annulerAVenirDuMedecin(medecinId);
+        medecins.supprimer(medecinId);
+        if (comptes != null) {
+            comptes.retirerRole(medecinId, "MEDECIN");
+        }
+        notifieur.notifier(medecinId, "Compte suspendu",
+                "Votre compte médecin Ndawik a été suspendu. Motif : " + motif.strip(), "/medecin/candidature");
+        log.info("Medecin {} suspendu ({} rendez-vous annules). Motif : {}", medecinId, annules, motif.strip());
+        return annules;
+    }
+
+    /**
+     * Retablit un medecin suspendu : fiche republiee (telle que validee), role MEDECIN rendu, medecin prevenu.
+     * @throws TransitionInvalideException si le medecin n'est pas valide ou n'est pas suspendu.
+     */
+    @Transactional
+    public void retablir(UUID medecinId) {
+        CandidatureMedecin validee = candidatureValidee(medecinId);
+        if (medecins.parId(medecinId).isPresent()) {
+            throw new TransitionInvalideException("Ce médecin n'est pas suspendu.");
+        }
+        medecins.enregistrer(fichePublique(validee));
+        roles.accorder(medecinId);
+        notifieur.notifier(medecinId, "Compte rétabli",
+                "Votre compte médecin Ndawik est rétabli. Reconnectez-vous pour ouvrir votre espace médecin.",
+                "/medecin/agenda");
+        log.info("Medecin {} retabli.", medecinId);
+    }
+
+    private CandidatureMedecin candidatureValidee(UUID medecinId) {
+        return candidatures.derniereDuMedecin(medecinId)
+                .filter(c -> c.statut() == StatutCandidature.VALIDEE)
+                .orElseThrow(() -> new TransitionInvalideException("Ce compte n'est pas un médecin validé."));
+    }
+
     /**
      * Depose la candidature du medecin connecte. Une candidature refusee peut etre redeposee.
      * @throws CandidatureInvalideException si une donnee obligatoire manque.

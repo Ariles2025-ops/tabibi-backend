@@ -132,6 +132,23 @@ public class AdministrationController {
         return CandidatureVue.de(service.refuser(id, demande.motif()));
     }
 
+    public record Suspension(int rendezVousAnnules) {}
+
+    /** Suspension d'un medecin valide, motif obligatoire (400 sans motif, 409 si non valide ou deja suspendu). */
+    @PostMapping("/api/admin/medecins/{id}/suspendre")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Suspension suspendre(@PathVariable UUID id, @RequestBody DemandeRefus demande) {
+        return new Suspension(service.suspendre(id, demande == null ? null : demande.motif()));
+    }
+
+    /** Retablit un medecin suspendu (409 s'il n'est pas suspendu). */
+    @PostMapping("/api/admin/medecins/{id}/retablir")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> retablir(@PathVariable UUID id) {
+        service.retablir(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/api/admin/statistiques")
     @PreAuthorize("hasRole('ADMIN')")
     public StatistiquesAdministration statistiques() {

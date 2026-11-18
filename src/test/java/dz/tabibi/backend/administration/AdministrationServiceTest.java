@@ -306,4 +306,48 @@ class AdministrationServiceTest {
                 .isInstanceOf(TransitionInvalideException.class);
         assertThat(service.ficheReclamable(UUID.randomUUID())).isFalse();
     }
+
+    @Test
+    void suspendre_un_medecin_retire_role_fiche_creneaux_annule_les_rdv_et_previent_les_patients() {
+        var creneaux = new dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository();
+        var rdvs = new dz.tabibi.backend.rendezvous.adapter.EnMemoireRendezVousRepository();
+        List<UUID> prevenus = new java.util.ArrayList<>();
+        var rendezVous = new dz.tabibi.backend.rendezvous.application.RendezVousService(rdvs, creneaux,
+                (d, sujet, m) -> prevenus.add(d), (a, b) -> { });
+        var comptes = new dz.tabibi.backend.commun.FauxComptes();
+        service.setRendezVous(rendezVous);
+        service.setComptes(comptes);
+        service.valider(service.deposer(MEDECIN, DEMANDE).id());
+        UUID patient = UUID.randomUUID();
+        var reserve = creneaux.enregistrer(new dz.tabibi.backend.creneaux.domain.Creneau(UUID.randomUUID(), MEDECIN,
+                Instant.now().plusSeconds(86_400), 20, true));
+        var libre = creneaux.enregistrer(new dz.tabibi.backend.creneaux.domain.Creneau(UUID.randomUUID(), MEDECIN,
+                Instant.now().plusSeconds(172_800), 20, true));
+        var rdv = rendezVous.reserverCreneau(patient, reserve.id());
+
+        int annules = service.suspendre(MEDECIN, "Signalé par l'ordre des médecins.");
+
+        assertThat(annules).isEqualTo(1);
+        assertThat(comptes.rolesRetires).containsExactly(MEDECIN + ":MEDECIN");
+        assertThat(medecins.parId(MEDECIN)).isEmpty();
+        assertThat(creneaux.parId(libre.id())).isEmpty();
+        assertThat(rdvs.parId(rdv.id()).orElseThrow().statut())
+                .isEqualTo(dz.tabibi.backend.rendezvous.domain.StatutRdv.ANNULE);
+        assertThat(prevenus).contains(patient);
+        assertThat(notificationsDe(MEDECIN).get(0).message()).contains("Signalé par l'ordre");
+        assertThatThrownBy(() -> service.suspendre(MEDECIN, "encore")).isInstanceOf(TransitionInvalideException.class);
+
+        service.retablir(MEDECIN);
+
+        assertThat(medecins.parId(MEDECIN)).isPresent();
+        assertThat(comptesMedecins).contains(MEDECIN);
+        assertThatThrownBy(() -> service.retablir(MEDECIN)).isInstanceOf(TransitionInvalideException.class);
+    }
+
+    @Test
+    void suspendre_exige_un_motif_et_un_medecin_valide() {
+        assertThatThrownBy(() -> service.suspendre(MEDECIN, " ")).isInstanceOf(CandidatureInvalideException.class);
+        assertThatThrownBy(() -> service.suspendre(MEDECIN, "motif")).isInstanceOf(TransitionInvalideException.class);
+        assertThatThrownBy(() -> service.retablir(MEDECIN)).isInstanceOf(TransitionInvalideException.class);
+    }
 }
