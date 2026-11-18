@@ -261,11 +261,12 @@ class AdministrationWebTest {
 
     @Test
     void statistiques_accessibles_a_l_admin() throws Exception {
-        when(service.statistiques()).thenReturn(new StatistiquesAdministration(3, 5, 1));
+        when(service.statistiques()).thenReturn(new StatistiquesAdministration(3, 5, 1, 2));
 
         mvc.perform(get("/api/admin/statistiques").with(admin()))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.candidaturesEnAttente").value(3))
+           .andExpect(jsonPath("$.avisSignales").value(2))
            .andExpect(jsonPath("$.candidaturesValidees").value(5))
            .andExpect(jsonPath("$.candidaturesRefusees").value(1));
     }

@@ -7,6 +7,8 @@ import dz.tabibi.backend.avis.domain.AvisRepository;
 import dz.tabibi.backend.avis.domain.StatutAvis;
 import dz.tabibi.backend.avis.domain.SyntheseAvis;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
+import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
@@ -34,6 +36,22 @@ public class AvisService {
     public AvisService(AvisRepository avis, RendezVousRepository rendezVous) {
         this.avis = avis;
         this.rendezVous = rendezVous;
+    }
+
+    /** Port de notification : previent les administrateurs d'un signalement et le medecin de la decision. */
+    private Notifieur notifieur;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setNotifieur(Notifieur notifieur) {
+        this.notifieur = notifieur;
+    }
+
+    /** Annuaire des comptes : sert a retrouver les administrateurs. */
+    private ComptesUtilisateurs comptes;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setComptes(ComptesUtilisateurs comptes) {
+        this.comptes = comptes;
     }
 
     /**
@@ -99,7 +117,20 @@ public class AvisService {
         if (!a.concerne(medecinId)) {
             throw new AccesRefuseException("Cet avis ne vous concerne pas.");
         }
-        return avis.enregistrer(a.signaler());
+        Avis signale = avis.enregistrer(a.signaler());
+        prevenirLesAdministrateurs();
+        return signale;
+    }
+
+    /** Chaque administrateur recoit une notification (lien vers la moderation des avis). */
+    private void prevenirLesAdministrateurs() {
+        if (notifieur == null || comptes == null) {
+            return;
+        }
+        for (UUID admin : comptes.avecRole("ADMIN")) {
+            notifieur.notifier(admin, "Avis signalé",
+                    "Un médecin a signalé un avis : à modérer.", "/admin/avis");
+        }
     }
 
     /** Avis pour l'administrateur, eventuellement filtres par statut, les plus anciens d'abord. */
@@ -114,7 +145,15 @@ public class AvisService {
      */
     @Transactional
     public Avis masquer(UUID avisId) {
-        return avis.enregistrer(charger(avisId).masquer());
+        Avis masque = avis.enregistrer(charger(avisId).masquer());
+        prevenirLeMedecin(masque, "L'équipe Ndawik a masqué l'avis que vous aviez signalé : il n'est plus visible sur votre profil.");
+        return masque;
+    }
+
+    private void prevenirLeMedecin(Avis a, String message) {
+        if (notifieur != null) {
+            notifieur.notifier(a.medecinId(), "Avis signalé : décision de l'équipe", message, "/medecin/avis");
+        }
     }
 
     /**
@@ -124,7 +163,10 @@ public class AvisService {
      */
     @Transactional
     public Avis retablir(UUID avisId) {
-        return avis.enregistrer(charger(avisId).retablir());
+        Avis avant = charger(avisId);
+        Avis retabli = avis.enregistrer(avant.retablir());
+        prevenirLeMedecin(retabli, "L'équipe Ndawik a rétabli l'avis : il est visible sur votre profil.");
+        return retabli;
     }
 
     private Avis charger(UUID avisId) {

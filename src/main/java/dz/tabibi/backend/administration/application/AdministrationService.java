@@ -59,6 +59,14 @@ public class AdministrationService {
         this.comptes = comptes;
     }
 
+    /** Avis : sert a compter les avis signales en attente de moderation. */
+    private dz.tabibi.backend.avis.domain.AvisRepository avis;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAvis(dz.tabibi.backend.avis.domain.AvisRepository avis) {
+        this.avis = avis;
+    }
+
     /** Liste d'attente : reportee de la fiche importee vers la fiche du praticien quand il la reclame. */
     private dz.tabibi.backend.listeattente.application.ListeAttenteService listeAttente;
 
@@ -185,7 +193,8 @@ public class AdministrationService {
         return new StatistiquesAdministration(
                 candidatures.compter(StatutCandidature.EN_ATTENTE),
                 candidatures.compter(StatutCandidature.VALIDEE),
-                candidatures.compter(StatutCandidature.REFUSEE));
+                candidatures.compter(StatutCandidature.REFUSEE),
+                avis == null ? 0 : avis.parStatut(dz.tabibi.backend.avis.domain.StatutAvis.SIGNALE).size());
     }
 
     private CandidatureMedecin charger(UUID candidatureId) {

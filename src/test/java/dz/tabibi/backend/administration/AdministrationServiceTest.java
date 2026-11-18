@@ -231,7 +231,15 @@ class AdministrationServiceTest {
         service.valider(a.id());
         service.refuser(b.id(), "Motif.");
 
+        dz.tabibi.backend.avis.domain.AvisRepository avis = new dz.tabibi.backend.avis.adapter.EnMemoireAvisRepository();
+        service.setAvis(avis);
+        avis.enregistrer(dz.tabibi.backend.avis.domain.Avis.deposer(UUID.randomUUID(), UUID.randomUUID(), MEDECIN, 1, null,
+                Instant.parse("2026-01-10T09:00:00Z")).signaler());
+        avis.enregistrer(dz.tabibi.backend.avis.domain.Avis.deposer(UUID.randomUUID(), UUID.randomUUID(), MEDECIN, 5, null,
+                Instant.parse("2026-01-11T09:00:00Z")));
+
         StatistiquesAdministration stats = service.statistiques();
+        assertThat(stats.avisSignales()).isEqualTo(1);
 
         assertThat(stats.candidaturesEnAttente()).isEqualTo(2);
         assertThat(stats.candidaturesValidees()).isEqualTo(1);
