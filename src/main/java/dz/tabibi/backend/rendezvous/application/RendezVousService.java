@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -122,7 +123,10 @@ public class RendezVousService {
             throw new dz.tabibi.backend.creneaux.domain.CreneauInvalideException(
                     "Vous ne pouvez pas réserver un rendez-vous avec vous-même.");
         }
-        verifierPasDeRendezVousAVenir(patientId, creneau.medecinId());
+        // Verrou par patient : les controles ci-dessous et l'insertion ne peuvent pas se croiser avec une autre
+        // reservation du meme patient.
+        repository.verrouillerPatient(patientId);
+        verifierPasDeRendezVousAVenir(patientId, creneau);
         // Prise atomique (UPDATE ... where disponible = true) : de deux reservations simultanees, une seule passe.
         // L'index unique partiel sur rendez_vous(creneau_id) (rendez-vous non annules) garde la base coherente.
         if (!creneaux.reserverSiDisponible(creneau.id())) {
@@ -202,17 +206,32 @@ public class RendezVousService {
         return telephoniques.size();
     }
 
+    /** Duree supposee d'un rendez-vous dont le creneau n'est plus connu. */
+    private static final int DUREE_PAR_DEFAUT_MINUTES = 30;
+
     /**
-     * Un patient ne garde qu'un rendez-vous a venir par medecin : il ne peut pas bloquer tout l'agenda.
-     * @throws CreneauDejaReserveException s'il a deja un rendez-vous confirme a venir avec ce medecin.
+     * Un patient ne garde qu'un rendez-vous a venir par medecin (il ne peut pas bloquer tout l'agenda) et ne peut
+     * pas reserver deux rendez-vous qui se chevauchent, medecins confondus.
+     * @throws CreneauDejaReserveException dans l'un des deux cas.
      */
-    private void verifierPasDeRendezVousAVenir(UUID patientId, UUID medecinId) {
+    private void verifierPasDeRendezVousAVenir(UUID patientId, Creneau voulu) {
         Instant maintenant = Instant.now();
-        boolean dejaUn = repository.parPatient(patientId).stream()
-                .anyMatch(r -> r.estAvec(medecinId) && r.statut() == StatutRdv.CONFIRME && r.debut().isAfter(maintenant));
-        if (dejaUn) {
-            throw new CreneauDejaReserveException(
-                    "Vous avez déjà un rendez-vous à venir avec ce médecin : annulez-le pour en choisir un autre.");
+        Instant fin = voulu.debut().plus(Duration.ofMinutes(voulu.dureeMinutes()));
+        for (RendezVous r : repository.parPatient(patientId)) {
+            if (r.statut() != StatutRdv.CONFIRME || !r.debut().isAfter(maintenant)) {
+                continue;
+            }
+            if (r.estAvec(voulu.medecinId())) {
+                throw new CreneauDejaReserveException(
+                        "Vous avez déjà un rendez-vous à venir avec ce médecin : annulez-le pour en choisir un autre.");
+            }
+            int duree = r.creneauId() == null ? DUREE_PAR_DEFAUT_MINUTES
+                    : creneaux.parId(r.creneauId()).map(Creneau::dureeMinutes).orElse(DUREE_PAR_DEFAUT_MINUTES);
+            Instant finExistant = r.debut().plus(Duration.ofMinutes(duree));
+            if (voulu.debut().isBefore(finExistant) && r.debut().isBefore(fin)) {
+                throw new CreneauDejaReserveException(
+                        "Ce créneau chevauche un autre de vos rendez-vous : annulez-le ou choisissez un autre horaire.");
+            }
         }
     }
 

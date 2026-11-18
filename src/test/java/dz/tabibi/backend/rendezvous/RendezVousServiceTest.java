@@ -356,6 +356,24 @@ class RendezVousServiceTest {
     }
 
     @Test
+    void refuse_un_creneau_qui_chevauche_un_rendezvous_du_meme_patient_chez_un_autre_medecin() {
+        UUID patient = UUID.randomUUID();
+        Instant debut = Instant.now().plusSeconds(3 * 86400).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        Creneau chezA = creneaux.enregistrer(new Creneau(UUID.randomUUID(), UUID.randomUUID(), debut, 30, true));
+        Creneau chevauche = creneaux.enregistrer(new Creneau(UUID.randomUUID(), UUID.randomUUID(),
+                debut.plusSeconds(15 * 60), 30, true));
+        Creneau apres = creneaux.enregistrer(new Creneau(UUID.randomUUID(), UUID.randomUUID(),
+                debut.plusSeconds(30 * 60), 30, true));
+        service.reserverCreneau(patient, chezA.id());
+
+        assertThatThrownBy(() -> service.reserverCreneau(patient, chevauche.id()))
+                .isInstanceOf(CreneauDejaReserveException.class);
+        assertThat(estDisponible(chevauche.id())).isTrue();
+        // un creneau qui commence exactement a la fin du premier ne chevauche pas
+        assertThat(service.reserverCreneau(patient, apres.id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+    }
+
+    @Test
     void un_patient_ne_peut_pas_reserver_chez_lui_meme() {
         Creneau creneau = premierCreneauDisponible();
 

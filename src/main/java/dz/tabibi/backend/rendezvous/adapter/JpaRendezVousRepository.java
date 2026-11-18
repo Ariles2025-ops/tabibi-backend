@@ -3,6 +3,7 @@ package dz.tabibi.backend.rendezvous.adapter;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
+import jakarta.persistence.EntityManager;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -21,8 +22,18 @@ public class JpaRendezVousRepository implements RendezVousRepository {
 
     private final RendezVousJpa jpa;
 
-    public JpaRendezVousRepository(RendezVousJpa jpa) {
+    private final EntityManager em;
+
+    public JpaRendezVousRepository(RendezVousJpa jpa, EntityManager em) {
         this.jpa = jpa;
+        this.em = em;
+    }
+
+    @Override
+    public void verrouillerPatient(UUID patientId) {
+        em.createNativeQuery("select pg_advisory_xact_lock(hashtextextended(:cle, 0))")
+                .setParameter("cle", "rdv-patient:" + patientId)
+                .getSingleResult();
     }
 
     @Override
