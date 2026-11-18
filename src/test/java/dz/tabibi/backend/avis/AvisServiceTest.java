@@ -226,4 +226,59 @@ class AvisServiceTest {
         assertThat(service.lister(Optional.of(StatutAvis.MASQUE))).containsExactly(masque);
         assertThat(service.lister(Optional.of(StatutAvis.SIGNALE))).isEmpty();
     }
+
+    @Test
+    void signalement_previent_les_admins_et_la_decision_previent_le_medecin() {
+        UUID admin1 = UUID.randomUUID(), admin2 = UUID.randomUUID();
+        var notifications = new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository();
+        service.setNotifieur(new dz.tabibi.backend.notifications.application.NotifieurInterne(notifications));
+        service.setComptes(new dz.tabibi.backend.commun.domain.ComptesUtilisateurs() {
+            public boolean disponible() { return true; }
+            public Optional<UUID> parEmail(String email) { return Optional.empty(); }
+            public void accorderRole(UUID compte, String role) { }
+            public void supprimer(UUID compte) { }
+            public List<UUID> avecRole(String role) { return "ADMIN".equals(role) ? List.of(admin1, admin2) : List.of(); }
+            public Optional<InfosCompte> infos(UUID compte) { return Optional.empty(); }
+        });
+        Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
+
+        service.signaler(MEDECIN, a.id());
+
+        for (UUID admin : List.of(admin1, admin2)) {
+            assertThat(notifications.parDestinataire(admin)).hasSize(1);
+            assertThat(notifications.parDestinataire(admin).get(0).lien()).isEqualTo("/admin/avis");
+        }
+        service.masquer(a.id());
+        assertThat(notifications.parDestinataire(MEDECIN)).hasSize(1);
+        service.retablir(a.id());
+        assertThat(notifications.parDestinataire(MEDECIN)).hasSize(2);
+    }
+
+    @Test
+    void masquer_un_avis_simplement_publie_envoie_un_message_neutre_au_medecin() {
+        var notifications = new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository();
+        service.setNotifieur(new dz.tabibi.backend.notifications.application.NotifieurInterne(notifications));
+        Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
+
+        service.masquer(a.id());
+
+        var n = notifications.parDestinataire(MEDECIN).get(0);
+        assertThat(n.message()).doesNotContain("signalé").contains("masqué un avis vous concernant");
+        assertThat(n.sujet()).doesNotContain("signalé");
+
+        service.retablir(a.id());
+        assertThat(notifications.parDestinataire(MEDECIN).get(1).sujet()).doesNotContain("signalé");
+    }
+
+    @Test
+    void masquer_un_avis_signale_garde_la_formulation_du_signalement() {
+        var notifications = new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository();
+        service.setNotifieur(new dz.tabibi.backend.notifications.application.NotifieurInterne(notifications));
+        Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
+        service.signaler(MEDECIN, a.id());
+
+        service.masquer(a.id());
+
+        assertThat(notifications.parDestinataire(MEDECIN).get(0).message()).contains("que vous aviez signalé");
+    }
 }
