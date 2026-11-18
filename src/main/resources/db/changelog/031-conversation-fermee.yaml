@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-conversation-fermee
+      author: tabibi
+      changes:
+        - addColumn:
+            tableName: conversation
+            columns:
+              - column: { name: fermee, type: boolean, defaultValueBoolean: false, constraints: { nullable: false } }

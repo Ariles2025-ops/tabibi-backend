@@ -1,6 +1,7 @@
 package dz.tabibi.backend.messagerie.application;
 
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
+import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.messagerie.domain.Conversation;
 import dz.tabibi.backend.messagerie.domain.ConversationAvecNonLus;
 import dz.tabibi.backend.messagerie.domain.ConversationIntrouvableException;
@@ -11,9 +12,11 @@ import dz.tabibi.backend.messagerie.domain.MessageRepository;
 import dz.tabibi.backend.messagerie.domain.ResultatOuverture;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
+import dz.tabibi.backend.rendezvous.domain.StatutRdv;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -21,12 +24,15 @@ import java.util.UUID;
 
 /**
  * Cas d'usage de la messagerie : un patient ouvre une conversation avec un medecin qu'il a deja
- * consulte (au moins un rendez-vous, quel qu'en soit le statut), les deux participants echangent
+ * consulte (rendez-vous confirme ou honore, a venir ou de moins de 30 jours), les deux participants echangent
  * des messages ; lire une conversation marque lus les messages de l'autre ; l'autre participant
  * est prevenu de chaque message par le port Notifieur, sans le contenu (donnees de sante).
  */
 @Service
 public class MessagerieService {
+
+    /** Duree pendant laquelle un rendez-vous confirme ou honore ouvre (et maintient) la messagerie. */
+    private static final Duration VALIDITE = Duration.ofDays(30);
 
     private final ConversationRepository conversations;
     private final MessageRepository messages;
@@ -58,16 +64,16 @@ public class MessagerieService {
     /**
      * Ouvre la conversation du patient avec un medecin, ou renvoie celle qui existe deja pour ce couple.
      * @throws MessageInvalideException si le medecin manque.
-     * @throws AccesRefuseException si le patient n'a aucun rendez-vous (tout statut) avec ce medecin.
+     * @throws AccesRefuseException si le patient n'a aucun rendez-vous confirme ou honore recent avec ce medecin.
      */
     @Transactional
     public ResultatOuverture ouvrir(UUID patientId, UUID medecinId) {
         if (medecinId == null) {
             throw new MessageInvalideException("Le médecin est obligatoire.");
         }
-        boolean rendezVousCommun = rendezVous.parPatient(patientId).stream().anyMatch(r -> r.estAvec(medecinId));
-        if (!rendezVousCommun) {
-            throw new AccesRefuseException("Vous ne pouvez écrire qu'a un médecin avec qui vous avez un rendez-vous.");
+        if (!aRendezVousValable(patientId, medecinId)) {
+            throw new AccesRefuseException(
+                    "Vous ne pouvez écrire qu'à un médecin avec qui vous avez un rendez-vous confirmé ou honoré récent.");
         }
         Optional<Conversation> existante = conversations.parParticipants(patientId, medecinId);
         if (existante.isPresent()) {
@@ -94,6 +100,30 @@ public class MessagerieService {
     }
 
     /**
+     * Le medecin clot la conversation : le patient ne peut plus y ecrire, le medecin peut toujours la lire.
+     * Idempotent.
+     * @throws ConversationIntrouvableException si la conversation n'existe pas.
+     * @throws AccesRefuseException si l'utilisateur n'est pas le medecin de la conversation.
+     */
+    @Transactional
+    public Conversation fermer(UUID medecinId, UUID conversationId) {
+        Conversation conversation = chargerPour(medecinId, conversationId);
+        if (!conversation.medecinId().equals(medecinId)) {
+            throw new AccesRefuseException("Seul le médecin peut fermer la conversation.");
+        }
+        return conversation.fermee() ? conversation : conversations.enregistrer(conversation.fermer());
+    }
+
+    /** Rendez-vous confirme ou honore avec ce medecin, a venir ou termine depuis moins de 30 jours. */
+    private boolean aRendezVousValable(UUID patientId, UUID medecinId) {
+        Instant limite = Instant.now().minus(VALIDITE);
+        return rendezVous.parPatient(patientId).stream()
+                .filter(r -> r.estAvec(medecinId))
+                .filter(r -> r.statut() == StatutRdv.CONFIRME || r.statut() == StatutRdv.HONORE)
+                .anyMatch(r -> r.debut().isAfter(limite));
+    }
+
+    /**
      * Messages d'une conversation, du plus ancien au plus recent ; ceux des autres participants
      * sont marques lus par cette lecture.
      * @throws ConversationIntrouvableException si la conversation n'existe pas.
@@ -111,10 +141,20 @@ public class MessagerieService {
      * @throws ConversationIntrouvableException si la conversation n'existe pas.
      * @throws AccesRefuseException si l'utilisateur n'y participe pas.
      * @throws MessageInvalideException si le contenu manque ou est trop long.
+     * @throws TransitionInvalideException si le medecin a ferme la conversation (envoi du patient).
      */
     @Transactional
     public Message envoyer(UUID sujet, UUID conversationId, String contenu) {
         Conversation conversation = chargerPour(sujet, conversationId);
+        if (conversation.patientId().equals(sujet)) {
+            if (conversation.fermee()) {
+                throw new TransitionInvalideException("Cette conversation a été fermée par le médecin.");
+            }
+            if (!aRendezVousValable(sujet, conversation.medecinId())) {
+                throw new AccesRefuseException(
+                        "Vous ne pouvez plus écrire à ce médecin : aucun rendez-vous confirmé ou honoré récent.");
+            }
+        }
         Message message = messages.enregistrer(Message.envoyer(conversation.id(), sujet, contenu, Instant.now()));
         conversations.enregistrer(conversation.avecDernierMessageLe(message.envoyeLe()));
         notifieur.notifier(conversation.autreParticipant(sujet), "Nouveau message",

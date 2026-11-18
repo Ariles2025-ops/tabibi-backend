@@ -41,9 +41,9 @@ public class MessagerieController {
 
     /** Vue d'une conversation pour l'utilisateur connecte, avec le nombre de messages qu'il n'a pas lus. */
     public record ConversationVue(UUID id, UUID patientId, UUID medecinId, Instant creeLe,
-                                  Instant dernierMessageLe, long nonLus) {
+                                  Instant dernierMessageLe, boolean fermee, long nonLus) {
         static ConversationVue de(Conversation c, long nonLus) {
-            return new ConversationVue(c.id(), c.patientId(), c.medecinId(), c.creeLe(), c.dernierMessageLe(), nonLus);
+            return new ConversationVue(c.id(), c.patientId(), c.medecinId(), c.creeLe(), c.dernierMessageLe(), c.fermee(), nonLus);
         }
 
         static ConversationVue de(ConversationAvecNonLus c) {
@@ -95,6 +95,14 @@ public class MessagerieController {
                                               @AuthenticationPrincipal Jwt jwt) {
         Message message = service.envoyer(identifiant(jwt), id, demande.contenu());
         return ResponseEntity.status(HttpStatus.CREATED).body(MessageVue.de(message));
+    }
+
+    /** Le medecin ferme la conversation : le patient ne peut plus y ecrire (404 / 403 sinon). */
+    @PostMapping("/api/conversations/{id}/fermer")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ConversationVue fermer(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        UUID medecinId = identifiant(jwt);
+        return ConversationVue.de(service.fermer(medecinId, id), service.nonLus(medecinId, id));
     }
 
     /** Le sujet du jeton Keycloak est l'identifiant de l'utilisateur, patient ou medecin. */
