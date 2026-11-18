@@ -33,6 +33,8 @@ public class CreneauService {
     public static final int DUREE_MIN_MINUTES = 5;
     public static final int DUREE_MAX_MINUTES = 120;
     public static final int SEMAINES_MAX = 8;
+    /** Un creneau ne peut pas etre ouvert plus de 6 mois a l'avance. */
+    public static final int MOIS_MAX = 6;
     public static final int CRENEAUX_MAX_PAR_APPEL = 500;
     public static final ZoneId FUSEAU = ZoneId.of("Africa/Algiers");
 
@@ -60,6 +62,9 @@ public class CreneauService {
     public Creneau ouvrir(UUID medecinId, Instant debut, int dureeMinutes) {
         if (debut == null || !debut.isAfter(Instant.now())) {
             throw new CreneauInvalideException("Le début du créneau doit être dans le futur.");
+        }
+        if (debut.isAfter(Instant.now().atZone(ZoneId.of("UTC")).plusMonths(MOIS_MAX).toInstant())) {
+            throw new CreneauInvalideException("Le créneau ne peut pas être ouvert plus de " + MOIS_MAX + " mois à l'avance.");
         }
         if (dureeMinutes < DUREE_MIN_MINUTES || dureeMinutes > DUREE_MAX_MINUTES) {
             throw new CreneauInvalideException("La durée doit être comprise entre "

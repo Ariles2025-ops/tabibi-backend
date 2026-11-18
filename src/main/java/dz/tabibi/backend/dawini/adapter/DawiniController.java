@@ -32,6 +32,7 @@ import java.util.UUID;
 public class DawiniController {
 
     private static final String ROLE_PATIENT = "ROLE_PATIENT";
+    private static final String ROLE_PHARMACIE = "ROLE_PHARMACIE";
 
     private final DawiniService service;
 
@@ -132,9 +133,9 @@ public class DawiniController {
     @PreAuthorize("hasAnyRole('PATIENT', 'PHARMACIE')")
     public List<ReponseVue> reponses(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt,
                                      Authentication authentication) {
-        List<ReponsePharmacie> reponses = aLeRole(authentication, ROLE_PATIENT)
-                ? service.reponsesPourPatient(identifiant(jwt), id)
-                : service.reponsesPourPharmacie(id);
+        List<ReponsePharmacie> reponses = aLeRole(authentication, ROLE_PHARMACIE)
+                ? service.reponsesPourPharmacie(id)
+                : service.reponsesPourPatient(identifiant(jwt), id);
         return reponses.stream().map(ReponseVue::de).toList();
     }
 
