@@ -145,6 +145,29 @@ public class CabinetService {
         return rattachement.secretaireId();
     }
 
+    /**
+     * Suppression de compte : retire tous les rattachements du compte, comme secretaire (le medecin est prevenu
+     * si le rattachement etait accepte) et comme medecin (ses secretaires qui n'ont plus aucun cabinet perdent
+     * le role SECRETAIRE, comme dans le retrait par le medecin).
+     */
+    @Transactional
+    public void retirerTousRattachementsDe(UUID compte) {
+        for (Rattachement r : rattachements.parSecretaire(compte)) {
+            rattachements.supprimer(r.id());
+            if (r.accepte()) {
+                notifieur.notifier(r.medecinId(), "Rattachement retiré",
+                        "Une secrétaire a supprimé son compte : elle n'est plus rattachée à votre cabinet.",
+                        "/medecin/secretaires");
+            }
+        }
+        for (Rattachement r : rattachements.parMedecin(compte)) {
+            rattachements.supprimer(r.id());
+            if (comptes != null && medecinsDeLaSecretaire(r.secretaireId()).isEmpty()) {
+                comptes.retirerRole(r.secretaireId(), "SECRETAIRE");
+            }
+        }
+    }
+
     /** Cabinets auxquels la secretaire est rattachee, les plus anciens rattachements d'abord. */
     public List<Rattachement> medecinsDeLaSecretaire(UUID secretaireId) {
         return rattachements.parSecretaire(secretaireId).stream().filter(Rattachement::accepte).toList();

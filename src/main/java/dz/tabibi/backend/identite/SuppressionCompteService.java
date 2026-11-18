@@ -1,5 +1,6 @@
 package dz.tabibi.backend.identite;
 
+import dz.tabibi.backend.cabinet.application.CabinetService;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.avis.application.AvisService;
 import dz.tabibi.backend.dawini.application.DawiniService;
@@ -46,11 +47,14 @@ public class SuppressionCompteService {
     private final DawiniService dawini;
     private final NotificationService notifications;
     private final AvisService avis;
+    private final CabinetService cabinet;
 
     public SuppressionCompteService(RendezVousService rendezVous, ListeAttenteService listeAttente,
                                     ProfilRepository profils, ComptesUtilisateurs comptes,
                                     MessagerieService messagerie, DawiniService dawini,
-                                    NotificationService notifications, AvisService avis) {
+                                    NotificationService notifications, AvisService avis,
+                                    CabinetService cabinet) {
+        this.cabinet = cabinet;
         this.rendezVous = rendezVous;
         this.listeAttente = listeAttente;
         this.profils = profils;
@@ -79,6 +83,8 @@ public class SuppressionCompteService {
         int conversations = messagerie.supprimerToutesDe(utilisateurId);
         int demandes = dawini.supprimerDemandesDe(utilisateurId);
         int avisEfface = avis.effacerCommentairesDuPatient(utilisateurId);
+        // Cabinet : rattachements retires (medecin prevenu), avant les notifications du compte et la suppression Keycloak.
+        cabinet.retirerTousRattachementsDe(utilisateurId);
         // En dernier : les notifications creees pendant la suppression (annulations...) sont effacees aussi.
         int nbNotifications = notifications.supprimerToutesDe(utilisateurId);
         String langue = profils.parUtilisateur(utilisateurId).map(Profil::langue).orElse(Profil.LANGUE_PAR_DEFAUT);
