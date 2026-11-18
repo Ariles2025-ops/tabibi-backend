@@ -61,3 +61,5 @@ databaseChangeLog:
       file: db/changelog/030-rappel-sms-echecs.yaml
   - include:
       file: db/changelog/031-conversation-fermee.yaml
+  - include:
+      file: db/changelog/032-demande-praticien.yaml
