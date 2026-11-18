@@ -4,6 +4,9 @@ import dz.tabibi.backend.commun.FauxComptes;
 import dz.tabibi.backend.avis.adapter.EnMemoireAvisRepository;
 import dz.tabibi.backend.avis.application.AvisService;
 import dz.tabibi.backend.avis.domain.Avis;
+import dz.tabibi.backend.cabinet.adapter.EnMemoireRattachementRepository;
+import dz.tabibi.backend.cabinet.application.CabinetService;
+import dz.tabibi.backend.cabinet.domain.Rattachement;
 import dz.tabibi.backend.creneaux.adapter.EnMemoireCreneauRepository;
 import dz.tabibi.backend.dawini.adapter.EnMemoireBesoinRepository;
 import dz.tabibi.backend.dawini.adapter.EnMemoireReponseRepository;
@@ -65,15 +68,47 @@ class SuppressionCompteServiceTest {
     private final EnMemoireReponseRepository reponses = new EnMemoireReponseRepository();
     private final EnMemoireNotificationRepository notifs = new EnMemoireNotificationRepository();
     private final EnMemoireAvisRepository avis = new EnMemoireAvisRepository();
-    private final SuppressionCompteService service = new SuppressionCompteService(rendezVous, listeAttente, profils, comptes,
+    private final EnMemoireRattachementRepository rattachements = new EnMemoireRattachementRepository();
+    private final CabinetService cabinet = new CabinetService(rattachements, null, null,
+            (d, s, m) -> notifications.add(new Appel(d, s)));
+    private final SuppressionCompteService service =new SuppressionCompteService(rendezVous, listeAttente, profils, comptes,
             new MessagerieService(conversations, messages, rdvs, (d, s, m) -> { }),
             new DawiniService(besoins, reponses, (d, s, m) -> { }),
             new NotificationService(notifs),
-            new AvisService(avis, rdvs));
+            new AvisService(avis, rdvs), cabinet);
 
     {
         // Un medecin dont le compte est supprime n'est plus reservable (profil anonyme).
         rendezVous.setProfils(profils);
+        cabinet.setComptes(comptes);
+    }
+
+    @Test
+    void une_secretaire_qui_supprime_son_compte_perd_son_rattachement_et_le_medecin_est_prevenu() {
+        UUID secretaire = UUID.randomUUID();
+        rattachements.enregistrer(Rattachement.rattacher(MEDECIN, secretaire, Instant.now()).accepter());
+        notifications.clear();
+
+        service.supprimer(secretaire);
+
+        assertThat(rattachements.parMedecin(MEDECIN)).isEmpty();
+        assertThat(notifications).contains(new Appel(MEDECIN, "Rattachement retiré"));
+    }
+
+    @Test
+    void un_medecin_qui_supprime_son_compte_retire_le_role_aux_secretaires_sans_autre_cabinet() {
+        UUID seule = UUID.randomUUID();
+        UUID autreCabinet = UUID.randomUUID();
+        UUID autreMedecin = UUID.randomUUID();
+        rattachements.enregistrer(Rattachement.rattacher(MEDECIN, seule, Instant.now()).accepter());
+        rattachements.enregistrer(Rattachement.rattacher(MEDECIN, autreCabinet, Instant.now()).accepter());
+        rattachements.enregistrer(Rattachement.rattacher(autreMedecin, autreCabinet, Instant.now()).accepter());
+
+        service.supprimer(MEDECIN);
+
+        assertThat(rattachements.parMedecin(MEDECIN)).isEmpty();
+        assertThat(rattachements.parSecretaire(autreCabinet)).hasSize(1);
+        assertThat(comptes.rolesRetires).containsExactly(seule + ":SECRETAIRE");
     }
 
     @Test

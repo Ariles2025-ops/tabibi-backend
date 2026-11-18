@@ -35,6 +35,13 @@ public class FauxComptes implements ComptesUtilisateurs {
         rolesAccordes.add(compte + ":" + role);
     }
 
+    public final List<String> rolesRetires = new ArrayList<>();
+
+    @Override
+    public void retirerRole(UUID compte, String role) {
+        rolesRetires.add(compte + ":" + role);
+    }
+
     @Override
     public void supprimer(UUID compte) {
         if (panne != null) throw panne;
