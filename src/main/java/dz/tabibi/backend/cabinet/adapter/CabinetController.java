@@ -204,6 +204,15 @@ public class CabinetController {
         return RendezVousVue.de(service.annulerPour(identifiant(jwt), id));
     }
 
+    /** Deplacement d'un rendez-vous par une secretaire rattachee (403 sinon, 409 si le creneau est pris ou le rendez-vous non deplacable). */
+    @PostMapping("/api/secretaire/rendezvous/{id}/deplacer")
+    @PreAuthorize("hasRole('SECRETAIRE')")
+    public RendezVousVue deplacer(@PathVariable UUID id,
+                                  @RequestBody dz.tabibi.backend.rendezvous.adapter.RendezVousController.DemandeDeplacement demande,
+                                  @AuthenticationPrincipal Jwt jwt) {
+        return RendezVousVue.de(service.deplacerPour(identifiant(jwt), id, demande.nouveauCreneauId()));
+    }
+
     /** Le sujet du jeton Keycloak est l'identifiant de l'utilisateur, medecin ou secretaire. */
     private static UUID identifiant(Jwt jwt) {
         return UUID.fromString(jwt.getSubject());

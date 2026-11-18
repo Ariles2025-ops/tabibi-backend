@@ -269,4 +269,12 @@ public class CabinetService {
         verifierAcces(secretaireId, rdv.medecinId());
         return rendezVous.annulerParCabinet(rdv.medecinId(), rendezVousId, secretaireId);
     }
+
+    /** Une secretaire rattachee au medecin du rendez-vous le deplace vers un autre creneau du meme medecin. */
+    @Transactional
+    public RendezVous deplacerPour(UUID secretaireId, UUID rendezVousId, UUID nouveauCreneauId) {
+        RendezVous rdv = rendezVous.parId(rendezVousId);
+        verifierAcces(secretaireId, rdv.medecinId());
+        return rendezVous.deplacerParCabinet(rdv.medecinId(), rendezVousId, nouveauCreneauId, secretaireId);
+    }
 }

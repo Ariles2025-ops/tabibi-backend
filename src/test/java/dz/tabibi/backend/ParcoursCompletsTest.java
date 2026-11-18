@@ -126,6 +126,54 @@ class ParcoursCompletsTest {
     }
 
     @Test
+    void deplacer_un_rendez_vous_en_une_action() throws Exception {
+        UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID(), autre = UUID.randomUUID();
+        String ancien = ouvrirCreneau(medecin, demain(9));
+        String nouveau = ouvrirCreneau(medecin, demain(11));
+        String pris = ouvrirCreneau(medecin, demain(14));
+        String autreMedecin = ouvrirCreneau(UUID.randomUUID(), demain(9));
+        String rdv = reserver(patient, ancien);
+        reserver(autre, pris);
+        int notifsMedecin = nbNotifications(medecin, "MEDECIN");
+
+        // refus : creneau deja pris (409), creneau d'un autre medecin (4xx), rendez-vous d'un autre patient (403) : rien ne change
+        assertThat(statut(post("/api/rendezvous/" + rdv + "/deplacer"), compte(patient, "PATIENT"),
+                "{\"nouveauCreneauId\":\"" + pris + "\"}")).isEqualTo(409);
+        assertThat(statut(post("/api/rendezvous/" + rdv + "/deplacer"), compte(patient, "PATIENT"),
+                "{\"nouveauCreneauId\":\"" + autreMedecin + "\"}")).isBetween(400, 499);
+        assertThat(statut(post("/api/rendezvous/" + rdv + "/deplacer"), compte(autre, "PATIENT"),
+                "{\"nouveauCreneauId\":\"" + nouveau + "\"}")).isEqualTo(403);
+        assertThat((List<?>) lire(ok(get("/api/medecins/" + medecin + "/creneaux"), null, null), "$[?(@.id=='" + ancien + "')]")).isEmpty();
+
+        String deplace = ok(post("/api/rendezvous/" + rdv + "/deplacer"), compte(patient, "PATIENT"),
+                "{\"nouveauCreneauId\":\"" + nouveau + "\"}");
+        String nouveauRdv = lire(deplace, "$.id");
+        assertThat(nouveauRdv).isNotEqualTo(rdv);
+        assertThat((String) lire(deplace, "$.statut")).isEqualTo("CONFIRME");
+
+        // agenda du medecin : ancien annule, nouveau confirme ; ancien creneau libre, nouveau pris
+        String agenda = ok(get("/api/medecin/rendezvous"), compte(medecin, "MEDECIN"), null);
+        assertThat((List<?>) lire(agenda, "$[?(@.id=='" + rdv + "' && @.statut=='ANNULE')]")).hasSize(1);
+        assertThat((List<?>) lire(agenda, "$[?(@.id=='" + nouveauRdv + "' && @.statut=='CONFIRME')]")).hasSize(1);
+        String libres = ok(get("/api/medecins/" + medecin + "/creneaux"), null, null);
+        assertThat((List<?>) lire(libres, "$[?(@.id=='" + ancien + "')]")).hasSize(1);
+        assertThat((List<?>) lire(libres, "$[?(@.id=='" + nouveau + "')]")).isEmpty();
+        assertThat(nbNotifications(medecin, "MEDECIN")).isGreaterThan(notifsMedecin);
+
+        // rappels : le nouveau rendez-vous repart sans rappel envoye, l'ancien n'est plus confirme
+        assertThat(rendezVous.parId(UUID.fromString(nouveauRdv)).orElseThrow().rappelEnvoye()).isFalse();
+        assertThat(rendezVous.parId(UUID.fromString(rdv)).orElseThrow().statut()).isEqualTo(StatutRdv.ANNULE);
+
+        // le medecin le redeplace : le patient est prevenu ; un rendez-vous annule ne se deplace plus (409)
+        int notifsPatient = nbNotifications(patient, "PATIENT");
+        ok(post("/api/medecin/rendezvous/" + nouveauRdv + "/deplacer"), compte(medecin, "MEDECIN"),
+                "{\"nouveauCreneauId\":\"" + ancien + "\"}");
+        assertThat(nbNotifications(patient, "PATIENT")).isGreaterThan(notifsPatient);
+        assertThat(statut(post("/api/rendezvous/" + rdv + "/deplacer"), compte(patient, "PATIENT"),
+                "{\"nouveauCreneauId\":\"" + nouveau + "\"}")).isEqualTo(409);
+    }
+
+    @Test
     void un_rendez_vous_futur_ne_peut_pas_etre_marque_honore() throws Exception {
         UUID medecin = UUID.randomUUID(), patient = UUID.randomUUID();
         String rdv = reserver(patient, ouvrirCreneau(medecin, demain(10)));

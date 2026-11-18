@@ -403,6 +403,96 @@ public class RendezVousService {
         return annule;
     }
 
+    /**
+     * Le patient deplace son rendez-vous vers un autre creneau du meme medecin, en une seule transaction :
+     * le nouveau creneau est pris de facon atomique, l'ancien est libere (liste d'attente alertee), le medecin
+     * et ses secretaires sont prevenus. Si le nouveau creneau est pris, rien ne change (409).
+     * Le deplacement cree un nouveau rendez-vous (les rappels repartent donc de zero) et annule l'ancien.
+     * @throws AccesRefuseException si le rendez-vous appartient a un autre patient.
+     * @throws TransitionInvalideException s'il est annule, honore, absent ou passe.
+     * @throws CreneauDejaReserveException si le nouveau creneau n'est plus disponible.
+     * @throws CreneauInvalideException si le nouveau creneau est d'un autre medecin ou est l'actuel.
+     */
+    @Transactional
+    public RendezVous deplacer(UUID patientId, UUID rendezVousId, UUID nouveauCreneauId) {
+        RendezVous rdv = parId(rendezVousId);
+        if (!rdv.appartientA(patientId)) {
+            throw new AccesRefuseException("Ce rendez-vous ne vous appartient pas.");
+        }
+        RendezVous nouveau = deplacerRdv(rdv, nouveauCreneauId);
+        String message = "Un patient a déplacé son rendez-vous du " + FormatDate.lisible(rdv.debut())
+                + " au " + FormatDate.lisible(nouveau.debut()) + ".";
+        notifieur.notifier(nouveau.medecinId(), "Rendez-vous déplacé", message, "/medecin/agenda");
+        secretairesDe(nouveau.medecinId()).forEach(s -> notifieur.notifier(s, "Rendez-vous déplacé", message, "/secretaire"));
+        return nouveau;
+    }
+
+    /**
+     * Le cabinet (medecin, ou secretaire rattachee agissant pour lui : {@code auteurId}) deplace un rendez-vous
+     * de l'agenda du medecin. Memes regles que {@link #deplacer} ; le patient est prevenu (appli + SMS) et,
+     * si c'est la secretaire, le medecin aussi.
+     * @throws AccesRefuseException s'il est dans l'agenda d'un autre medecin.
+     */
+    @Transactional
+    public RendezVous deplacerParCabinet(UUID medecinId, UUID rendezVousId, UUID nouveauCreneauId, UUID auteurId) {
+        RendezVous rdv = parId(rendezVousId);
+        if (!rdv.estAvec(medecinId)) {
+            throw new AccesRefuseException("Ce rendez-vous n'est pas dans votre agenda.");
+        }
+        RendezVous nouveau = deplacerRdv(rdv, nouveauCreneauId);
+        if (nouveau.patientId() != null) {
+            String texte = "Votre rendez-vous du " + FormatDate.lisible(rdv.debut()) + " a été déplacé par le cabinet au "
+                    + FormatDate.lisible(nouveau.debut()) + ".";
+            notifieur.notifier(nouveau.patientId(), "Rendez-vous déplacé", texte, "/mes-rendez-vous");
+            smsPatient(nouveau, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
+                    + " a ete deplace au " + FormatDate.lisible(nouveau.debut()) + ".");
+        }
+        if (!medecinId.equals(auteurId)) {
+            notifieur.notifier(medecinId, "Rendez-vous déplacé par votre secrétaire",
+                    "Votre secrétaire a déplacé le rendez-vous du " + FormatDate.lisible(rdv.debut()) + " au "
+                            + FormatDate.lisible(nouveau.debut()) + ".", "/medecin/agenda");
+        }
+        return nouveau;
+    }
+
+    /** Coeur du deplacement : controles, prise atomique du nouveau creneau, puis annulation de l'ancien rendez-vous. */
+    private RendezVous deplacerRdv(RendezVous rdv, UUID nouveauCreneauId) {
+        if (rdv.statut() != StatutRdv.CONFIRME) {
+            throw new TransitionInvalideException(
+                    "Seul un rendez-vous confirmé peut être déplacé (statut actuel : " + rdv.statut() + ").");
+        }
+        if (!rdv.debut().isAfter(Instant.now())) {
+            throw new TransitionInvalideException("Ce rendez-vous est déjà passé : il ne peut plus être déplacé.");
+        }
+        if (nouveauCreneauId == null) {
+            throw new CreneauInvalideException("Le nouveau créneau est obligatoire.");
+        }
+        Creneau creneau = creneaux.parId(nouveauCreneauId)
+                .orElseThrow(() -> new CreneauIntrouvableException(nouveauCreneauId));
+        if (!creneau.medecinId().equals(rdv.medecinId())) {
+            throw new CreneauInvalideException("Le nouveau créneau doit être dans l'agenda du même médecin.");
+        }
+        if (nouveauCreneauId.equals(rdv.creneauId())) {
+            throw new CreneauInvalideException("Le nouveau créneau est celui du rendez-vous actuel.");
+        }
+        verifierMedecinActif(creneau.medecinId());
+        if (!creneau.disponible() || !creneau.debut().isAfter(Instant.now())) {
+            throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
+        }
+        // Meme prise atomique que la reservation : de deux demandes simultanees, une seule passe. Si elle echoue,
+        // l'exception annule la transaction : l'ancien rendez-vous n'est pas touche.
+        if (!creneaux.reserverSiDisponible(creneau.id())) {
+            throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
+        }
+        RendezVous nouveau = repository.enregistrer(new RendezVous(UUID.randomUUID(), rdv.patientId(), rdv.medecinId(),
+                creneau.debut(), StatutRdv.CONFIRME, creneau.id(), null, rdv.source(), rdv.nomPatient(),
+                rdv.telephonePatient(), rdv.motif()));
+        rdv.annuler();
+        libererCreneau(rdv);
+        repository.enregistrer(rdv);
+        return nouveau;
+    }
+
     /** Previent le patient (appli + SMS) que le cabinet a annule son rendez-vous. */
     private void notifierAnnulationParCabinet(RendezVous annule) {
         notifieur.notifier(annule.patientId(), "Rendez-vous annulé par le cabinet",
@@ -416,6 +506,12 @@ public class RendezVousService {
      * absent, passerelle) n'empeche jamais l'annulation ni la notification dans l'appli.
      */
     private void smsAnnulationParCabinet(RendezVous rdv) {
+        smsPatient(rdv, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
+                + " a ete annule par le cabinet. Reprenez un creneau sur tabibi.doctor");
+    }
+
+    /** SMS au numero verifie du compte du patient du rendez-vous ; un echec n'empeche jamais l'operation. */
+    private void smsPatient(RendezVous rdv, String texte) {
         if (sms == null || comptes == null || !sms.disponible()) {
             return;
         }
@@ -425,10 +521,9 @@ public class RendezVousService {
             if (tel == null) {
                 return;
             }
-            sms.envoyer(tel, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
-                    + " a ete annule par le cabinet. Reprenez un creneau sur tabibi.doctor");
+            sms.envoyer(tel, texte);
         } catch (RuntimeException e) {
-            log.warn("SMS d'annulation non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
+            log.warn("SMS non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
         }
     }
 
