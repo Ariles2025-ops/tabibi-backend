@@ -74,6 +74,26 @@ public class RendezVousController {
         return RendezVousVue.pourPatient(service.annuler(identifiant(jwt), id));
     }
 
+    /** Corps d'un deplacement : le creneau (du meme medecin) qui remplace l'actuel. */
+    public record DemandeDeplacement(UUID nouveauCreneauId) {}
+
+    /** Le patient deplace son rendez-vous en une seule action (409 si le nouveau creneau est pris : rien ne change). */
+    @PostMapping("/api/rendezvous/{id}/deplacer")
+    @PreAuthorize("hasRole('PATIENT')")
+    public RendezVousVue deplacer(@PathVariable UUID id, @RequestBody DemandeDeplacement demande,
+                                  @AuthenticationPrincipal Jwt jwt) {
+        return RendezVousVue.pourPatient(service.deplacer(identifiant(jwt), id, demande.nouveauCreneauId()));
+    }
+
+    /** Le medecin deplace un rendez-vous de son agenda ; le patient est prevenu. */
+    @PostMapping("/api/medecin/rendezvous/{id}/deplacer")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public RendezVousVue deplacerParCabinet(@PathVariable UUID id, @RequestBody DemandeDeplacement demande,
+                                            @AuthenticationPrincipal Jwt jwt) {
+        UUID medecin = identifiant(jwt);
+        return RendezVousVue.de(service.deplacerParCabinet(medecin, id, demande.nouveauCreneauId(), medecin));
+    }
+
     /** Agenda du medecin connecte : ses rendez-vous, tous statuts, du plus proche au plus lointain. */
     @GetMapping("/api/medecin/rendezvous")
     @PreAuthorize("hasRole('MEDECIN')")

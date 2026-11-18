@@ -97,6 +97,50 @@ class ReservationConcurrentePostgresIT {
     }
 
     @Test
+    void deux_deplacements_vers_le_meme_creneau_un_seul_reussit_et_l_autre_ne_change_rien() throws Exception {
+        UUID medecin = UUID.randomUUID();
+        Instant base = Instant.now().plus(3, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES);
+        Creneau cible = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecin, base, 20, true));
+        List<RendezVous> existants = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            UUID patient = UUID.randomUUID();
+            Creneau c = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecin, base.plus(1 + i, ChronoUnit.HOURS), 20, true));
+            existants.add(service.reserverCreneau(patient, c.id()));
+        }
+        CountDownLatch depart = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Future<RendezVous>> essais = new ArrayList<>();
+        for (RendezVous r : existants) {
+            essais.add(pool.submit(() -> {
+                depart.await();
+                return service.deplacer(r.patientId(), r.id(), cible.id());
+            }));
+        }
+        depart.countDown();
+        int reussites = 0;
+        for (Future<RendezVous> essai : essais) {
+            try {
+                essai.get(30, TimeUnit.SECONDS);
+                reussites++;
+            } catch (ExecutionException e) {
+                assertThat(e.getCause()).isInstanceOfAny(CreneauDejaReserveException.class,
+                        DataIntegrityViolationException.class);
+            }
+        }
+        pool.shutdownNow();
+
+        assertThat(reussites).isEqualTo(1);
+        assertThat(creneaux.parId(cible.id()).orElseThrow().disponible()).isFalse();
+        // le perdant garde son rendez-vous et son creneau d'origine ; le gagnant a libere le sien
+        long confirmes = existants.stream().map(r -> rendezVous.parId(r.id()).orElseThrow())
+                .filter(r -> r.statut() == dz.tabibi.backend.rendezvous.domain.StatutRdv.CONFIRME).count();
+        assertThat(confirmes).isEqualTo(1);
+        long creneauxLibres = existants.stream().map(r -> creneaux.parId(r.creneauId()).orElseThrow())
+                .filter(Creneau::disponible).count();
+        assertThat(creneauxLibres).isEqualTo(1);
+    }
+
+    @Test
     void l_index_refuse_deux_rendezvous_actifs_sur_le_meme_creneau_mais_pas_apres_annulation() {
         Creneau creneau = creneauLibre();
         RendezVous premier = rendezVous.enregistrer(
