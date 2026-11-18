@@ -167,6 +167,29 @@ class SuppressionCompteServiceTest {
     }
 
     @Test
+    void si_keycloak_refuse_aucun_sms_d_annulation_n_est_envoye() {
+        List<String> envoyes = new ArrayList<>();
+        rendezVous.setSms(new dz.tabibi.backend.rappels.domain.EnvoiSms() {
+            @Override public boolean disponible() { return true; }
+            @Override public void envoyer(String telephone, String texte) { envoyes.add(telephone); }
+        }, comptes);
+        Creneau creneau = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN,
+                Instant.now().plusSeconds(86_400), 20, true));
+        rendezVous.reserverCreneau(PATIENT, creneau.id());
+        envoyes.clear(); // le SMS de confirmation de la reservation n'est pas concerne
+        comptes.panne = new IllegalStateException("Keycloak 503");
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThatThrownBy(() -> service.supprimer(MEDECIN)).isInstanceOf(IllegalStateException.class);
+            // Transaction annulee : les synchronisations afterCommit ne sont jamais appelees.
+            assertThat(envoyes).isEmpty();
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertThat(envoyes).isEmpty();
+    }
+
+    @Test
     void supprime_conversations_messages_demandes_dawini_et_notifications_du_patient_sans_toucher_aux_autres() {
         UUID autrePatient = UUID.randomUUID();
         Conversation sienne = conversations.enregistrer(Conversation.ouvrir(PATIENT, MEDECIN, Instant.now()));
