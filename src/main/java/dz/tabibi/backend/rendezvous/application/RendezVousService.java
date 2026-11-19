@@ -12,6 +12,7 @@ import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rappels.domain.EnvoiSms;
@@ -588,13 +589,14 @@ public class RendezVousService {
                             .map(EnvoiSms::normaliser).orElse(null);
                 }
                 if (tel != null) {
-                    sms.envoyer(tel, "Ndawik : votre rendez-vous du " + date + " est confirme. Pour annuler : tabibi.doctor/mes-rendez-vous");
+                    sms.envoyer(tel, Messages.confirmationSms(Messages.langueDe(profils, rdv.patientId()), date));
                 }
             }
             String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
             if (courriel != null && courriel.disponible() && email != null) {
-                courriel.envoyer(email, "Ndawik : rendez-vous confirmé",
-                        "Votre rendez-vous du " + date + " est confirmé.\nPour l'annuler : tabibi.doctor/mes-rendez-vous");
+                String langue = Messages.langueDe(profils, rdv.patientId());
+                courriel.envoyer(email, Messages.confirmationCourrielSujet(langue),
+                        Messages.confirmationCourrielCorps(langue, date));
             }
         } catch (RuntimeException e) {
             log.warn("Confirmation hors application non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
@@ -627,12 +629,17 @@ public class RendezVousService {
     /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */
     private void notifierReservation(RendezVous rdv) {
         String date = FormatDate.lisible(rdv.debut());
-        notifieur.notifier(rdv.patientId(), "Rendez-vous confirmé",
-                "Votre rendez-vous du " + date + " est confirmé.", "/mes-rendez-vous");
+        String languePatient = Messages.langueDe(profils, rdv.patientId());
+        notifieur.notifier(rdv.patientId(), Messages.confirmationSujet(languePatient),
+                Messages.confirmationMessage(languePatient, date), "/mes-rendez-vous");
         confirmationHorsApplication(rdv, date);
-        String message = "Un patient a réservé un rendez-vous le " + date + ".";
-        notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous", message, "/medecin/agenda");
-        secretairesDe(rdv.medecinId()).forEach(s ->
-                notifieur.notifier(s, "Nouveau rendez-vous", message, "/secretaire"));
+        String langueMedecin = Messages.langueDe(profils, rdv.medecinId());
+        notifieur.notifier(rdv.medecinId(), Messages.nouveauRdvSujet(langueMedecin),
+                Messages.nouveauRdvMessage(langueMedecin, date), "/medecin/agenda");
+        secretairesDe(rdv.medecinId()).forEach(s -> {
+            String langueSecretaire = Messages.langueDe(profils, s);
+            notifieur.notifier(s, Messages.nouveauRdvSujet(langueSecretaire),
+                    Messages.nouveauRdvMessage(langueSecretaire, date), "/secretaire");
+        });
     }
 }
