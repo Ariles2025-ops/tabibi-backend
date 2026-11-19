@@ -24,6 +24,8 @@ public record Profil(
         Instant misAJourLe
 ) {
 
+    /** Nom ecrit a la suppression d'un compte (voir SuppressionCompteService.NOM_ANONYME). */
+    public static final String NOM_COMPTE_SUPPRIME = "Compte supprimé";
     public static final int LONGUEUR_MIN_NOM = 2;
     public static final int LONGUEUR_MAX_NOM = 120;
     public static final int LONGUEUR_MAX_WILAYA = 4;
@@ -73,6 +75,10 @@ public record Profil(
         if (nom.length() < LONGUEUR_MIN_NOM || nom.length() > LONGUEUR_MAX_NOM) {
             throw new ProfilInvalideException("Le nom complet doit compter de " + LONGUEUR_MIN_NOM
                     + " a " + LONGUEUR_MAX_NOM + " caractères.");
+        }
+        // Ce nom est le marqueur d'un compte supprime (agenda ferme) : un utilisateur ne peut pas le saisir.
+        if (NOM_COMPTE_SUPPRIME.equalsIgnoreCase(nom)) {
+            throw new ProfilInvalideException("Ce nom est réservé : veuillez saisir votre vrai nom.");
         }
         return nom;
     }
