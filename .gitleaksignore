@@ -1,0 +1,2 @@
+# Faux positif : l'expression régulière qui retire les marqueurs PEM dans FcmEnvoiPush (commit 2022817), aucun secret.
+20228177816c45ebbf1d74fd15cec0e6636a4bf6:src/main/java/dz/tabibi/backend/notifications/adapter/FcmEnvoiPush.java:private-key:56

@@ -173,13 +173,14 @@ class RealmKeycloakTest {
     }
 
     @Test
-    void le_client_mobile_est_public_avec_pkce_sans_mot_de_passe_direct() {
+    void le_client_mobile_est_public_avec_pkce_et_connexion_dans_l_appli() {
         JsonNode mobile = client("tabibi-mobile");
 
         assertThat(mobile.get("publicClient").asBoolean()).isTrue();
         assertThat(mobile.get("standardFlowEnabled").asBoolean()).isTrue();
         assertThat(mobile.get("implicitFlowEnabled").asBoolean()).isFalse();
-        assertThat(mobile.get("directAccessGrantsEnabled").asBoolean()).isFalse();
+        // Connexion e-mail + mot de passe dans les ecrans de l'appli, sans page web (choix du fondateur).
+        assertThat(mobile.get("directAccessGrantsEnabled").asBoolean()).isTrue();
         assertThat(textes(mobile.get("redirectUris"), null)).containsExactly("dz.tabibi.app:/oauthredirect");
         assertThat(mobile.get("attributes").get("pkce.code.challenge.method").asText()).isEqualTo("S256");
     }
