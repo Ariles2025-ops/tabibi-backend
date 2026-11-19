@@ -53,8 +53,7 @@ public class FcmEnvoiPush implements EnvoiPush {
                 e = n.path("client_email").asText("");
                 u = n.path("token_uri").asText("https://oauth2.googleapis.com/token");
                 String pem = n.path("private_key").asText("")
-                        .replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "")
-                        .replaceAll("\\s", "");
+                        .replaceAll("-----(BEGIN|END) PRIVATE KEY-----|\\s", "");
                 k = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(pem)));
                 if (p.isBlank() || e.isBlank()) k = null;
             } catch (Exception ex) {
