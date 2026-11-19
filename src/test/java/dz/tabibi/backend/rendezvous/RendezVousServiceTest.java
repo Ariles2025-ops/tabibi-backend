@@ -41,6 +41,14 @@ class RendezVousServiceTest {
             appels.add(new Appel(destinataireId, sujet, message));
         }
 
+        final List<String> liens = new ArrayList<>();
+
+        @Override
+        public void notifier(UUID destinataireId, String sujet, String message, String lien) {
+            liens.add(lien);
+            notifier(destinataireId, sujet, message);
+        }
+
         List<Appel> pour(UUID destinataireId) {
             return appels.stream().filter(a -> a.destinataireId().equals(destinataireId)).toList();
         }
@@ -248,6 +256,24 @@ class RendezVousServiceTest {
 
         assertThat(service.parId(rdv.id()).id()).isEqualTo(rdv.id());
         assertThatThrownBy(() -> service.parId(UUID.randomUUID())).isInstanceOf(RendezVousIntrouvableException.class);
+    }
+
+    @Test
+    void medecin_indisponible_le_patient_est_renvoye_vers_la_recherche_et_non_vers_la_fiche_retiree() {
+        UUID patient = UUID.randomUUID();
+        Creneau creneau = premierCreneauDisponible();
+        service.reserverCreneau(patient, creneau.id());
+        notifieur.appels.clear();
+        notifieur.liens.clear();
+
+        int annules = service.annulerAVenirDuMedecin(MEDECIN_DEMO);
+
+        assertThat(annules).isEqualTo(1);
+        assertThat(notifieur.pour(patient)).hasSize(1);
+        assertThat(notifieur.pour(patient).get(0).message())
+                .contains("votre médecin n'est plus disponible sur Ndawik").contains("chercher un autre médecin")
+                .doesNotContain("réserver un autre créneau");
+        assertThat(notifieur.liens).containsExactly("/");
     }
 
     @Test
