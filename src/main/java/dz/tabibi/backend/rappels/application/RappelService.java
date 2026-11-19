@@ -8,6 +8,7 @@ import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rappels.domain.EnvoiSms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
@@ -104,9 +105,9 @@ public class RappelService {
             }
             total++;
             try {
-                notifieur.notifier(rdv.patientId(), "Rappel de rendez-vous",
-                        "Rappel : votre rendez-vous a lieu le " + FormatDate.lisible(rdv.debut())
-                                + ". Pensez à vous présenter 10 minutes en avance.", "/mes-rendez-vous");
+                String langue = Messages.langueDe(profils, rdv.patientId());
+                notifieur.notifier(rdv.patientId(), Messages.rappelSujet(langue),
+                        Messages.rappelMessage(langue, FormatDate.lisible(rdv.debut())), "/mes-rendez-vous");
             } catch (RuntimeException e) {
                 log.warn("Notification de rappel non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
             }
@@ -141,7 +142,7 @@ public class RappelService {
                 if (tel == null) {
                     rdv.marquerSmsEnvoye(); // plus de numero : rien a reprendre
                 } else {
-                    sms.envoyer(tel, texteSms(FormatDate.lisible(rdv.debut())));
+                    sms.envoyer(tel, Messages.rappelSms(Messages.langueDe(profils, rdv.patientId()), FormatDate.lisible(rdv.debut())));
                     smsEnvoyes++;
                     reussis++;
                     rdv.marquerSmsEnvoye();
@@ -172,10 +173,6 @@ public class RappelService {
         return Optional.empty();
     }
 
-    private static String texteSms(String date) {
-        return "Ndawik : rappel de votre rendez-vous le " + date + ". Pour annuler : tabibi.doctor/mes-rendez-vous";
-    }
-
     /** SMS et e-mail de rappel ; un echec (coordonnee absente, passerelle) n'empeche jamais la notification ni les autres rappels. */
     private void envoyerHorsApplication(RendezVous rdv) {
         boolean smsPossible = sms != null && comptes != null && sms.disponible();
@@ -191,10 +188,9 @@ public class RappelService {
         String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
         if (courrielPossible && email != null) {
             try {
-                courriel.envoyer(email, "Ndawik : rappel de votre rendez-vous",
-                        "Rappel : votre rendez-vous a lieu le " + date
-                                + ". Pensez à vous présenter 10 minutes en avance.\n"
-                                + "Pour annuler : tabibi.doctor/mes-rendez-vous");
+                String langue = Messages.langueDe(profils, rdv.patientId());
+                courriel.envoyer(email, Messages.rappelCourrielSujet(langue),
+                        Messages.rappelCourrielCorps(langue, date));
                 courrielsEnvoyes++;
             } catch (RuntimeException e) {
                 log.warn("Rappel e-mail non envoye pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
@@ -221,7 +217,7 @@ public class RappelService {
             return;
         }
         try {
-            sms.envoyer(tel, texteSms(date));
+            sms.envoyer(tel, Messages.rappelSms(Messages.langueDe(profils, rdv.patientId()), date));
             smsEnvoyes++;
         } catch (RuntimeException e) {
             smsEnEchec++;
