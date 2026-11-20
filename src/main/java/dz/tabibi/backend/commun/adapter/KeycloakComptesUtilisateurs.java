@@ -128,6 +128,40 @@ public class KeycloakComptesUtilisateurs implements ComptesUtilisateurs {
     }
 
     @Override
+    public UUID creerCompteMedecin(String email, String nomComplet, String telephone) {
+        if (!configure()) {
+            throw new IllegalStateException("Annuaire des comptes non configuré.");
+        }
+        String jeton = "Bearer " + jeton();
+        String nom = nomComplet == null ? "" : nomComplet.trim();
+        int coupe = nom.lastIndexOf(' ');
+        Map<String, Object> u = new java.util.HashMap<>();
+        u.put("username", email);
+        u.put("email", email);
+        u.put("firstName", coupe > 0 ? nom.substring(0, coupe) : nom);
+        u.put("lastName", coupe > 0 ? nom.substring(coupe + 1) : "");
+        u.put("enabled", true);
+        u.put("emailVerified", true);
+        if (telephone != null && !telephone.isBlank()) {
+            u.put("attributes", Map.of("phoneNumber", List.of(telephone)));
+        }
+        java.net.URI emplacement = http.post().uri("/admin/realms/{realm}/users", realm)
+                .header("Authorization", jeton).contentType(MediaType.APPLICATION_JSON)
+                .body(u).retrieve().toBodilessEntity().getHeaders().getLocation();
+        if (emplacement == null) {
+            throw new IllegalStateException("Compte créé mais identifiant introuvable.");
+        }
+        String chemin = emplacement.getPath();
+        UUID id = UUID.fromString(chemin.substring(chemin.lastIndexOf('/') + 1));
+        accorderRole(id, "MEDECIN");
+        http.put().uri("/admin/realms/{realm}/users/{id}/execute-actions-email", realm, id)
+                .header("Authorization", jeton).contentType(MediaType.APPLICATION_JSON)
+                .body(List.of("UPDATE_PASSWORD")).retrieve().toBodilessEntity();
+        log.info("Compte medecin {} cree, e-mail de definition du mot de passe envoye.", id);
+        return id;
+    }
+
+    @Override
     public List<UUID> avecRole(String role) {
         if (!configure()) {
             return List.of();

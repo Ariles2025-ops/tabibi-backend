@@ -35,6 +35,11 @@ public class DemandePraticienAdminController {
         return service.traiter(id);
     }
 
+    @PostMapping("/api/admin/demandes-praticien/{id}/creer-compte")
+    public DemandePraticien creerCompte(@PathVariable UUID id) {
+        return service.creerCompte(id);
+    }
+
     @PostMapping("/api/admin/demandes-praticien/{id}/refuser")
     public DemandePraticien refuser(@PathVariable UUID id) {
         return service.refuser(id);

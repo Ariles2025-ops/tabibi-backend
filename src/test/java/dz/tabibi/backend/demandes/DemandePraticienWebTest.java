@@ -59,6 +59,44 @@ class DemandePraticienWebTest {
     @Autowired MockMvc mvc;
     @MockBean JwtDecoder jwtDecoder;
     @MockBean Courriel courriel;
+    @MockBean dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes;
+
+    private String deposerEtIdentifier(String corps, String ip) throws Exception {
+        deposer(corps, ip).andExpect(status().isCreated());
+        String nom = corps.replaceAll("(?s).*\"nom\": \"([^\"]+)\".*", "$1");
+        return mvc.perform(get("/api/admin/demandes-praticien").with(role("ADMIN"))).andReturn()
+                .getResponse().getContentAsString()
+                .replaceAll("(?s).*\"id\":\"([^\"]+)\"[^}]*\"nom\":\"" + nom + "\".*", "$1");
+    }
+
+    @Test
+    void creer_compte_cree_le_compte_et_traite_la_demande() throws Exception {
+        String id = deposerEtIdentifier(CORPS.replace("Nadia", "Cree"), "10.1.2.1");
+
+        mvc.perform(post("/api/admin/demandes-praticien/" + id + "/creer-compte").with(role("ADMIN")))
+           .andExpect(status().isOk()).andExpect(jsonPath("$.statut").value("TRAITEE"));
+        verify(comptes).creerCompteMedecin("nadia@example.dz", "Dr Cree Bensalem", "0550000000");
+        mvc.perform(post("/api/admin/demandes-praticien/" + id + "/creer-compte").with(role("ADMIN")))
+           .andExpect(status().isConflict());
+    }
+
+    @Test
+    void creer_compte_409_si_email_deja_utilise_ou_absent_et_404_si_inconnue() throws Exception {
+        when(comptes.parEmail("nadia@example.dz")).thenReturn(java.util.Optional.of(java.util.UUID.randomUUID()));
+        String id = deposerEtIdentifier(CORPS.replace("Nadia", "Dupli"), "10.1.2.2");
+        mvc.perform(post("/api/admin/demandes-praticien/" + id + "/creer-compte").with(role("ADMIN")))
+           .andExpect(status().isConflict());
+
+        String sansEmail = deposerEtIdentifier(CORPS.replace("Nadia", "Sans").replace("\"email\": \"nadia@example.dz\", ", ""), "10.1.2.3");
+        mvc.perform(post("/api/admin/demandes-praticien/" + sansEmail + "/creer-compte").with(role("ADMIN")))
+           .andExpect(status().isConflict());
+        verify(comptes, never()).creerCompteMedecin(any(), any(), any());
+
+        mvc.perform(post("/api/admin/demandes-praticien/" + java.util.UUID.randomUUID() + "/creer-compte")
+                .with(role("ADMIN"))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/admin/demandes-praticien/" + id + "/creer-compte").with(role("MEDECIN")))
+           .andExpect(status().isForbidden());
+    }
 
     private static RequestPostProcessor role(String r) {
         return jwt().jwt(j -> j.subject("33333333-3333-3333-3333-333333333333"))
