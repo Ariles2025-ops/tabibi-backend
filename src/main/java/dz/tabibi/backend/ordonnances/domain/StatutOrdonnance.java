@@ -4,5 +4,7 @@ package dz.tabibi.backend.ordonnances.domain;
 public enum StatutOrdonnance {
     EMISE,
     ANNULEE,
-    DELIVREE
+    DELIVREE,
+    /** Calcule a la verification (emise depuis plus longtemps que la duree de validite) ; jamais enregistre. */
+    EXPIREE
 }

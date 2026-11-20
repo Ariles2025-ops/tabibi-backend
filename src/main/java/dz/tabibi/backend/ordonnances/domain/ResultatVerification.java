@@ -13,6 +13,12 @@ public record ResultatVerification(boolean valide, Instant emiseLe, StatutOrdonn
     }
 
     public static ResultatVerification de(Ordonnance ordonnance) {
-        return new ResultatVerification(ordonnance.estValide(), ordonnance.emiseLe(), ordonnance.statut(), ordonnance.delivreeLe());
+        return de(ordonnance, Instant.now());
+    }
+
+    /** Une ordonnance emise dont la duree de validite est depassee est signalee EXPIREE (non valide). */
+    public static ResultatVerification de(Ordonnance ordonnance, Instant maintenant) {
+        StatutOrdonnance statut = ordonnance.estExpiree(maintenant) ? StatutOrdonnance.EXPIREE : ordonnance.statut();
+        return new ResultatVerification(ordonnance.estValide(maintenant), ordonnance.emiseLe(), statut, ordonnance.delivreeLe());
     }
 }

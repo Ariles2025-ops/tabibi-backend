@@ -1,5 +1,6 @@
 package dz.tabibi.backend.ordonnances.domain;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +24,9 @@ public record Ordonnance(
         String motifAnnulation,
         Instant delivreeLe
 ) {
+
+    /** Duree de validite d'une ordonnance emise (a confirmer avec le fondateur). */
+    public static final Duration DUREE_VALIDITE = Duration.ofDays(90);
 
     public Ordonnance {
         lignes = List.copyOf(lignes);
@@ -50,13 +54,17 @@ public record Ordonnance(
 
     /**
      * Une pharmacie delivre les medicaments : l'ordonnance ne peut plus servir une seconde fois.
-     * @throws dz.tabibi.backend.commun.domain.TransitionInvalideException si elle n'est plus emise.
+     * @throws dz.tabibi.backend.commun.domain.TransitionInvalideException si elle n'est plus emise ou si elle a expire.
      */
     public Ordonnance delivrer(Instant quand) {
         if (statut != StatutOrdonnance.EMISE) {
             throw new dz.tabibi.backend.commun.domain.TransitionInvalideException(
                     statut == StatutOrdonnance.DELIVREE ? "Cette ordonnance a déjà été délivrée."
                             : "Cette ordonnance a été annulée par le médecin : elle ne peut pas être délivrée.");
+        }
+        if (estExpiree(quand)) {
+            throw new dz.tabibi.backend.commun.domain.TransitionInvalideException(
+                    "Cette ordonnance est expirée : elle n'est plus valable, ne pas la délivrer.");
         }
         return new Ordonnance(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification,
                 StatutOrdonnance.DELIVREE, null, quand);
@@ -74,8 +82,13 @@ public record Ordonnance(
         return patientId.equals(demandeurId) || medecinId.equals(demandeurId);
     }
 
-    /** Une ordonnance est valide tant qu'elle n'a pas ete annulee. */
-    public boolean estValide() {
-        return statut == StatutOrdonnance.EMISE;
+    /** Vrai si elle est encore emise mais que sa duree de validite est depassee a l'instant donne. */
+    public boolean estExpiree(Instant maintenant) {
+        return statut == StatutOrdonnance.EMISE && maintenant.isAfter(emiseLe.plus(DUREE_VALIDITE));
+    }
+
+    /** Une ordonnance est valide tant qu'elle est emise (ni annulee, ni delivree) et non expiree. */
+    public boolean estValide(Instant maintenant) {
+        return statut == StatutOrdonnance.EMISE && !estExpiree(maintenant);
     }
 }
