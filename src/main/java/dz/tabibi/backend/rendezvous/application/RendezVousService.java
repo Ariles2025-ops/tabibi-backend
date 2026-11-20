@@ -127,7 +127,7 @@ public class RendezVousService {
         // Verrou par patient : les controles ci-dessous et l'insertion ne peuvent pas se croiser avec une autre
         // reservation du meme patient.
         repository.verrouillerPatient(patientId);
-        verifierPasDeRendezVousAVenir(patientId, creneau);
+        verifierPasDeRendezVousAVenir(patientId, creneau, null);
         // Prise atomique (UPDATE ... where disponible = true) : de deux reservations simultanees, une seule passe.
         // L'index unique partiel sur rendez_vous(creneau_id) (rendez-vous non annules) garde la base coherente.
         if (!creneaux.reserverSiDisponible(creneau.id())) {
@@ -215,11 +215,11 @@ public class RendezVousService {
      * pas reserver deux rendez-vous qui se chevauchent, medecins confondus.
      * @throws CreneauDejaReserveException dans l'un des deux cas.
      */
-    private void verifierPasDeRendezVousAVenir(UUID patientId, Creneau voulu) {
+    private void verifierPasDeRendezVousAVenir(UUID patientId, Creneau voulu, UUID rdvIgnoreId) {
         Instant maintenant = Instant.now();
         Instant fin = voulu.debut().plus(Duration.ofMinutes(voulu.dureeMinutes()));
         for (RendezVous r : repository.parPatient(patientId)) {
-            if (r.statut() != StatutRdv.CONFIRME || !r.debut().isAfter(maintenant)) {
+            if (r.id().equals(rdvIgnoreId) || r.statut() != StatutRdv.CONFIRME || !r.debut().isAfter(maintenant)) {
                 continue;
             }
             if (r.estAvec(voulu.medecinId())) {
@@ -509,6 +509,12 @@ public class RendezVousService {
         verifierMedecinActif(creneau.medecinId());
         if (!creneau.disponible() || !creneau.debut().isAfter(Instant.now())) {
             throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
+        }
+        // Memes regles de chevauchement que la reservation (hors le rendez-vous deplace). Pas de controle pour un
+        // rendez-vous pris par telephone (aucun compte patient).
+        if (rdv.patientId() != null) {
+            repository.verrouillerPatient(rdv.patientId());
+            verifierPasDeRendezVousAVenir(rdv.patientId(), creneau, rdv.id());
         }
         // Meme prise atomique que la reservation : de deux demandes simultanees, une seule passe. Si elle echoue,
         // l'exception annule la transaction : l'ancien rendez-vous n'est pas touche.
