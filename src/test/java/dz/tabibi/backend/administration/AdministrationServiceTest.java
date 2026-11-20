@@ -345,6 +345,18 @@ class AdministrationServiceTest {
     }
 
     @Test
+    void est_suspendu_seulement_si_validee_et_fiche_retiree() {
+        var c = service.deposer(MEDECIN, DEMANDE);
+        assertThat(service.estSuspendu(c)).isFalse();
+        var validee = service.valider(c.id());
+        assertThat(service.estSuspendu(validee)).isFalse();
+        service.suspendre(MEDECIN, "motif");
+        assertThat(service.estSuspendu(service.maCandidature(MEDECIN))).isTrue();
+        service.retablir(MEDECIN);
+        assertThat(service.estSuspendu(service.maCandidature(MEDECIN))).isFalse();
+    }
+
+    @Test
     void suspendre_exige_un_motif_et_un_medecin_valide() {
         assertThatThrownBy(() -> service.suspendre(MEDECIN, " ")).isInstanceOf(CandidatureInvalideException.class);
         assertThatThrownBy(() -> service.suspendre(MEDECIN, "motif")).isInstanceOf(TransitionInvalideException.class);
