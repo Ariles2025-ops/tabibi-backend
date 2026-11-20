@@ -28,6 +28,9 @@ public record Ordonnance(
     /** Duree de validite d'une ordonnance emise (a confirmer avec le fondateur). */
     public static final Duration DUREE_VALIDITE = Duration.ofDays(90);
 
+    /** Longueur maximale du motif d'annulation (colonne motif_annulation : varchar(300)). */
+    public static final int LONGUEUR_MAX_MOTIF = 300;
+
     public Ordonnance {
         lignes = List.copyOf(lignes);
     }
@@ -48,6 +51,9 @@ public record Ordonnance(
                             : "Cette ordonnance est déjà annulée.");
         }
         String m = motif == null || motif.isBlank() ? null : motif.trim();
+        if (m != null && m.length() > LONGUEUR_MAX_MOTIF) {
+            throw new OrdonnanceInvalideException("Le motif ne peut pas dépasser " + LONGUEUR_MAX_MOTIF + " caractères.");
+        }
         return new Ordonnance(id, medecinId, patientId, rendezVousId, lignes, emiseLe, codeVerification,
                 StatutOrdonnance.ANNULEE, m, null);
     }

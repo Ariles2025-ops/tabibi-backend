@@ -199,6 +199,17 @@ class OrdonnanceServiceTest {
     }
 
     @Test
+    void refuse_un_motif_d_annulation_de_plus_de_300_caracteres() {
+        Ordonnance o = new Ordonnance(UUID.randomUUID(), MEDECIN, PATIENT, null, LIGNES,
+                Instant.parse("2026-01-10T09:00:00Z"), "CCCCCCC3", StatutOrdonnance.EMISE);
+
+        assertThatThrownBy(() -> o.annuler("x".repeat(301)))
+                .isInstanceOf(OrdonnanceInvalideException.class)
+                .hasMessage("Le motif ne peut pas dépasser 300 caractères.");
+        assertThat(o.annuler("x".repeat(300)).motifAnnulation()).hasSize(300);
+    }
+
+    @Test
     void verifier_un_code_inconnu_est_introuvable() {
         assertThatThrownBy(() -> service.verifier("ZZZZZZZZ"))
                 .isInstanceOf(OrdonnanceIntrouvableException.class);
