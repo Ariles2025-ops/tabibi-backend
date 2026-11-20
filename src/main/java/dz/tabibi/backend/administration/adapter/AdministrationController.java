@@ -42,11 +42,16 @@ public class AdministrationController {
     public record CandidatureVue(UUID id, UUID medecinId, String nomComplet, String specialiteSlug, String specialiteFr,
                                  String wilayaCode, String wilayaFr, String ville, String numeroOrdre, String telephone,
                                  String statut, String motifRefus, Instant deposeeLe, Instant traiteeLe,
-                                 UUID ficheReclamee) {
+                                 UUID ficheReclamee, boolean suspendu) {
         static CandidatureVue de(CandidatureMedecin c) {
+            return de(c, false);
+        }
+
+        /** @param suspendu vrai si la candidature est validee mais que la fiche a ete retiree (medecin suspendu). */
+        static CandidatureVue de(CandidatureMedecin c, boolean suspendu) {
             return new CandidatureVue(c.id(), c.medecinId(), c.nomComplet(), c.specialiteSlug(), c.specialiteFr(),
                     c.wilayaCode(), c.wilayaFr(), c.ville(), c.numeroOrdre(), c.telephone(),
-                    c.statut().name(), c.motifRefus(), c.deposeeLe(), c.traiteeLe(), c.ficheReclamee());
+                    c.statut().name(), c.motifRefus(), c.deposeeLe(), c.traiteeLe(), c.ficheReclamee(), suspendu);
         }
     }
 
@@ -107,7 +112,8 @@ public class AdministrationController {
     @GetMapping("/api/medecin/candidature")
     @PreAuthorize("isAuthenticated()")
     public CandidatureVue maCandidature(@AuthenticationPrincipal Jwt jwt) {
-        return CandidatureVue.de(service.maCandidature(identifiant(jwt)));
+        CandidatureMedecin c = service.maCandidature(identifiant(jwt));
+        return CandidatureVue.de(c, service.estSuspendu(c));
     }
 
     /** Candidatures, filtrees par statut si demande, de la plus ancienne a la plus recente. */

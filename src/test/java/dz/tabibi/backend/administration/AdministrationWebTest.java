@@ -148,6 +148,17 @@ class AdministrationWebTest {
     }
 
     @Test
+    void ma_candidature_indique_si_le_medecin_est_suspendu() throws Exception {
+        CandidatureMedecin c = candidature().valider(Instant.parse("2026-09-19T10:00:00Z"));
+        when(service.maCandidature(MEDECIN)).thenReturn(c);
+        when(service.estSuspendu(c)).thenReturn(true);
+
+        mvc.perform(get("/api/medecin/candidature").with(medecin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.suspendu").value(true));
+    }
+
+    @Test
     void ma_candidature_sans_depot_repond_404() throws Exception {
         when(service.maCandidature(any())).thenThrow(CandidatureIntrouvableException.aucuneDeposee());
 

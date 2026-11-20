@@ -203,6 +203,11 @@ public class AdministrationService {
                 .orElseThrow(CandidatureIntrouvableException::aucuneDeposee);
     }
 
+    /** Vrai si la candidature est validee mais que la fiche du medecin n'est plus dans l'annuaire (suspendu). */
+    public boolean estSuspendu(CandidatureMedecin c) {
+        return c.statut() == StatutCandidature.VALIDEE && medecins.parId(c.medecinId()).isEmpty();
+    }
+
     /** Candidatures, eventuellement filtrees par statut, de la plus ancienne a la plus recente. */
     public List<CandidatureMedecin> lister(Optional<StatutCandidature> statut) {
         return candidatures.lister(statut);
