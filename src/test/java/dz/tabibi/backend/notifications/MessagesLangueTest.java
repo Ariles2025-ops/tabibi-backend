@@ -63,4 +63,32 @@ class MessagesLangueTest {
         assertThat(appels).hasSize(1);
         assertThat(appels.get(0)).startsWith("تذكير بالموعد|").contains("07/12/2026");
     }
+
+    @Test
+    void chaque_message_patient_a_une_version_arabe_et_une_version_francaise() {
+        String[] ar = {
+                Messages.annuleCabinetSujet("ar"), Messages.annuleCabinetMessage("ar", "d"), Messages.annuleCabinetSms("ar", "d"),
+                Messages.deplaceCabinetSujet("ar"), Messages.deplaceCabinetMessage("ar", "d1", "d2"), Messages.deplaceCabinetSms("ar", "d1", "d2"),
+                Messages.medecinIndisponibleSujet("ar"), Messages.medecinIndisponibleMessage("ar", "d"), Messages.medecinIndisponibleSms("ar", "d"),
+                Messages.ordonnanceNouvelleSujet("ar"), Messages.ordonnanceNouvelleMessage("ar"),
+                Messages.ordonnanceAnnuleeSujet("ar"), Messages.ordonnanceAnnuleeMessage("ar", "erreur"),
+                Messages.ordonnanceDelivreeSujet("ar"), Messages.ordonnanceDelivreeMessage("ar"),
+                Messages.creneauDisponibleSujet("ar"), Messages.creneauDisponibleMessage("ar", "d")};
+        for (String texte : ar) {
+            assertThat(texte).matches(".*[\\u0600-\\u06FF].*").doesNotContain("Ndawik").doesNotContain("Votre");
+        }
+        assertThat(Messages.annuleCabinetSms("ar", "d")).startsWith("نداويك").contains("d");
+        assertThat(Messages.deplaceCabinetSms("ar", "d1", "d2")).startsWith("نداويك").contains("d1").contains("d2");
+        assertThat(Messages.medecinIndisponibleSms("ar", "d")).startsWith("نداويك");
+        assertThat(Messages.ordonnanceAnnuleeMessage("ar", "erreur")).contains("erreur");
+
+        assertThat(Messages.annuleCabinetSujet("fr")).isEqualTo("Rendez-vous annulé par le cabinet");
+        assertThat(Messages.annuleCabinetSms("fr", "d")).startsWith("Ndawik : ").contains("annulé par le cabinet");
+        assertThat(Messages.deplaceCabinetMessage("fr", "d1", "d2")).contains("d1").contains("d2");
+        assertThat(Messages.medecinIndisponibleSujet("fr")).isEqualTo("Rendez-vous annulé : médecin indisponible");
+        assertThat(Messages.ordonnanceNouvelleSujet("fr")).isEqualTo("Nouvelle ordonnance");
+        assertThat(Messages.ordonnanceAnnuleeMessage("fr", null)).isEqualTo("Votre médecin a annulé une ordonnance.");
+        assertThat(Messages.ordonnanceDelivreeSujet("fr")).isEqualTo("Ordonnance délivrée");
+        assertThat(Messages.creneauDisponibleSujet("fr")).isEqualTo("Créneau disponible");
+    }
 }

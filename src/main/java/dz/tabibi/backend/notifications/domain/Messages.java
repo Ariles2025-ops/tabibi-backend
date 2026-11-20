@@ -107,4 +107,98 @@ public final class Messages {
     public static String nouveauRdvMessage(String langue, String date) {
         return ar(langue) ? "حجز مريض موعدًا يوم " + date + "." : "Un patient a réservé un rendez-vous le " + date + ".";
     }
+
+    // --- Annulation / deplacement par le cabinet (patient) ---
+
+    public static String annuleCabinetSujet(String langue) {
+        return ar(langue) ? "تم إلغاء الموعد من طرف العيادة" : "Rendez-vous annulé par le cabinet";
+    }
+
+    public static String annuleCabinetMessage(String langue, String date) {
+        return ar(langue)
+                ? "تم إلغاء موعدك يوم " + date + " من طرف العيادة. يمكنك حجز موعد آخر."
+                : "Votre rendez-vous du " + date + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.";
+    }
+
+    public static String annuleCabinetSms(String langue, String date) {
+        return ar(langue)
+                ? "نداويك: تم إلغاء موعدك يوم " + date + " من طرف العيادة. احجز موعدًا آخر على ndawik.com"
+                : "Ndawik : votre rendez-vous du " + date + " a été annulé par le cabinet. Reprenez un créneau sur ndawik.com";
+    }
+
+    public static String deplaceCabinetSujet(String langue) {
+        return ar(langue) ? "تم تغيير موعدك" : "Rendez-vous déplacé";
+    }
+
+    public static String deplaceCabinetMessage(String langue, String ancienneDate, String nouvelleDate) {
+        return ar(langue)
+                ? "تم نقل موعدك يوم " + ancienneDate + " من طرف العيادة إلى " + nouvelleDate + "."
+                : "Votre rendez-vous du " + ancienneDate + " a été déplacé par le cabinet au " + nouvelleDate + ".";
+    }
+
+    public static String deplaceCabinetSms(String langue, String ancienneDate, String nouvelleDate) {
+        return ar(langue)
+                ? "نداويك: تم نقل موعدك يوم " + ancienneDate + " إلى " + nouvelleDate + "."
+                : "Ndawik : votre rendez-vous du " + ancienneDate + " a été déplacé au " + nouvelleDate + ".";
+    }
+
+    public static String medecinIndisponibleSujet(String langue) {
+        return ar(langue) ? "تم إلغاء الموعد: الطبيب غير متاح" : "Rendez-vous annulé : médecin indisponible";
+    }
+
+    public static String medecinIndisponibleMessage(String langue, String date) {
+        return ar(langue)
+                ? "تم إلغاء موعدك يوم " + date + ": طبيبك لم يعد متاحًا على نداويك. يمكنك البحث عن طبيب آخر."
+                : "Votre rendez-vous du " + date + " est annulé : votre médecin n'est plus disponible sur Ndawik. "
+                        + "Vous pouvez chercher un autre médecin.";
+    }
+
+    public static String medecinIndisponibleSms(String langue, String date) {
+        return ar(langue)
+                ? "نداويك: تم إلغاء موعدك يوم " + date + " لأن طبيبك لم يعد متاحًا. ابحث عن طبيب آخر على ndawik.com"
+                : "Ndawik : votre rendez-vous du " + date
+                        + " est annulé : votre médecin n'est plus disponible. Cherchez un autre médecin sur ndawik.com";
+    }
+
+    // --- Ordonnances (patient) ---
+
+    public static String ordonnanceNouvelleSujet(String langue) {
+        return ar(langue) ? "وصفة طبية جديدة" : "Nouvelle ordonnance";
+    }
+
+    public static String ordonnanceNouvelleMessage(String langue) {
+        return ar(langue)
+                ? "أصدر لك طبيبك وصفة طبية: يمكنك الاطلاع عليها في «وصفاتي»."
+                : "Votre médecin vous a délivré une ordonnance : retrouvez-la dans « Mes ordonnances ».";
+    }
+
+    public static String ordonnanceAnnuleeSujet(String langue) {
+        return ar(langue) ? "تم إلغاء الوصفة الطبية" : "Ordonnance annulée";
+    }
+
+    public static String ordonnanceAnnuleeMessage(String langue, String motif) {
+        return ar(langue)
+                ? "ألغى طبيبك وصفة طبية" + (motif == null ? "." : ": " + motif)
+                : "Votre médecin a annulé une ordonnance" + (motif == null ? "." : " : " + motif);
+    }
+
+    public static String ordonnanceDelivreeSujet(String langue) {
+        return ar(langue) ? "تم صرف الوصفة الطبية" : "Ordonnance délivrée";
+    }
+
+    public static String ordonnanceDelivreeMessage(String langue) {
+        return ar(langue) ? "تم صرف وصفتك الطبية في الصيدلية." : "Votre ordonnance a été délivrée en pharmacie.";
+    }
+
+    // --- Liste d'attente (patient) ---
+
+    public static String creneauDisponibleSujet(String langue) {
+        return ar(langue) ? "موعد متاح" : "Créneau disponible";
+    }
+
+    public static String creneauDisponibleMessage(String langue, String date) {
+        return ar(langue)
+                ? "أصبح موعد متاحًا لدى طبيبك يوم " + date + ". سارع بالحجز."
+                : "Un créneau vient de se libérer chez votre médecin le " + date + ". Réservez vite.";
+    }
 }

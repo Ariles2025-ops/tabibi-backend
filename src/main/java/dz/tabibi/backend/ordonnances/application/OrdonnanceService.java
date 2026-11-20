@@ -11,6 +11,9 @@ import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
+import dz.tabibi.backend.notifications.domain.Messages;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -27,6 +30,18 @@ public class OrdonnanceService {
     private final OrdonnanceRepository repository;
     private final RendezVousRepository rendezVous;
     private final Notifieur notifieur;
+
+    /** Profils : langue du patient pour ses notifications (francais si absent). */
+    private ProfilRepository profils;
+
+    @Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
+
+    private String langue(UUID patientId) {
+        return Messages.langueDe(profils, patientId);
+    }
 
     public OrdonnanceService(OrdonnanceRepository repository, RendezVousRepository rendezVous, Notifieur notifieur) {
         this.repository = repository;
@@ -58,8 +73,8 @@ public class OrdonnanceService {
         Ordonnance ordonnance = Ordonnance.emettre(
                 medecinId, patientId, rendezVousId, lignes, codeLibre(), Instant.now());
         Ordonnance emise = repository.enregistrer(ordonnance);
-        notifieur.notifier(patientId, "Nouvelle ordonnance",
-                "Votre médecin vous a délivré une ordonnance : retrouvez-la dans « Mes ordonnances ».",
+        notifieur.notifier(patientId, Messages.ordonnanceNouvelleSujet(langue(patientId)),
+                Messages.ordonnanceNouvelleMessage(langue(patientId)),
                 "/ordonnances/" + emise.id());
         return emise;
     }
@@ -111,8 +126,8 @@ public class OrdonnanceService {
             throw new AccesRefuseException("Vous n'avez pas rédigé cette ordonnance.");
         }
         Ordonnance annulee = repository.enregistrer(ordonnance.annuler(motif));
-        notifieur.notifier(annulee.patientId(), "Ordonnance annulée",
-                "Votre médecin a annulé une ordonnance" + (annulee.motifAnnulation() == null ? "." : " : " + annulee.motifAnnulation()),
+        notifieur.notifier(annulee.patientId(), Messages.ordonnanceAnnuleeSujet(langue(annulee.patientId())),
+                Messages.ordonnanceAnnuleeMessage(langue(annulee.patientId()), annulee.motifAnnulation()),
                 "/ordonnances/" + annulee.id());
         return annulee;
     }
@@ -125,8 +140,8 @@ public class OrdonnanceService {
         Ordonnance ordonnance = repository.parCode(CodeVerification.normaliser(code))
                 .orElseThrow(OrdonnanceIntrouvableException::codeInconnu);
         Ordonnance delivree = repository.enregistrer(ordonnance.delivrer(Instant.now()));
-        notifieur.notifier(delivree.patientId(), "Ordonnance délivrée",
-                "Votre ordonnance a été délivrée en pharmacie.", "/ordonnances/" + delivree.id());
+        notifieur.notifier(delivree.patientId(), Messages.ordonnanceDelivreeSujet(langue(delivree.patientId())),
+                Messages.ordonnanceDelivreeMessage(langue(delivree.patientId())), "/ordonnances/" + delivree.id());
         return ResultatVerification.de(delivree);
     }
 

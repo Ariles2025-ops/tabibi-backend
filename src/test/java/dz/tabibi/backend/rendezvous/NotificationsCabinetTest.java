@@ -111,6 +111,20 @@ class NotificationsCabinetTest {
     }
 
     @Test
+    void l_annulation_par_le_cabinet_est_en_arabe_pour_un_profil_arabe_notification_et_sms() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(PATIENT, "Amina", "0550123456", null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        RendezVous rdv = reserve();
+
+        service.annulerParCabinet(MEDECIN, rdv.id());
+
+        assertThat(sujetsPour(PATIENT)).containsExactly("تم إلغاء الموعد من طرف العيادة");
+        assertThat(sms.envois).hasSize(1);
+        assertThat(sms.envois.get(0)).contains("نداويك").doesNotContain("annulé");
+    }
+
+    @Test
     void l_annulation_par_la_secretaire_previent_le_patient_par_sms_et_le_medecin() {
         RendezVous rdv = reserve();
 
