@@ -400,6 +400,28 @@ class RendezVousServiceTest {
     }
 
     @Test
+    void refuse_de_deplacer_un_rendezvous_sur_un_horaire_qui_chevauche_un_autre_rendezvous_du_patient() {
+        UUID patient = UUID.randomUUID();
+        UUID medecinA = UUID.randomUUID();
+        UUID medecinB = UUID.randomUUID();
+        Instant debut = Instant.now().plusSeconds(3 * 86400).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        Creneau chezA = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinA, debut, 30, true));
+        Creneau bActuel = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinB, debut.plusSeconds(4 * 3600), 30, true));
+        Creneau bChevauche = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinB, debut, 30, true));
+        Creneau bLibre = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinB, debut.plusSeconds(2 * 3600), 30, true));
+        service.reserverCreneau(patient, chezA.id());
+        RendezVous chezB = service.reserverCreneau(patient, bActuel.id());
+
+        assertThatThrownBy(() -> service.deplacer(patient, chezB.id(), bChevauche.id()))
+                .isInstanceOf(CreneauDejaReserveException.class)
+                .hasMessageContaining("chevauche");
+        assertThat(estDisponible(bChevauche.id())).isTrue();
+        assertThat(service.parId(chezB.id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+        // un horaire libre, sans chevauchement (et different de l'ancien creneau), reste accepte
+        assertThat(service.deplacer(patient, chezB.id(), bLibre.id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+    }
+
+    @Test
     void un_patient_ne_peut_pas_reserver_chez_lui_meme() {
         Creneau creneau = premierCreneauDisponible();
 
