@@ -25,8 +25,8 @@ class MessagesLangueTest {
     void langue_arabe_donne_des_textes_arabes_avec_nom_arabe_de_la_marque() {
         String langue = Messages.langueDe(profils, profilEn("ar"));
         assertThat(langue).isEqualTo("ar");
-        assertThat(Messages.rappelMessage(langue, "07/12/2026 à 10:00")).contains("موعدك").doesNotContain("Rappel");
-        assertThat(Messages.rappelSms(langue, "07/12/2026 à 10:00")).startsWith("نداويك").contains("07/12/2026");
+        assertThat(Messages.rappelMessage(langue, "07/12/2026 الساعة 10:00")).contains("موعدك").doesNotContain("Rappel");
+        assertThat(Messages.rappelSms(langue, "07/12/2026 الساعة 10:00")).startsWith("نداويك").contains("07/12/2026");
         assertThat(Messages.confirmationCourrielSujet(langue)).contains("نداويك");
         assertThat(Messages.nouveauRdvSujet(langue)).isEqualTo("موعد جديد");
     }
@@ -61,7 +61,8 @@ class MessagesLangueTest {
                 Instant.parse("2026-12-07T09:00:00Z")));
         svc.executer();
         assertThat(appels).hasSize(1);
-        assertThat(appels.get(0)).startsWith("تذكير بالموعد|").contains("07/12/2026");
+        assertThat(appels.get(0)).startsWith("تذكير بالموعد|").contains("07/12/2026 الساعة 10:00").doesNotContain(" à ");
+        assertThat(appels.get(0).replaceAll("[\\d/: |]", "")).doesNotContainPattern("[A-Za-z\u00C0-\u00FF]");
     }
 
     @Test
