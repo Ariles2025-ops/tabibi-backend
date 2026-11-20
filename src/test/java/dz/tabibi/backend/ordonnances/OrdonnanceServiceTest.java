@@ -218,4 +218,18 @@ class OrdonnanceServiceTest {
                 .isInstanceOf(dz.tabibi.backend.commun.domain.AccesRefuseException.class);
         assertThat(service.emettre(MEDECIN, PATIENT, rdvCommun.id(), LIGNES)).isNotNull();
     }
+
+    @Test
+    void une_ordonnance_emise_depuis_trop_longtemps_est_expiree_et_non_delivrable() {
+        emiseLe(PATIENT, "2020-01-10T09:00:00Z", StatutOrdonnance.EMISE, "EEEEEEE2");
+
+        ResultatVerification r = service.verifier("EEEEEEE2");
+
+        assertThat(r.valide()).isFalse();
+        assertThat(r.statut()).isEqualTo(StatutOrdonnance.EXPIREE);
+        assertThatThrownBy(() -> service.delivrer("EEEEEEE2"))
+                .isInstanceOf(dz.tabibi.backend.commun.domain.TransitionInvalideException.class)
+                .hasMessageContaining("expirée");
+        assertThat(repository.parCode("EEEEEEE2").orElseThrow().statut()).isEqualTo(StatutOrdonnance.EMISE);
+    }
 }
