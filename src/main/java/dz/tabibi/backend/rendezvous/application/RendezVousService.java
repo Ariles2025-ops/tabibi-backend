@@ -476,7 +476,7 @@ public class RendezVousService {
                     + FormatDate.lisible(nouveau.debut()) + ".";
             notifieur.notifier(nouveau.patientId(), "Rendez-vous déplacé", texte, "/mes-rendez-vous");
             smsPatient(nouveau, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
-                    + " a ete deplace au " + FormatDate.lisible(nouveau.debut()) + ".");
+                    + " a été déplacé au " + FormatDate.lisible(nouveau.debut()) + ".");
         }
         if (!medecinId.equals(auteurId)) {
             notifieur.notifier(medecinId, "Rendez-vous déplacé par votre secrétaire",
@@ -548,16 +548,16 @@ public class RendezVousService {
                         + " est annulé : votre médecin n'est plus disponible sur Ndawik. Vous pouvez chercher un autre médecin.",
                 "/");
         smsPatient(annule, "Ndawik : votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                + " est annule : votre medecin n'est plus disponible. Cherchez un autre medecin sur ndawik.com");
+                + " est annulé : votre médecin n'est plus disponible. Cherchez un autre médecin sur ndawik.com");
     }
 
     /**
-     * SMS court (sans accents : un seul segment) au numero verifie du compte du patient. Un echec (numero
+     * SMS (en français correct : avec accents, il part en Unicode) au numero verifie du compte du patient. Un echec (numero
      * absent, passerelle) n'empeche jamais l'annulation ni la notification dans l'appli.
      */
     private void smsAnnulationParCabinet(RendezVous rdv) {
         smsPatient(rdv, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
-                + " a ete annule par le cabinet. Reprenez un creneau sur tabibi.doctor");
+                + " a été annulé par le cabinet. Reprenez un créneau sur ndawik.com");
     }
 
     /**
