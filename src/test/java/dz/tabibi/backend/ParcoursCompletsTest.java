@@ -169,8 +169,12 @@ class ParcoursCompletsTest {
         ok(post("/api/medecin/rendezvous/" + nouveauRdv + "/deplacer"), compte(medecin, "MEDECIN"),
                 "{\"nouveauCreneauId\":\"" + ancien + "\"}");
         assertThat(nbNotifications(patient, "PATIENT")).isGreaterThan(notifsPatient);
-        assertThat(statut(post("/api/rendezvous/" + rdv + "/deplacer"), compte(patient, "PATIENT"),
-                "{\"nouveauCreneauId\":\"" + nouveau + "\"}")).isEqualTo(409);
+        MvcResult refus = appel(post("/api/rendezvous/" + rdv + "/deplacer"), compte(patient, "PATIENT"),
+                "{\"nouveauCreneauId\":\"" + nouveau + "\"}");
+        assertThat(refus.getResponse().getStatus()).isEqualTo(409);
+        // le message affiche le libelle lisible du statut, pas le nom technique de l'enum
+        assertThat((String) lire(refus.getResponse().getContentAsString(), "$.erreur"))
+                .isEqualTo("Seul un rendez-vous confirmé peut être déplacé (statut actuel : annulé).");
     }
 
     @Test

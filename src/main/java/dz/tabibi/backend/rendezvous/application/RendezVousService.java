@@ -490,7 +490,7 @@ public class RendezVousService {
     private RendezVous deplacerRdv(RendezVous rdv, UUID nouveauCreneauId) {
         if (rdv.statut() != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirmé peut être déplacé (statut actuel : " + rdv.statut() + ").");
+                    "Seul un rendez-vous confirmé peut être déplacé (statut actuel : " + rdv.statut().libelle() + ").");
         }
         if (!rdv.debut().isAfter(Instant.now())) {
             throw new TransitionInvalideException("Ce rendez-vous est déjà passé : il ne peut plus être déplacé.");
