@@ -106,7 +106,7 @@ class NotificationsCabinetTest {
 
         assertThat(sujetsPour(PATIENT)).containsExactly("Rendez-vous annulé par le cabinet");
         assertThat(sms.envois).hasSize(1);
-        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Ndawik").contains("annule par le cabinet");
+        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Ndawik").contains("annulé par le cabinet").contains("créneau").contains("ndawik.com").doesNotContain("tabibi.doctor");
         assertThat(sujetsPour(MEDECIN)).isEmpty();
     }
 
@@ -157,7 +157,7 @@ class NotificationsCabinetTest {
         service.reserverCreneau(PATIENT, c.id());
 
         assertThat(sms.envois).hasSize(1);
-        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Ndawik : votre rendez-vous du ").contains("est confirme");
+        assertThat(sms.envois.get(0)).startsWith("+213550123456 | Ndawik : votre rendez-vous du ").contains("est confirmé").contains("ndawik.com/mes-rendez-vous").doesNotContain("tabibi.doctor");
         assertThat(courriels).containsExactly("amina@exemple.dz | Ndawik : rendez-vous confirmé");
     }
 }

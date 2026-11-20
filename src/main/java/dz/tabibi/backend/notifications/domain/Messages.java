@@ -12,7 +12,7 @@ import java.util.UUID;
 public final class Messages {
 
     public static final String AR = "ar";
-    private static final String LIEN_ANNULATION = "tabibi.doctor/mes-rendez-vous";
+    private static final String LIEN_ANNULATION = "ndawik.com/mes-rendez-vous";
 
     private Messages() { }
 
@@ -72,7 +72,7 @@ public final class Messages {
     public static String confirmationSms(String langue, String date) {
         return ar(langue)
                 ? "نداويك: تم تأكيد موعدك يوم " + date + ". للإلغاء: " + LIEN_ANNULATION
-                : "Ndawik : votre rendez-vous du " + date + " est confirme. Pour annuler : " + LIEN_ANNULATION;
+                : "Ndawik : votre rendez-vous du " + date + " est confirmé. Pour annuler : " + LIEN_ANNULATION;
     }
 
     public static String confirmationCourrielSujet(String langue) {
