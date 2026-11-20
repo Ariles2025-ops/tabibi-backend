@@ -129,7 +129,7 @@ class NotificationsCabinetTest {
 
         cabinet.absentPour(SECRETAIRE, passe.id());
 
-        assertThat(sujetsPour(PATIENT)).containsExactly("Rendez-vous manqué");
+        assertThat(sujetsPour(PATIENT)).containsExactly("Rendez-vous non honoré");
         assertThat(sujetsPour(MEDECIN)).containsExactly("Patient absent");
     }
 

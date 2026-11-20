@@ -85,6 +85,19 @@ public final class Messages {
                 : "Votre rendez-vous du " + date + " est confirmé.\nPour l'annuler : " + LIEN_ANNULATION;
     }
 
+    // --- Rendez-vous non honore (patient), ton neutre ---
+
+    public static String absentSujet(String langue) {
+        return ar(langue) ? "لم يتم الحضور" : "Rendez-vous non honoré";
+    }
+
+    public static String absentMessage(String langue, String date) {
+        return ar(langue)
+                ? "لم يتم موعدك يوم " + date + " (لم يتم الحضور). يرجى الإلغاء مسبقًا لإتاحة المكان."
+                : "Votre rendez-vous du " + date + " n'a pas pu avoir lieu (non honoré). "
+                        + "Pensez à annuler à l'avance pour libérer la place.";
+    }
+
     // --- Nouveau rendez-vous (medecin, secretaire) ---
 
     public static String nouveauRdvSujet(String langue) {

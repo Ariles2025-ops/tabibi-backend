@@ -375,9 +375,9 @@ public class RendezVousService {
         rdv.marquerAbsent();
         RendezVous absent = repository.enregistrer(rdv);
         if (absent.patientId() != null) {
-            notifieur.notifier(absent.patientId(), "Rendez-vous manqué",
-                    "Vous n'êtes pas venu à votre rendez-vous du " + FormatDate.lisible(absent.debut())
-                            + ". Pensez à annuler à l'avance pour libérer la place.", "/mes-rendez-vous");
+            String langue = Messages.langueDe(profils, absent.patientId());
+            notifieur.notifier(absent.patientId(), Messages.absentSujet(langue),
+                    Messages.absentMessage(langue, FormatDate.lisible(absent.debut())), "/mes-rendez-vous");
         }
         if (!medecinId.equals(auteurId)) {
             notifieur.notifier(medecinId, "Patient absent",
