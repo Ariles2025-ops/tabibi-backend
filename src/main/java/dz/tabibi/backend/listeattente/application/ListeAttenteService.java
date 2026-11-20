@@ -131,11 +131,10 @@ public class ListeAttenteService implements AlerteCreneau {
 
     @Override
     public void creneauLibere(UUID medecinId, Instant debut) {
-        String date = FormatDate.lisible(debut);
         repository.parMedecin(medecinId).forEach(inscription -> {
             String langue = Messages.langueDe(profils, inscription.patientId());
             notifieur.notifier(inscription.patientId(), Messages.creneauDisponibleSujet(langue),
-                    Messages.creneauDisponibleMessage(langue, date), "/medecins/" + medecinId);
+                    Messages.creneauDisponibleMessage(langue, FormatDate.lisible(debut, langue)), "/medecins/" + medecinId);
         });
     }
 }

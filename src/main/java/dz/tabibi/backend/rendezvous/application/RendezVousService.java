@@ -377,7 +377,7 @@ public class RendezVousService {
         if (absent.patientId() != null) {
             String langue = Messages.langueDe(profils, absent.patientId());
             notifieur.notifier(absent.patientId(), Messages.absentSujet(langue),
-                    Messages.absentMessage(langue, FormatDate.lisible(absent.debut())), "/mes-rendez-vous");
+                    Messages.absentMessage(langue, FormatDate.lisible(absent.debut(), langue)), "/mes-rendez-vous");
         }
         if (!medecinId.equals(auteurId)) {
             notifieur.notifier(medecinId, "Patient absent",
@@ -473,8 +473,8 @@ public class RendezVousService {
         RendezVous nouveau = deplacerRdv(rdv, nouveauCreneauId);
         if (nouveau.patientId() != null) {
             String langue = Messages.langueDe(profils, nouveau.patientId());
-            String ancienne = FormatDate.lisible(rdv.debut());
-            String nouvelle = FormatDate.lisible(nouveau.debut());
+            String ancienne = FormatDate.lisible(rdv.debut(), langue);
+            String nouvelle = FormatDate.lisible(nouveau.debut(), langue);
             notifieur.notifier(nouveau.patientId(), Messages.deplaceCabinetSujet(langue),
                     Messages.deplaceCabinetMessage(langue, ancienne, nouvelle), "/mes-rendez-vous");
             smsPatient(nouveau, Messages.deplaceCabinetSms(langue, ancienne, nouvelle));
@@ -534,7 +534,7 @@ public class RendezVousService {
     /** Previent le patient (appli + SMS) que le cabinet a annule son rendez-vous. */
     private void notifierAnnulationParCabinet(RendezVous annule) {
         String langue = Messages.langueDe(profils, annule.patientId());
-        String date = FormatDate.lisible(annule.debut());
+        String date = FormatDate.lisible(annule.debut(), langue);
         notifieur.notifier(annule.patientId(), Messages.annuleCabinetSujet(langue),
                 Messages.annuleCabinetMessage(langue, date), "/medecins/" + annule.medecinId());
         smsPatient(annule, Messages.annuleCabinetSms(langue, date));
@@ -546,7 +546,7 @@ public class RendezVousService {
      */
     private void notifierAnnulationMedecinIndisponible(RendezVous annule) {
         String langue = Messages.langueDe(profils, annule.patientId());
-        String date = FormatDate.lisible(annule.debut());
+        String date = FormatDate.lisible(annule.debut(), langue);
         notifieur.notifier(annule.patientId(), Messages.medecinIndisponibleSujet(langue),
                 Messages.medecinIndisponibleMessage(langue, date), "/");
         smsPatient(annule, Messages.medecinIndisponibleSms(langue, date));
@@ -590,8 +590,10 @@ public class RendezVousService {
      * Confirmation de reservation par SMS (numero du compte, sinon du profil) et par e-mail. Un echec
      * n'empeche jamais la reservation.
      */
-    private void confirmationHorsApplication(RendezVous rdv, String date) {
+    private void confirmationHorsApplication(RendezVous rdv) {
         try {
+            String languePatient = Messages.langueDe(profils, rdv.patientId());
+            String date = FormatDate.lisible(rdv.debut(), languePatient);
             var compte = comptes != null ? comptes.infos(rdv.patientId()) : java.util.Optional.<ComptesUtilisateurs.InfosCompte>empty();
             if (sms != null && sms.disponible()) {
                 String tel = compte.map(ComptesUtilisateurs.InfosCompte::telephone).map(EnvoiSms::normaliser).orElse(null);
@@ -600,14 +602,13 @@ public class RendezVousService {
                             .map(EnvoiSms::normaliser).orElse(null);
                 }
                 if (tel != null) {
-                    sms.envoyer(tel, Messages.confirmationSms(Messages.langueDe(profils, rdv.patientId()), date));
+                    sms.envoyer(tel, Messages.confirmationSms(languePatient, date));
                 }
             }
             String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
             if (courriel != null && courriel.disponible() && email != null) {
-                String langue = Messages.langueDe(profils, rdv.patientId());
-                courriel.envoyer(email, Messages.confirmationCourrielSujet(langue),
-                        Messages.confirmationCourrielCorps(langue, date));
+                courriel.envoyer(email, Messages.confirmationCourrielSujet(languePatient),
+                        Messages.confirmationCourrielCorps(languePatient, date));
             }
         } catch (RuntimeException e) {
             log.warn("Confirmation hors application non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
@@ -639,18 +640,17 @@ public class RendezVousService {
 
     /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */
     private void notifierReservation(RendezVous rdv) {
-        String date = FormatDate.lisible(rdv.debut());
         String languePatient = Messages.langueDe(profils, rdv.patientId());
         notifieur.notifier(rdv.patientId(), Messages.confirmationSujet(languePatient),
-                Messages.confirmationMessage(languePatient, date), "/mes-rendez-vous");
-        confirmationHorsApplication(rdv, date);
+                Messages.confirmationMessage(languePatient, FormatDate.lisible(rdv.debut(), languePatient)), "/mes-rendez-vous");
+        confirmationHorsApplication(rdv);
         String langueMedecin = Messages.langueDe(profils, rdv.medecinId());
         notifieur.notifier(rdv.medecinId(), Messages.nouveauRdvSujet(langueMedecin),
-                Messages.nouveauRdvMessage(langueMedecin, date), "/medecin/agenda");
+                Messages.nouveauRdvMessage(langueMedecin, FormatDate.lisible(rdv.debut(), langueMedecin)), "/medecin/agenda");
         secretairesDe(rdv.medecinId()).forEach(s -> {
             String langueSecretaire = Messages.langueDe(profils, s);
             notifieur.notifier(s, Messages.nouveauRdvSujet(langueSecretaire),
-                    Messages.nouveauRdvMessage(langueSecretaire, date), "/secretaire");
+                    Messages.nouveauRdvMessage(langueSecretaire, FormatDate.lisible(rdv.debut(), langueSecretaire)), "/secretaire");
         });
     }
 }

@@ -107,7 +107,7 @@ public class RappelService {
             try {
                 String langue = Messages.langueDe(profils, rdv.patientId());
                 notifieur.notifier(rdv.patientId(), Messages.rappelSujet(langue),
-                        Messages.rappelMessage(langue, FormatDate.lisible(rdv.debut())), "/mes-rendez-vous");
+                        Messages.rappelMessage(langue, FormatDate.lisible(rdv.debut(), langue)), "/mes-rendez-vous");
             } catch (RuntimeException e) {
                 log.warn("Notification de rappel non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
             }
@@ -142,7 +142,8 @@ public class RappelService {
                 if (tel == null) {
                     rdv.marquerSmsEnvoye(); // plus de numero : rien a reprendre
                 } else {
-                    sms.envoyer(tel, Messages.rappelSms(Messages.langueDe(profils, rdv.patientId()), FormatDate.lisible(rdv.debut())));
+                    String langueSms = Messages.langueDe(profils, rdv.patientId());
+                    sms.envoyer(tel, Messages.rappelSms(langueSms, FormatDate.lisible(rdv.debut(), langueSms)));
                     smsEnvoyes++;
                     reussis++;
                     rdv.marquerSmsEnvoye();
@@ -181,14 +182,14 @@ public class RappelService {
             return;
         }
         Optional<ComptesUtilisateurs.InfosCompte> compte = infos(rdv);
-        String date = FormatDate.lisible(rdv.debut());
+        String langue = Messages.langueDe(profils, rdv.patientId());
+        String date = FormatDate.lisible(rdv.debut(), langue);
         if (smsPossible) {
-            envoyerSms(rdv, telephone(rdv.patientId(), compte), date);
+            envoyerSms(rdv, telephone(rdv.patientId(), compte), date, langue);
         }
         String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
         if (courrielPossible && email != null) {
             try {
-                String langue = Messages.langueDe(profils, rdv.patientId());
                 courriel.envoyer(email, Messages.rappelCourrielSujet(langue),
                         Messages.rappelCourrielCorps(langue, date));
                 courrielsEnvoyes++;
@@ -212,12 +213,12 @@ public class RappelService {
     }
 
     /** Envoie le SMS ; s'il est refuse, le rendez-vous est marque « SMS en echec » (repris au prochain passage). */
-    private void envoyerSms(RendezVous rdv, String tel, String date) {
+    private void envoyerSms(RendezVous rdv, String tel, String date, String langue) {
         if (tel == null) {
             return;
         }
         try {
-            sms.envoyer(tel, Messages.rappelSms(Messages.langueDe(profils, rdv.patientId()), date));
+            sms.envoyer(tel, Messages.rappelSms(langue, date));
             smsEnvoyes++;
         } catch (RuntimeException e) {
             smsEnEchec++;
