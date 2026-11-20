@@ -12,6 +12,7 @@ import dz.tabibi.backend.creneaux.domain.CreneauIntrouvableException;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
 import dz.tabibi.backend.creneaux.domain.CreneauRepository;
 import dz.tabibi.backend.listeattente.domain.AlerteCreneau;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
 import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rappels.domain.EnvoiSms;
@@ -126,7 +127,7 @@ public class RendezVousService {
         // Verrou par patient : les controles ci-dessous et l'insertion ne peuvent pas se croiser avec une autre
         // reservation du meme patient.
         repository.verrouillerPatient(patientId);
-        verifierPasDeRendezVousAVenir(patientId, creneau);
+        verifierPasDeRendezVousAVenir(patientId, creneau, null);
         // Prise atomique (UPDATE ... where disponible = true) : de deux reservations simultanees, une seule passe.
         // L'index unique partiel sur rendez_vous(creneau_id) (rendez-vous non annules) garde la base coherente.
         if (!creneaux.reserverSiDisponible(creneau.id())) {
@@ -214,11 +215,11 @@ public class RendezVousService {
      * pas reserver deux rendez-vous qui se chevauchent, medecins confondus.
      * @throws CreneauDejaReserveException dans l'un des deux cas.
      */
-    private void verifierPasDeRendezVousAVenir(UUID patientId, Creneau voulu) {
+    private void verifierPasDeRendezVousAVenir(UUID patientId, Creneau voulu, UUID rdvIgnoreId) {
         Instant maintenant = Instant.now();
         Instant fin = voulu.debut().plus(Duration.ofMinutes(voulu.dureeMinutes()));
         for (RendezVous r : repository.parPatient(patientId)) {
-            if (r.statut() != StatutRdv.CONFIRME || !r.debut().isAfter(maintenant)) {
+            if (r.id().equals(rdvIgnoreId) || r.statut() != StatutRdv.CONFIRME || !r.debut().isAfter(maintenant)) {
                 continue;
             }
             if (r.estAvec(voulu.medecinId())) {
@@ -322,7 +323,7 @@ public class RendezVousService {
             }
             RendezVous annule = repository.enregistrer(rdv);
             if (annule.patientId() != null) {
-                notifierAnnulationParCabinet(annule);
+                notifierAnnulationMedecinIndisponible(annule);
             }
         }
         creneaux.supprimerLibresDuMedecin(medecinId);
@@ -509,6 +510,12 @@ public class RendezVousService {
         if (!creneau.disponible() || !creneau.debut().isAfter(Instant.now())) {
             throw new CreneauDejaReserveException("Ce créneau n'est plus disponible.");
         }
+        // Memes regles de chevauchement que la reservation (hors le rendez-vous deplace). Pas de controle pour un
+        // rendez-vous pris par telephone (aucun compte patient).
+        if (rdv.patientId() != null) {
+            repository.verrouillerPatient(rdv.patientId());
+            verifierPasDeRendezVousAVenir(rdv.patientId(), creneau, rdv.id());
+        }
         // Meme prise atomique que la reservation : de deux demandes simultanees, une seule passe. Si elle echoue,
         // l'exception annule la transaction : l'ancien rendez-vous n'est pas touche.
         if (!creneaux.reserverSiDisponible(creneau.id())) {
@@ -529,6 +536,19 @@ public class RendezVousService {
                 "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
                         + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
         smsAnnulationParCabinet(annule);
+    }
+
+    /**
+     * Previent le patient (appli + SMS) que son medecin n'est plus disponible (compte supprime ou suspendu) : sa fiche
+     * est retiree, donc ni lien vers la fiche ni invitation a reprendre un creneau chez lui ; renvoi vers la recherche.
+     */
+    private void notifierAnnulationMedecinIndisponible(RendezVous annule) {
+        notifieur.notifier(annule.patientId(), "Rendez-vous annulé : médecin indisponible",
+                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
+                        + " est annulé : votre médecin n'est plus disponible sur Ndawik. Vous pouvez chercher un autre médecin.",
+                "/");
+        smsPatient(annule, "Ndawik : votre rendez-vous du " + FormatDate.lisible(annule.debut())
+                + " est annule : votre medecin n'est plus disponible. Cherchez un autre medecin sur ndawik.com");
     }
 
     /**
@@ -588,13 +608,14 @@ public class RendezVousService {
                             .map(EnvoiSms::normaliser).orElse(null);
                 }
                 if (tel != null) {
-                    sms.envoyer(tel, "Ndawik : votre rendez-vous du " + date + " est confirme. Pour annuler : tabibi.doctor/mes-rendez-vous");
+                    sms.envoyer(tel, Messages.confirmationSms(Messages.langueDe(profils, rdv.patientId()), date));
                 }
             }
             String email = compte.map(ComptesUtilisateurs.InfosCompte::email).filter(e -> e != null && !e.isBlank()).orElse(null);
             if (courriel != null && courriel.disponible() && email != null) {
-                courriel.envoyer(email, "Ndawik : rendez-vous confirmé",
-                        "Votre rendez-vous du " + date + " est confirmé.\nPour l'annuler : tabibi.doctor/mes-rendez-vous");
+                String langue = Messages.langueDe(profils, rdv.patientId());
+                courriel.envoyer(email, Messages.confirmationCourrielSujet(langue),
+                        Messages.confirmationCourrielCorps(langue, date));
             }
         } catch (RuntimeException e) {
             log.warn("Confirmation hors application non envoyee pour le rendez-vous {} : {}", rdv.id(), e.getMessage());
@@ -627,12 +648,17 @@ public class RendezVousService {
     /** Previent le patient (confirmation) et le medecin (nouveau rendez-vous dans son agenda). */
     private void notifierReservation(RendezVous rdv) {
         String date = FormatDate.lisible(rdv.debut());
-        notifieur.notifier(rdv.patientId(), "Rendez-vous confirmé",
-                "Votre rendez-vous du " + date + " est confirmé.", "/mes-rendez-vous");
+        String languePatient = Messages.langueDe(profils, rdv.patientId());
+        notifieur.notifier(rdv.patientId(), Messages.confirmationSujet(languePatient),
+                Messages.confirmationMessage(languePatient, date), "/mes-rendez-vous");
         confirmationHorsApplication(rdv, date);
-        String message = "Un patient a réservé un rendez-vous le " + date + ".";
-        notifieur.notifier(rdv.medecinId(), "Nouveau rendez-vous", message, "/medecin/agenda");
-        secretairesDe(rdv.medecinId()).forEach(s ->
-                notifieur.notifier(s, "Nouveau rendez-vous", message, "/secretaire"));
+        String langueMedecin = Messages.langueDe(profils, rdv.medecinId());
+        notifieur.notifier(rdv.medecinId(), Messages.nouveauRdvSujet(langueMedecin),
+                Messages.nouveauRdvMessage(langueMedecin, date), "/medecin/agenda");
+        secretairesDe(rdv.medecinId()).forEach(s -> {
+            String langueSecretaire = Messages.langueDe(profils, s);
+            notifieur.notifier(s, Messages.nouveauRdvSujet(langueSecretaire),
+                    Messages.nouveauRdvMessage(langueSecretaire, date), "/secretaire");
+        });
     }
 }

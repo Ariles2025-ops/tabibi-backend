@@ -258,7 +258,7 @@ class SuppressionCompteServiceTest {
         service.supprimer(MEDECIN);
 
         assertThat(rdvs.parId(aVenir.id()).orElseThrow().statut()).isEqualTo(StatutRdv.ANNULE);
-        assertThat(notifications).contains(new Appel(autrePatient, "Rendez-vous annulé par le cabinet"));
+        assertThat(notifications).contains(new Appel(autrePatient, "Rendez-vous annulé : médecin indisponible"));
         assertThat(rdvs.parId(passe.id()).orElseThrow().statut()).isEqualTo(StatutRdv.HONORE);
         assertThat(creneaux.parId(libre.id())).isEmpty();
         assertThat(creneaux.parId(reserve.id())).isEmpty();

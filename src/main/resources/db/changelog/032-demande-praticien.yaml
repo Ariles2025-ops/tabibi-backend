@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-demande-praticien
+      author: tabibi
+      changes:
+        - createTable:
+            tableName: demande_praticien
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: nom, type: varchar(160), constraints: { nullable: false } }
+              - column: { name: specialite, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: wilaya, type: varchar(60), constraints: { nullable: false } }
+              - column: { name: ville, type: varchar(80) }
+              - column: { name: numero_ordre, type: varchar(40), constraints: { nullable: false } }
+              - column: { name: telephone, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: email, type: varchar(160) }
+              - column: { name: message, type: varchar(2000) }
+              - column: { name: fiche_id, type: uuid }
+              - column: { name: statut, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: creee_le, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: traitee_le, type: timestamptz }
+        - createIndex:
+            indexName: idx_demande_praticien_statut
+            tableName: demande_praticien
+            columns:
+              - column: { name: statut }

@@ -41,6 +41,14 @@ class RendezVousServiceTest {
             appels.add(new Appel(destinataireId, sujet, message));
         }
 
+        final List<String> liens = new ArrayList<>();
+
+        @Override
+        public void notifier(UUID destinataireId, String sujet, String message, String lien) {
+            liens.add(lien);
+            notifier(destinataireId, sujet, message);
+        }
+
         List<Appel> pour(UUID destinataireId) {
             return appels.stream().filter(a -> a.destinataireId().equals(destinataireId)).toList();
         }
@@ -251,6 +259,24 @@ class RendezVousServiceTest {
     }
 
     @Test
+    void medecin_indisponible_le_patient_est_renvoye_vers_la_recherche_et_non_vers_la_fiche_retiree() {
+        UUID patient = UUID.randomUUID();
+        Creneau creneau = premierCreneauDisponible();
+        service.reserverCreneau(patient, creneau.id());
+        notifieur.appels.clear();
+        notifieur.liens.clear();
+
+        int annules = service.annulerAVenirDuMedecin(MEDECIN_DEMO);
+
+        assertThat(annules).isEqualTo(1);
+        assertThat(notifieur.pour(patient)).hasSize(1);
+        assertThat(notifieur.pour(patient).get(0).message())
+                .contains("votre médecin n'est plus disponible sur Ndawik").contains("chercher un autre médecin")
+                .doesNotContain("réserver un autre créneau");
+        assertThat(notifieur.liens).containsExactly("/");
+    }
+
+    @Test
     void le_cabinet_annule_un_rendezvous_confirme_libere_le_creneau_alerte_la_liste_et_previent_le_patient() {
         UUID patient = UUID.randomUUID();
         Creneau creneau = premierCreneauDisponible();
@@ -371,6 +397,28 @@ class RendezVousServiceTest {
         assertThat(estDisponible(chevauche.id())).isTrue();
         // un creneau qui commence exactement a la fin du premier ne chevauche pas
         assertThat(service.reserverCreneau(patient, apres.id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+    }
+
+    @Test
+    void refuse_de_deplacer_un_rendezvous_sur_un_horaire_qui_chevauche_un_autre_rendezvous_du_patient() {
+        UUID patient = UUID.randomUUID();
+        UUID medecinA = UUID.randomUUID();
+        UUID medecinB = UUID.randomUUID();
+        Instant debut = Instant.now().plusSeconds(3 * 86400).truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        Creneau chezA = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinA, debut, 30, true));
+        Creneau bActuel = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinB, debut.plusSeconds(4 * 3600), 30, true));
+        Creneau bChevauche = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinB, debut, 30, true));
+        Creneau bLibre = creneaux.enregistrer(new Creneau(UUID.randomUUID(), medecinB, debut.plusSeconds(2 * 3600), 30, true));
+        service.reserverCreneau(patient, chezA.id());
+        RendezVous chezB = service.reserverCreneau(patient, bActuel.id());
+
+        assertThatThrownBy(() -> service.deplacer(patient, chezB.id(), bChevauche.id()))
+                .isInstanceOf(CreneauDejaReserveException.class)
+                .hasMessageContaining("chevauche");
+        assertThat(estDisponible(bChevauche.id())).isTrue();
+        assertThat(service.parId(chezB.id()).statut()).isEqualTo(StatutRdv.CONFIRME);
+        // un horaire libre, sans chevauchement (et different de l'ancien creneau), reste accepte
+        assertThat(service.deplacer(patient, chezB.id(), bLibre.id()).statut()).isEqualTo(StatutRdv.CONFIRME);
     }
 
     @Test

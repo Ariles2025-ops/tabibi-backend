@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Derive le realm de production depuis infra/keycloak/tabibi-realm.json (source unique, versionnee) :
 - supprime les comptes de demonstration (« users ») : ils ne doivent JAMAIS exister en production ;
-- desactive le flux « direct access grants » (mot de passe envoye directement a Keycloak, reglage de dev)
-  sur tous les clients ;
+- desactive le flux « direct access grants » (mot de passe envoye directement a Keycloak) sur tous les
+  clients, sauf l'appli mobile « tabibi-mobile » : sa connexion se fait dans ses propres ecrans, sans page web
+  (choix du fondateur, 18/11/2026) ; la protection contre les essais repetes du realm s'applique ;
 - remplace le domaine d'exemple tabibi.example par le domaine reel et retire les adresses localhost
   (redirectUris et webOrigins du front web).
 
@@ -18,6 +19,7 @@ RACINE = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE = RACINE / "infra" / "keycloak" / "tabibi-realm.json"
 DESTINATION = RACINE / "infra" / "keycloak" / "production" / "tabibi-realm.json"
 DOMAINE_EXEMPLE = "tabibi.example"
+CLIENT_MOBILE = "tabibi-mobile"  # connexion dans l'appli (direct grant)
 
 
 def domaine_depuis_env() -> str:
@@ -47,7 +49,7 @@ def main() -> int:
     realm = json.loads(SOURCE.read_text(encoding="utf-8"))
     comptes = [u.get("username") for u in realm.pop("users", [])]
     for client in realm.get("clients", []):
-        client["directAccessGrantsEnabled"] = False
+        client["directAccessGrantsEnabled"] = client.get("clientId") == CLIENT_MOBILE
         for champ in ("redirectUris", "webOrigins"):
             client[champ] = [u for u in client.get(champ, []) if "localhost" not in u]
     realm = remplacer_domaine(realm, domaine)
@@ -55,7 +57,8 @@ def main() -> int:
     DESTINATION.write_text(json.dumps(realm, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"Realm de production ecrit : {DESTINATION}")
     print(f"  comptes de demonstration retires : {', '.join(comptes) or 'aucun'}")
-    print(f"  direct access grants desactives sur : {', '.join(c['clientId'] for c in realm['clients'])}")
+    print(f"  direct access grants desactives sur : "
+          f"{', '.join(c['clientId'] for c in realm['clients'] if c['clientId'] != CLIENT_MOBILE)}")
     print(f"  domaine : {domaine}")
     return 0
 
