@@ -244,6 +244,18 @@ class TeleconsultationServiceTest {
     }
 
     @Test
+    void previent_le_patient_quand_le_medecin_annule() {
+        Teleconsultation t = planifiee();
+
+        service.annuler(MEDECIN, t.id());
+
+        assertThat(notificationsDe(PATIENT)).hasSize(2);
+        Notification n = notificationsDe(PATIENT).stream()
+                .filter(x -> x.sujet().equals("Téléconsultation annulée")).findFirst().orElseThrow();
+        assertThat(n.message()).contains("07/12/2026").contains("reste confirmé");
+    }
+
+    @Test
     void liste_les_teleconsultations_du_patient_et_du_medecin_les_plus_recentes_d_abord() {
         Teleconsultation ancienne = creeeLe(PATIENT, MEDECIN, "2026-01-10T09:00:00Z");
         Teleconsultation recente = creeeLe(PATIENT, MEDECIN, "2026-03-01T09:00:00Z");
