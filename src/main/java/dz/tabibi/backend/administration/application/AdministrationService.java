@@ -14,6 +14,7 @@ import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.commun.domain.Courriel;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,13 +35,16 @@ public class AdministrationService {
     private final MedecinRepository medecins;
     private final Notifieur notifieur;
     private final AttributionRoleMedecin roles;
+    private final String siteDomaine;
 
     public AdministrationService(CandidatureRepository candidatures, MedecinRepository medecins, Notifieur notifieur,
-                                 AttributionRoleMedecin roles) {
+                                 AttributionRoleMedecin roles,
+                                 @Value("${SITE_DOMAINE:ndawik.com}") String siteDomaine) {
         this.candidatures = candidatures;
         this.medecins = medecins;
         this.notifieur = notifieur;
         this.roles = roles;
+        this.siteDomaine = siteDomaine;
     }
 
     /** E-mail aux administrateurs (en plus de la notification), si un serveur SMTP est configure. */
@@ -174,7 +178,7 @@ public class AdministrationService {
                         .ifPresent(email -> {
                             try {
                                 courriel.envoyer(email, "Ndawik — " + quoi, message
-                                        + "\n\nÀ examiner ici : https://tabibi.doctor/admin/candidatures");
+                                        + "\n\nÀ examiner ici : https://" + siteDomaine + "/admin/candidatures");
                             } catch (RuntimeException e) {
                                 org.slf4j.LoggerFactory.getLogger(AdministrationService.class)
                                         .warn("E-mail d'alerte candidature non envoyé : {}", e.getMessage());

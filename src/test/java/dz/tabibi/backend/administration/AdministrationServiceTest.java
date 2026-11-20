@@ -40,7 +40,7 @@ class AdministrationServiceTest {
     /** Comptes auxquels le role MEDECIN a ete donne. */
     private final List<UUID> comptesMedecins = new java.util.ArrayList<>();
     private final AdministrationService service =
-            new AdministrationService(candidatures, medecins, new NotifieurInterne(notifications), comptesMedecins::add);
+            new AdministrationService(candidatures, medecins, new NotifieurInterne(notifications), comptesMedecins::add, "ndawik.com");
 
     /** Candidature deposee a une date choisie, enregistree directement (sans passer par le service). */
     private CandidatureMedecin deposeeLe(UUID medecin, String date) {
@@ -75,7 +75,7 @@ class AdministrationServiceTest {
         // e-mail seulement aux administrateurs qui ont une adresse
         assertThat(emails).hasSize(1);
         assertThat(emails.get(0)).startsWith("admin1@tabibi.doctor | Ndawik — Nouvelle candidature médecin |")
-                .contains("Dr Nadia Bensalem").contains("https://tabibi.doctor/admin/candidatures");
+                .contains("Dr Nadia Bensalem").contains("https://ndawik.com/admin/candidatures").doesNotContain("https://tabibi.doctor");
 
         for (UUID admin : List.of(admin1, admin2)) {
             assertThat(notificationsDe(admin)).hasSize(1);
