@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 033-appareil
+      author: tabibi
+      comment: >-
+        Jetons des appareils mobiles (notifications push FCM) : un utilisateur peut en avoir plusieurs, un jeton est unique.
+      changes:
+        - createTable:
+            tableName: appareil
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: utilisateur_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: jeton, type: varchar(1024), constraints: { nullable: false } }
+              - column: { name: plateforme, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: enregistre_le, type: timestamptz, constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_appareil_utilisateur
+            tableName: appareil
+            columns:
+              - column: { name: utilisateur_id }
+        - addUniqueConstraint:
+            tableName: appareil
+            columnNames: jeton
+            constraintName: uq_appareil_jeton

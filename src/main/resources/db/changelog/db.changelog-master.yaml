@@ -63,3 +63,5 @@ databaseChangeLog:
       file: db/changelog/031-conversation-fermee.yaml
   - include:
       file: db/changelog/032-demande-praticien.yaml
+  - include:
+      file: db/changelog/033-appareil.yaml

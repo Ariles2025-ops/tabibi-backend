@@ -4,6 +4,8 @@ import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.notifications.domain.Notification;
 import dz.tabibi.backend.notifications.domain.NotificationIntrouvableException;
 import dz.tabibi.backend.notifications.domain.NotificationRepository;
+import dz.tabibi.backend.notifications.domain.AppareilRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,8 +18,16 @@ public class NotificationService {
 
     private final NotificationRepository repository;
 
+    private final AppareilRepository appareils;
+
     public NotificationService(NotificationRepository repository) {
+        this(repository, null);
+    }
+
+    @Autowired
+    public NotificationService(NotificationRepository repository, AppareilRepository appareils) {
         this.repository = repository;
+        this.appareils = appareils;
     }
 
     /** Notifications de l'utilisateur connecte, de la plus recente a la plus ancienne. */
@@ -28,6 +38,7 @@ public class NotificationService {
     /** Suppression du compte : toutes les notifications de l'utilisateur sont effacees. @return leur nombre. */
     @Transactional
     public int supprimerToutesDe(UUID utilisateurId) {
+        if (appareils != null) appareils.supprimerDeUtilisateur(utilisateurId);
         return repository.supprimerDuDestinataire(utilisateurId);
     }
 
