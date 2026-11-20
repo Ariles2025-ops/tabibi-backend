@@ -472,11 +472,12 @@ public class RendezVousService {
         }
         RendezVous nouveau = deplacerRdv(rdv, nouveauCreneauId);
         if (nouveau.patientId() != null) {
-            String texte = "Votre rendez-vous du " + FormatDate.lisible(rdv.debut()) + " a été déplacé par le cabinet au "
-                    + FormatDate.lisible(nouveau.debut()) + ".";
-            notifieur.notifier(nouveau.patientId(), "Rendez-vous déplacé", texte, "/mes-rendez-vous");
-            smsPatient(nouveau, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
-                    + " a été déplacé au " + FormatDate.lisible(nouveau.debut()) + ".");
+            String langue = Messages.langueDe(profils, nouveau.patientId());
+            String ancienne = FormatDate.lisible(rdv.debut());
+            String nouvelle = FormatDate.lisible(nouveau.debut());
+            notifieur.notifier(nouveau.patientId(), Messages.deplaceCabinetSujet(langue),
+                    Messages.deplaceCabinetMessage(langue, ancienne, nouvelle), "/mes-rendez-vous");
+            smsPatient(nouveau, Messages.deplaceCabinetSms(langue, ancienne, nouvelle));
         }
         if (!medecinId.equals(auteurId)) {
             notifieur.notifier(medecinId, "Rendez-vous déplacé par votre secrétaire",
@@ -532,10 +533,11 @@ public class RendezVousService {
 
     /** Previent le patient (appli + SMS) que le cabinet a annule son rendez-vous. */
     private void notifierAnnulationParCabinet(RendezVous annule) {
-        notifieur.notifier(annule.patientId(), "Rendez-vous annulé par le cabinet",
-                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                        + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
-        smsAnnulationParCabinet(annule);
+        String langue = Messages.langueDe(profils, annule.patientId());
+        String date = FormatDate.lisible(annule.debut());
+        notifieur.notifier(annule.patientId(), Messages.annuleCabinetSujet(langue),
+                Messages.annuleCabinetMessage(langue, date), "/medecins/" + annule.medecinId());
+        smsPatient(annule, Messages.annuleCabinetSms(langue, date));
     }
 
     /**
@@ -543,21 +545,11 @@ public class RendezVousService {
      * est retiree, donc ni lien vers la fiche ni invitation a reprendre un creneau chez lui ; renvoi vers la recherche.
      */
     private void notifierAnnulationMedecinIndisponible(RendezVous annule) {
-        notifieur.notifier(annule.patientId(), "Rendez-vous annulé : médecin indisponible",
-                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                        + " est annulé : votre médecin n'est plus disponible sur Ndawik. Vous pouvez chercher un autre médecin.",
-                "/");
-        smsPatient(annule, "Ndawik : votre rendez-vous du " + FormatDate.lisible(annule.debut())
-                + " est annulé : votre médecin n'est plus disponible. Cherchez un autre médecin sur ndawik.com");
-    }
-
-    /**
-     * SMS (en français correct : avec accents, il part en Unicode) au numero verifie du compte du patient. Un echec (numero
-     * absent, passerelle) n'empeche jamais l'annulation ni la notification dans l'appli.
-     */
-    private void smsAnnulationParCabinet(RendezVous rdv) {
-        smsPatient(rdv, "Ndawik : votre rendez-vous du " + FormatDate.lisible(rdv.debut())
-                + " a été annulé par le cabinet. Reprenez un créneau sur ndawik.com");
+        String langue = Messages.langueDe(profils, annule.patientId());
+        String date = FormatDate.lisible(annule.debut());
+        notifieur.notifier(annule.patientId(), Messages.medecinIndisponibleSujet(langue),
+                Messages.medecinIndisponibleMessage(langue, date), "/");
+        smsPatient(annule, Messages.medecinIndisponibleSms(langue, date));
     }
 
     /**

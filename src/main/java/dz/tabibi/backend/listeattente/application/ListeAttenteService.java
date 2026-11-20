@@ -8,6 +8,9 @@ import dz.tabibi.backend.listeattente.domain.InscriptionAttente;
 import dz.tabibi.backend.listeattente.domain.InscriptionIntrouvableException;
 import dz.tabibi.backend.listeattente.domain.ListeAttenteRepository;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.notifications.domain.Messages;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,14 @@ public class ListeAttenteService implements AlerteCreneau {
     public ListeAttenteService(ListeAttenteRepository repository, Notifieur notifieur) {
         this.repository = repository;
         this.notifieur = notifieur;
+    }
+
+    /** Profils : langue du patient pour ses notifications (francais si absent). */
+    private ProfilRepository profils;
+
+    @Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
     }
 
     /** Annuaire : on ne s'inscrit que sur la liste d'un praticien qui existe (ancien identifiant resolu). */
@@ -120,10 +131,11 @@ public class ListeAttenteService implements AlerteCreneau {
 
     @Override
     public void creneauLibere(UUID medecinId, Instant debut) {
-        String message = "Un créneau vient de se libérer chez votre médecin le "
-                + FormatDate.lisible(debut) + ". Réservez vite.";
-        repository.parMedecin(medecinId)
-                .forEach(inscription -> notifieur.notifier(inscription.patientId(), "Créneau disponible", message,
-                        "/medecins/" + medecinId));
+        String date = FormatDate.lisible(debut);
+        repository.parMedecin(medecinId).forEach(inscription -> {
+            String langue = Messages.langueDe(profils, inscription.patientId());
+            notifieur.notifier(inscription.patientId(), Messages.creneauDisponibleSujet(langue),
+                    Messages.creneauDisponibleMessage(langue, date), "/medecins/" + medecinId);
+        });
     }
 }
