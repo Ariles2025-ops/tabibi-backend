@@ -51,10 +51,14 @@ public class AvisController {
         }
     }
 
-    /** Vue publique d'un avis : anonyme, ni patient ni rendez-vous. */
-    public record AvisPublicVue(UUID id, int note, String commentaire, Instant deposeLe) {
+    /**
+     * Vue publique d'un avis : anonyme, ni patient ni rendez-vous. Le booleen signale (statut SIGNALE)
+     * permet au medecin de retrouver, apres rechargement, les avis qu'il a deja signales.
+     */
+    public record AvisPublicVue(UUID id, int note, String commentaire, Instant deposeLe, boolean signale) {
         static AvisPublicVue de(Avis a) {
-            return new AvisPublicVue(a.id(), a.note(), a.commentaire(), a.deposeLe());
+            return new AvisPublicVue(a.id(), a.note(), a.commentaire(), a.deposeLe(),
+                    a.statut() == StatutAvis.SIGNALE);
         }
     }
 
