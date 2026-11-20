@@ -32,6 +32,14 @@ class MessagesLangueTest {
     }
 
     @Test
+    void le_patient_absent_est_notifie_sur_un_ton_neutre_dans_sa_langue() {
+        assertThat(Messages.absentSujet("ar")).isEqualTo("لم يتم الحضور");
+        assertThat(Messages.absentMessage("ar", "d")).contains("d").doesNotContain("Vous");
+        assertThat(Messages.absentSujet("fr")).isEqualTo("Rendez-vous non honoré");
+        assertThat(Messages.absentMessage("fr", "d")).contains("n'a pas pu avoir lieu").doesNotContain("pas venu");
+    }
+
+    @Test
     void repli_francais_pour_fr_profil_absent_ou_sans_depot() {
         assertThat(Messages.langueDe(profils, profilEn("fr"))).isEqualTo("fr");
         assertThat(Messages.langueDe(profils, UUID.randomUUID())).isEqualTo("fr");
