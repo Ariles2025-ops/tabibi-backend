@@ -183,7 +183,13 @@ public class TeleconsultationService {
     public Teleconsultation annuler(UUID medecinId, UUID teleconsultationId) {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.annuler();
-        return repository.enregistrer(teleconsultation);
+        Teleconsultation annulee = repository.enregistrer(teleconsultation);
+        String quand = rendezVous.parId(annulee.rendezVousId())
+                .map(rdv -> " du " + FormatDate.lisible(rdv.debut())).orElse("");
+        notifieur.notifier(annulee.patientId(), "Téléconsultation annulée",
+                "Votre médecin a annulé la téléconsultation de votre rendez-vous" + quand
+                        + ". Votre rendez-vous reste confirmé : il se tient en cabinet.", "/teleconsultations");
+        return annulee;
     }
 
     /**
