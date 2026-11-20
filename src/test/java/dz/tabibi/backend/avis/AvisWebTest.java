@@ -181,6 +181,18 @@ class AvisWebTest {
     }
 
     @Test
+    void la_synthese_publique_indique_si_un_avis_est_signale() throws Exception {
+        Avis publie = avis();
+        Avis signale = avis().signaler();
+        when(service.avisPublics(MEDECIN)).thenReturn(SyntheseAvis.de(List.of(publie, signale)));
+
+        mvc.perform(get("/api/medecins/{id}/avis", MEDECIN))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.avis[0].signale").value(false))
+           .andExpect(jsonPath("$.avis[1].signale").value(true));
+    }
+
+    @Test
     void la_synthese_publique_sans_avis_a_une_moyenne_nulle() throws Exception {
         when(service.avisPublics(any())).thenReturn(SyntheseAvis.de(List.of()));
 
