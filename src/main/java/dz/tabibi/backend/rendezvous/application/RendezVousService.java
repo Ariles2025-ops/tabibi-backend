@@ -323,7 +323,7 @@ public class RendezVousService {
             }
             RendezVous annule = repository.enregistrer(rdv);
             if (annule.patientId() != null) {
-                notifierAnnulationParCabinet(annule);
+                notifierAnnulationMedecinIndisponible(annule);
             }
         }
         creneaux.supprimerLibresDuMedecin(medecinId);
@@ -530,6 +530,19 @@ public class RendezVousService {
                 "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
                         + " a été annulé par le cabinet. Vous pouvez réserver un autre créneau.", "/medecins/" + annule.medecinId());
         smsAnnulationParCabinet(annule);
+    }
+
+    /**
+     * Previent le patient (appli + SMS) que son medecin n'est plus disponible (compte supprime ou suspendu) : sa fiche
+     * est retiree, donc ni lien vers la fiche ni invitation a reprendre un creneau chez lui ; renvoi vers la recherche.
+     */
+    private void notifierAnnulationMedecinIndisponible(RendezVous annule) {
+        notifieur.notifier(annule.patientId(), "Rendez-vous annulé : médecin indisponible",
+                "Votre rendez-vous du " + FormatDate.lisible(annule.debut())
+                        + " est annulé : votre médecin n'est plus disponible sur Ndawik. Vous pouvez chercher un autre médecin.",
+                "/");
+        smsPatient(annule, "Ndawik : votre rendez-vous du " + FormatDate.lisible(annule.debut())
+                + " est annule : votre medecin n'est plus disponible. Cherchez un autre medecin sur ndawik.com");
     }
 
     /**
