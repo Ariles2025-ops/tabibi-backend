@@ -1,5 +1,6 @@
 package dz.tabibi.backend.demandes.application;
 
+import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.commun.domain.Courriel;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.demandes.domain.DemandeIntrouvableException;
@@ -24,15 +25,18 @@ public class DemandePraticienService {
 
     private final DemandePraticienRepository demandes;
     private final Courriel courriel;
+    private final ComptesUtilisateurs comptes;
     private final Clock horloge;
     private final String destinataire;
     private final String siteDomaine;
 
-    public DemandePraticienService(DemandePraticienRepository demandes, Courriel courriel, Clock horloge,
+    public DemandePraticienService(DemandePraticienRepository demandes, Courriel courriel,
+                                   ComptesUtilisateurs comptes, Clock horloge,
                                    @Value("${tabibi.demandes.alerte:contact@ndawik.com}") String destinataire,
                                    @Value("${SITE_DOMAINE:ndawik.com}") String siteDomaine) {
         this.demandes = demandes;
         this.courriel = courriel;
+        this.comptes = comptes;
         this.horloge = horloge;
         this.destinataire = destinataire;
         this.siteDomaine = siteDomaine;
@@ -59,6 +63,25 @@ public class DemandePraticienService {
 
     public DemandePraticien traiter(UUID id) {
         return cloturer(id, StatutDemande.TRAITEE);
+    }
+
+    /**
+     * Cree le compte medecin (e-mail de definition du mot de passe) puis passe la demande en TRAITEE.
+     * 409 si la demande est deja cloturee, sans e-mail, ou si l'e-mail est deja utilise.
+     */
+    public DemandePraticien creerCompte(UUID id) {
+        DemandePraticien d = demandes.parId(id).orElseThrow(DemandeIntrouvableException::new);
+        if (d.statut() != StatutDemande.NOUVELLE) {
+            throw new TransitionInvalideException("Cette demande a déjà été clôturée.");
+        }
+        if (d.email() == null) {
+            throw new TransitionInvalideException("Cette demande n'a pas d'adresse e-mail : impossible de créer le compte.");
+        }
+        if (comptes.parEmail(d.email()).isPresent()) {
+            throw new TransitionInvalideException("Un compte existe déjà avec cette adresse e-mail.");
+        }
+        comptes.creerCompteMedecin(d.email(), d.nom(), d.telephone());
+        return demandes.enregistrer(d.clôturee(StatutDemande.TRAITEE, horloge.instant()));
     }
 
     public DemandePraticien refuser(UUID id) {

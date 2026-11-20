@@ -29,6 +29,14 @@ public interface ComptesUtilisateurs {
     default void retirerRole(UUID compte, String role) {}
 
     /**
+     * Cree un compte medecin avec le role MEDECIN et lui envoie l'e-mail « definir votre mot de passe ».
+     * Renvoie l'identifiant du compte cree. Leve IllegalStateException si l'annuaire n'est pas configure.
+     */
+    default UUID creerCompteMedecin(String email, String nomComplet, String telephone) {
+        throw new IllegalStateException("Annuaire des comptes non configuré.");
+    }
+
+    /**
      * Supprime definitivement le compte (suppression demandee par l'utilisateur). Sans annuaire configure,
      * la suppression est seulement journalisee (a faire a la main dans la console). Un compte deja absent
      * n'est pas une erreur.
