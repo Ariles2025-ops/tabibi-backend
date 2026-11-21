@@ -60,7 +60,7 @@ public record BesoinMedicament(
      */
     public BesoinMedicament cloturer(Instant quand) {
         if (!estOuvert()) {
-            throw new TransitionInvalideException("Ce besoin est déjà clôturé.");
+            throw new TransitionInvalideException("Cette demande est déjà clôturée.");
         }
         return new BesoinMedicament(id, patientId, medicament, wilayaCode, commune, precision,
                 StatutBesoin.CLOTURE, publieLe, quand);
