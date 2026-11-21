@@ -165,6 +165,20 @@ class DawiniServiceTest {
     }
 
     @Test
+    void la_notification_de_reponse_est_en_arabe_pour_un_patient_arabophone() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(
+                PATIENT, "Amina", "0661234567", null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        BesoinMedicament b = service.publier(PATIENT, DEMANDE);
+
+        service.repondre(PHARMACIE, b.id(), REPONSE);
+
+        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("ردّ من صيدلية");
+        assertThat(notifieur.pour(PATIENT).get(0).message()).isEqualTo("ردّت صيدلية على طلبك للدواء.");
+    }
+
+    @Test
     void repondre_a_un_besoin_cloture_est_refuse() {
         BesoinMedicament b = service.publier(PATIENT, DEMANDE);
         service.cloturer(PATIENT, b.id());

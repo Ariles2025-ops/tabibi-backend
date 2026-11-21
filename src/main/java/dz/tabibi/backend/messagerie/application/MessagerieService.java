@@ -10,9 +10,12 @@ import dz.tabibi.backend.messagerie.domain.Message;
 import dz.tabibi.backend.messagerie.domain.MessageInvalideException;
 import dz.tabibi.backend.messagerie.domain.MessageRepository;
 import dz.tabibi.backend.messagerie.domain.ResultatOuverture;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
 import dz.tabibi.backend.rendezvous.domain.StatutRdv;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +41,14 @@ public class MessagerieService {
     private final MessageRepository messages;
     private final RendezVousRepository rendezVous;
     private final Notifieur notifieur;
+
+    /** Profils : langue du destinataire pour sa notification (francais si absent). */
+    private ProfilRepository profils;
+
+    @Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
 
     public MessagerieService(ConversationRepository conversations, MessageRepository messages,
                              RendezVousRepository rendezVous, Notifieur notifieur) {
@@ -157,8 +168,10 @@ public class MessagerieService {
         }
         Message message = messages.enregistrer(Message.envoyer(conversation.id(), sujet, contenu, Instant.now()));
         conversations.enregistrer(conversation.avecDernierMessageLe(message.envoyeLe()));
-        notifieur.notifier(conversation.autreParticipant(sujet), "Nouveau message",
-                "Vous avez reçu un nouveau message.", "/messagerie/" + conversation.id());
+        UUID destinataire = conversation.autreParticipant(sujet);
+        String langue = Messages.langueDe(profils, destinataire);
+        notifieur.notifier(destinataire, Messages.nouveauMessageSujet(langue),
+                Messages.nouveauMessageMessage(langue), "/messagerie/" + conversation.id());
         return message;
     }
 

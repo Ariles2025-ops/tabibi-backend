@@ -190,6 +190,28 @@ public final class Messages {
         return ar(langue) ? "تم صرف وصفتك الطبية في الصيدلية." : "Votre ordonnance a été délivrée en pharmacie.";
     }
 
+    // --- Messagerie (patient ou medecin) ---
+
+    public static String nouveauMessageSujet(String langue) {
+        return ar(langue) ? "رسالة جديدة" : "Nouveau message";
+    }
+
+    public static String nouveauMessageMessage(String langue) {
+        return ar(langue) ? "وصلتك رسالة جديدة." : "Vous avez reçu un nouveau message.";
+    }
+
+    // --- Dawini : reponse d'une pharmacie (patient) ---
+
+    public static String reponsePharmacieSujet(String langue) {
+        return ar(langue) ? "ردّ من صيدلية" : "Réponse d'une pharmacie";
+    }
+
+    public static String reponsePharmacieMessage(String langue) {
+        return ar(langue)
+                ? "ردّت صيدلية على طلبك للدواء."
+                : "Une pharmacie a répondu à votre demande de médicament.";
+    }
+
     // --- Liste d'attente (patient) ---
 
     public static String creneauDisponibleSujet(String langue) {
