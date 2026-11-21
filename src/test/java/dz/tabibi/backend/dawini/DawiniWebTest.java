@@ -168,16 +168,16 @@ class DawiniWebTest {
         UUID dejaCloture = UUID.randomUUID();
         UUID dUnAutre = UUID.randomUUID();
         UUID inconnu = UUID.randomUUID();
-        when(service.cloturer(PATIENT, dejaCloture)).thenThrow(new TransitionInvalideException("Ce besoin est déjà clôturé."));
-        when(service.cloturer(PATIENT, dUnAutre)).thenThrow(new AccesRefuseException("Ce besoin ne vous appartient pas."));
+        when(service.cloturer(PATIENT, dejaCloture)).thenThrow(new TransitionInvalideException("Cette demande est déjà clôturée."));
+        when(service.cloturer(PATIENT, dUnAutre)).thenThrow(new AccesRefuseException("Cette demande ne vous appartient pas."));
         when(service.cloturer(PATIENT, inconnu)).thenThrow(new BesoinIntrouvableException(inconnu));
 
         mvc.perform(post("/api/dawini/besoins/{id}/cloturer", dejaCloture).with(patient()))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Ce besoin est déjà clôturé."));
+           .andExpect(jsonPath("$.erreur").value("Cette demande est déjà clôturée."));
         mvc.perform(post("/api/dawini/besoins/{id}/cloturer", dUnAutre).with(patient()))
            .andExpect(status().isForbidden())
-           .andExpect(jsonPath("$.erreur").value("Ce besoin ne vous appartient pas."));
+           .andExpect(jsonPath("$.erreur").value("Cette demande ne vous appartient pas."));
         mvc.perform(post("/api/dawini/besoins/{id}/cloturer", inconnu).with(patient()))
            .andExpect(status().isNotFound())
            .andExpect(jsonPath("$.erreur").exists());
@@ -243,12 +243,12 @@ class DawiniWebTest {
     @Test
     void repondre_a_un_besoin_cloture_ou_deja_repondu_repond_409() throws Exception {
         when(service.repondre(any(), any(), any()))
-                .thenThrow(new TransitionInvalideException("Ce besoin est clôturé : il n'accepte plus de réponse."));
+                .thenThrow(new TransitionInvalideException("Cette demande est clôturée : elle n'accepte plus de réponse."));
 
         mvc.perform(post("/api/dawini/besoins/{id}/reponses", UUID.randomUUID()).with(pharmacie())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS_REPONSE))
            .andExpect(status().isConflict())
-           .andExpect(jsonPath("$.erreur").value("Ce besoin est clôturé : il n'accepte plus de réponse."));
+           .andExpect(jsonPath("$.erreur").value("Cette demande est clôturée : elle n'accepte plus de réponse."));
     }
 
     @Test
@@ -266,7 +266,7 @@ class DawiniWebTest {
         mvc.perform(post("/api/dawini/besoins/{id}/reponses", inconnu).with(pharmacie())
                     .contentType(MediaType.APPLICATION_JSON).content(CORPS_REPONSE))
            .andExpect(status().isNotFound())
-           .andExpect(jsonPath("$.erreur").exists());
+           .andExpect(jsonPath("$.erreur").value("Cette demande n'existe plus."));
     }
 
     @Test
@@ -309,12 +309,12 @@ class DawiniWebTest {
     void reponses_du_besoin_d_un_autre_patient_repond_403_et_d_un_besoin_inconnu_404() throws Exception {
         UUID dUnAutre = UUID.randomUUID();
         UUID inconnu = UUID.randomUUID();
-        when(service.reponsesPourPatient(PATIENT, dUnAutre)).thenThrow(new AccesRefuseException("Ce besoin ne vous appartient pas."));
+        when(service.reponsesPourPatient(PATIENT, dUnAutre)).thenThrow(new AccesRefuseException("Cette demande ne vous appartient pas."));
         when(service.reponsesPourPharmacie(inconnu)).thenThrow(new BesoinIntrouvableException(inconnu));
 
         mvc.perform(get("/api/dawini/besoins/{id}/reponses", dUnAutre).with(patient()))
            .andExpect(status().isForbidden())
-           .andExpect(jsonPath("$.erreur").value("Ce besoin ne vous appartient pas."));
+           .andExpect(jsonPath("$.erreur").value("Cette demande ne vous appartient pas."));
         mvc.perform(get("/api/dawini/besoins/{id}/reponses", inconnu).with(pharmacie()))
            .andExpect(status().isNotFound())
            .andExpect(jsonPath("$.erreur").exists());

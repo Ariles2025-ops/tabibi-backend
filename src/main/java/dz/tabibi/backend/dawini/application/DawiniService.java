@@ -97,10 +97,10 @@ public class DawiniService {
     public ReponsePharmacie repondre(UUID pharmacieId, UUID besoinId, DemandeReponse demande) {
         BesoinMedicament besoin = charger(besoinId);
         if (!besoin.estOuvert()) {
-            throw new TransitionInvalideException("Ce besoin est clôturé : il n'accepte plus de réponse.");
+            throw new TransitionInvalideException("Cette demande est clôturée : elle n'accepte plus de réponse.");
         }
         if (reponses.parBesoinEtPharmacie(besoinId, pharmacieId).isPresent()) {
-            throw new TransitionInvalideException("Votre pharmacie a déjà répondu à ce besoin.");
+            throw new TransitionInvalideException("Votre pharmacie a déjà répondu à cette demande.");
         }
         ReponsePharmacie reponse = reponses.enregistrer(
                 ReponsePharmacie.repondre(besoin.id(), pharmacieId, demande, Instant.now()));
@@ -138,7 +138,7 @@ public class DawiniService {
     private BesoinMedicament chargerPourLePatient(UUID patientId, UUID besoinId) {
         BesoinMedicament besoin = charger(besoinId);
         if (!besoin.estDe(patientId)) {
-            throw new AccesRefuseException("Ce besoin ne vous appartient pas.");
+            throw new AccesRefuseException("Cette demande ne vous appartient pas.");
         }
         return besoin;
     }

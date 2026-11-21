@@ -5,6 +5,6 @@ import java.util.UUID;
 /** Levee quand le besoin de medicament demande n'existe pas. */
 public class BesoinIntrouvableException extends RuntimeException {
     public BesoinIntrouvableException(UUID besoinId) {
-        super("Besoin de médicament introuvable : " + besoinId + ".");
+        super("Cette demande n'existe plus.");
     }
 }
