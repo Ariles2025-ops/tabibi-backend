@@ -244,6 +244,23 @@ class MessagerieServiceTest {
     }
 
     @Test
+    void la_notification_suit_la_langue_du_destinataire() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(
+                PATIENT, "Amina", "0661234567", null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        Conversation c = conversationOuverte();
+
+        service.envoyer(MEDECIN, c.id(), "Prenez rendez-vous rapidement.");
+        service.envoyer(PATIENT, c.id(), "Merci.");
+
+        assertThat(notifieur.pour(PATIENT).get(0).sujet()).isEqualTo("رسالة جديدة");
+        assertThat(notifieur.pour(PATIENT).get(0).message()).isEqualTo("وصلتك رسالة جديدة.");
+        // Le medecin n'a pas de profil : repli sur le francais.
+        assertThat(notifieur.pour(MEDECIN).get(0).sujet()).isEqualTo("Nouveau message");
+    }
+
+    @Test
     void un_tiers_ne_peut_ni_lire_ni_ecrire() {
         Conversation c = conversationOuverte();
         UUID tiers = UUID.randomUUID();

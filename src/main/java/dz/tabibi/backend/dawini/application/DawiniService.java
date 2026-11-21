@@ -11,7 +11,10 @@ import dz.tabibi.backend.dawini.domain.DemandeReponse;
 import dz.tabibi.backend.dawini.domain.ReponseInvalideException;
 import dz.tabibi.backend.dawini.domain.ReponsePharmacie;
 import dz.tabibi.backend.dawini.domain.ReponseRepository;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,14 @@ public class DawiniService {
     private final BesoinRepository besoins;
     private final ReponseRepository reponses;
     private final Notifieur notifieur;
+
+    /** Profils : langue du patient pour sa notification (francais si absent). */
+    private ProfilRepository profils;
+
+    @Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
 
     public DawiniService(BesoinRepository besoins, ReponseRepository reponses, Notifieur notifieur) {
         this.besoins = besoins;
@@ -104,8 +115,9 @@ public class DawiniService {
         }
         ReponsePharmacie reponse = reponses.enregistrer(
                 ReponsePharmacie.repondre(besoin.id(), pharmacieId, demande, Instant.now()));
-        notifieur.notifier(besoin.patientId(), "Réponse d'une pharmacie",
-                "Une pharmacie a répondu à votre demande de médicament.", "/dawini/" + besoin.id());
+        String langue = Messages.langueDe(profils, besoin.patientId());
+        notifieur.notifier(besoin.patientId(), Messages.reponsePharmacieSujet(langue),
+                Messages.reponsePharmacieMessage(langue), "/dawini/" + besoin.id());
         return reponse;
     }
 
