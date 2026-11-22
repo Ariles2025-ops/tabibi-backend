@@ -4,6 +4,8 @@ import dz.tabibi.backend.audit.domain.AuditRepository;
 import dz.tabibi.backend.audit.domain.EntreeAudit;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,6 +18,9 @@ public class AuditService {
 
     /** Taille maximale d'une consultation, quoi que demande l'appelant. */
     public static final int LIMITE_MAX = 1000;
+
+    /** Duree de conservation annoncee aux utilisateurs. */
+    public static final int RETENTION_MOIS = 12;
 
     private final AuditRepository repository;
 
@@ -35,6 +40,11 @@ public class AuditService {
     /** Les acces d'un utilisateur, les plus recents d'abord, au plus {@code limite} (ramenee entre 1 et LIMITE_MAX). */
     public List<EntreeAudit> parSujet(UUID sujet, int limite) {
         return repository.parSujet(sujet, borner(limite));
+    }
+
+    /** Supprime les entrees de plus de {@link #RETENTION_MOIS} mois (engagement de la politique de confidentialite). */
+    public long purger(Instant maintenant) {
+        return repository.supprimerAvant(maintenant.atZone(ZoneOffset.UTC).minusMonths(RETENTION_MOIS).toInstant());
     }
 
     public static int borner(int limite) {
