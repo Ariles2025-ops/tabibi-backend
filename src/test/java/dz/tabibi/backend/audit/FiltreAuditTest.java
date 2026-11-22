@@ -67,6 +67,11 @@ class FiltreAuditTest {
         public List<EntreeAudit> parSujet(UUID sujet, int limite) {
             return entrees.stream().filter(e -> sujet.equals(e.sujet())).toList();
         }
+
+        @Override
+        public long supprimerAvant(Instant limite) {
+            return 0;
+        }
     }
 
     /** Requete dont le corps et les parametres ne doivent jamais etre lus par le filtre. */

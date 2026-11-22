@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +36,12 @@ public class JpaAuditRepository implements AuditRepository {
     public List<EntreeAudit> recents(int limite) {
         return jpa.findAllByOrderByHorodatageDesc(PageRequest.of(0, limite))
                 .stream().map(JournalAccesEntity::versDomaine).toList();
+    }
+
+    @Override
+    @Transactional
+    public long supprimerAvant(Instant limite) {
+        return jpa.supprimerAvant(limite);
     }
 
     @Override

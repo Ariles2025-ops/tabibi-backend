@@ -5,6 +5,7 @@ import dz.tabibi.backend.audit.domain.EntreeAudit;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,6 +60,13 @@ public class EnMemoireAuditRepository implements AuditRepository {
     @Override
     public synchronized List<EntreeAudit> parSujet(UUID sujet, int limite) {
         return plusRecentesDAbord().filter(e -> sujet.equals(e.sujet())).limit(limite).toList();
+    }
+
+    @Override
+    public synchronized long supprimerAvant(Instant limite) {
+        int avant = entrees.size();
+        entrees.removeIf(e -> e.horodatage().isBefore(limite));
+        return avant - entrees.size();
     }
 
     private Stream<EntreeAudit> plusRecentesDAbord() {

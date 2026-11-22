@@ -209,8 +209,8 @@ pour un appel public sans jeton), `methode`, `chemin` (sans la chaine de requete
   lui-meme (401 sans jeton ou jeton invalide, 403 du verrou `/api/admin/**`) ne sont pas des acces et
   n'y figurent pas ; un refus de `@PreAuthorize` est trace avec le statut 403, une erreur imprevue avec 500.
 - **Stockage** : en memoire, journal borne aux 10 000 dernieres entrees (dev/tests) ; sous PostgreSQL,
-  table `journal_acces` (Liquibase 016, index sur `horodatage` et `(sujet, horodatage)`), sans purge
-  automatique : prevoir une retention (par exemple une suppression periodique des entrees de plus d'un an).
+  table `journal_acces` (Liquibase 016, index sur `horodatage` et `(sujet, horodatage)`), purge
+  automatique quotidienne (3 h 45, heure d'Alger) des entrees de plus de 12 mois (`tabibi.purge-audit.actifs=false` pour la desactiver).
 - **Derriere un reverse proxy**, l'adresse vue par le serveur est celle du proxy : le profil `postgres`
   active la prise en compte des en-tetes `X-Forwarded-*` (`server.forward-headers-strategy=native`, en
   provenance des proxys internes seulement ; `SERVER_FORWARD_HEADERS_STRATEGY=none` en acces direct).

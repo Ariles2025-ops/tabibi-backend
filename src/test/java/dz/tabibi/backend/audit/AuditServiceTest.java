@@ -121,4 +121,17 @@ class AuditServiceTest {
         assertThat(EnMemoireAuditRepository.CAPACITE_DEFAUT).isEqualTo(10_000);
         assertThatThrownBy(() -> new EnMemoireAuditRepository(0)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void la_purge_supprime_les_entrees_de_plus_de_12_mois_et_garde_les_autres() {
+        acces(PATIENT, "/api/moi", "2025-05-31T09:00:00Z");
+        EntreeAudit limite = acces(PATIENT, "/api/moi", "2025-06-15T09:00:00Z");
+        EntreeAudit recent = acces(MEDECIN, "/api/moi", "2026-03-01T09:00:00Z");
+
+        long supprimees = service.purger(Instant.parse("2026-06-15T09:00:00Z"));
+
+        assertThat(supprimees).isEqualTo(1);
+        assertThat(service.recents(100)).containsExactly(recent, limite);
+        assertThat(service.purger(Instant.parse("2026-06-15T09:00:00Z"))).isZero();
+    }
 }

@@ -1,5 +1,6 @@
 package dz.tabibi.backend.audit.domain;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,4 +17,7 @@ public interface AuditRepository {
 
     /** Les entrees d'un sujet (utilisateur), les plus recentes d'abord, au plus {@code limite}. */
     List<EntreeAudit> parSujet(UUID sujet, int limite);
+
+    /** Supprime les entrees strictement anterieures a {@code limite} ; renvoie leur nombre. */
+    long supprimerAvant(Instant limite);
 }
