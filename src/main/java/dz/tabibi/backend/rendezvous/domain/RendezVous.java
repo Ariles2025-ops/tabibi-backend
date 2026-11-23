@@ -116,7 +116,7 @@ public class RendezVous {
     public void annulerParCabinet() {
         if (statut != StatutRdv.CONFIRME) {
             throw new TransitionInvalideException(
-                    "Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : " + statut + ").");
+                    "Seul un rendez-vous confirmé peut être annulé par le cabinet (statut actuel : " + statut.libelle() + ").");
         }
         if (!debut.isAfter(Instant.now())) {
             throw new TransitionInvalideException(
