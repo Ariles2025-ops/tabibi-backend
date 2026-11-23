@@ -4,6 +4,7 @@ import dz.tabibi.backend.ordonnances.application.OrdonnanceService;
 import dz.tabibi.backend.ordonnances.domain.LigneOrdonnance;
 import dz.tabibi.backend.ordonnances.domain.Ordonnance;
 import dz.tabibi.backend.ordonnances.domain.ResultatVerification;
+import dz.tabibi.backend.ordonnances.domain.StatutOrdonnance;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
@@ -45,8 +46,10 @@ public class OrdonnanceController {
                                 List<LigneOrdonnance> lignes, Instant emiseLe,
                                 String codeVerification, String statut, String motifAnnulation, Instant delivreeLe) {
         static OrdonnanceVue de(Ordonnance o) {
+            // Comme a la verification publique : une ordonnance emise dont la validite est depassee est EXPIREE.
+            String statut = o.estExpiree(Instant.now()) ? StatutOrdonnance.EXPIREE.name() : o.statut().name();
             return new OrdonnanceVue(o.id(), o.medecinId(), o.patientId(), o.rendezVousId(),
-                    o.lignes(), o.emiseLe(), o.codeVerification(), o.statut().name(), o.motifAnnulation(), o.delivreeLe());
+                    o.lignes(), o.emiseLe(), o.codeVerification(), statut, o.motifAnnulation(), o.delivreeLe());
         }
     }
 
