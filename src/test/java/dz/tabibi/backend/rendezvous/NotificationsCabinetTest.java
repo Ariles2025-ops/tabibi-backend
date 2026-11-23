@@ -125,6 +125,34 @@ class NotificationsCabinetTest {
     }
 
     @Test
+    void l_annulation_par_le_patient_est_en_arabe_pour_un_medecin_arabophone_et_en_francais_pour_la_secretaire() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(MEDECIN, "Dr Karim", null, null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        RendezVous rdv = reserve();
+
+        service.annuler(PATIENT, rdv.id());
+
+        assertThat(sujetsPour(MEDECIN)).containsExactly("تم إلغاء الموعد");
+        assertThat(appels.stream().filter(a -> a.destinataire().equals(MEDECIN)).findFirst().orElseThrow().message())
+                .contains("الساعة").doesNotContain("annulé");
+        assertThat(sujetsPour(SECRETAIRE)).containsExactly("Rendez-vous annulé");
+    }
+
+    @Test
+    void l_invitation_de_cabinet_est_en_arabe_pour_une_secretaire_arabophone() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(UUID.randomUUID(), "x", null, null, null, "ar", Instant.now()));
+        UUID nouvelle = UUID.randomUUID();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(nouvelle, "Sara", null, null, null, "ar", Instant.now()));
+        cabinet.setProfils(profils);
+
+        cabinet.rattacher(MEDECIN, nouvelle);
+
+        assertThat(sujetsPour(nouvelle)).containsExactly("دعوة للانضمام إلى عيادة");
+    }
+
+    @Test
     void l_annulation_par_la_secretaire_previent_le_patient_par_sms_et_le_medecin() {
         RendezVous rdv = reserve();
 

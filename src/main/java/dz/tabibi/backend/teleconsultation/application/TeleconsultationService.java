@@ -3,7 +3,9 @@ package dz.tabibi.backend.teleconsultation.application;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.FormatDate;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
 import dz.tabibi.backend.rendezvous.domain.RendezVousRepository;
@@ -47,6 +49,14 @@ public class TeleconsultationService {
     private final Notifieur notifieur;
     private final GenerateurSalle generateurSalle;
     private final String baseUrl;
+
+    /** Profils : langue (FR/AR) du destinataire des notifications. */
+    private ProfilRepository profils;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
 
     public TeleconsultationService(TeleconsultationRepository repository,
                                    RendezVousRepository rendezVous,
@@ -92,9 +102,10 @@ public class TeleconsultationService {
         }
         Teleconsultation teleconsultation = repository.enregistrer(
                 Teleconsultation.planifier(rendezVousId, rdv.patientId(), medecinId, generateurSalle.generer()));
-        notifieur.notifier(rdv.patientId(), "Téléconsultation proposée",
-                "Votre médecin vous propose une téléconsultation pour votre rendez-vous du "
-                        + FormatDate.lisible(rdv.debut()) + ". Votre consentement est nécessaire pour y accéder.", "/teleconsultations");
+        String langue = Messages.langueDe(profils, rdv.patientId());
+        notifieur.notifier(rdv.patientId(), Messages.teleconsultationProposeeSujet(langue),
+                Messages.teleconsultationProposeeMessage(langue, FormatDate.lisible(rdv.debut(), langue)),
+                "/teleconsultations");
         return teleconsultation;
     }
 
@@ -149,8 +160,9 @@ public class TeleconsultationService {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.demarrer(Instant.now());
         Teleconsultation demarree = repository.enregistrer(teleconsultation);
-        notifieur.notifier(demarree.patientId(), "Téléconsultation démarrée",
-                "Votre médecin a démarré la téléconsultation : rejoignez la salle depuis votre espace Ndawik.", "/teleconsultations");
+        String langue = Messages.langueDe(profils, demarree.patientId());
+        notifieur.notifier(demarree.patientId(), Messages.teleconsultationDemarreeSujet(langue),
+                Messages.teleconsultationDemarreeMessage(langue), "/teleconsultations");
         return demarree;
     }
 
@@ -184,11 +196,11 @@ public class TeleconsultationService {
         Teleconsultation teleconsultation = chargerPourLeMedecin(medecinId, teleconsultationId);
         teleconsultation.annuler();
         Teleconsultation annulee = repository.enregistrer(teleconsultation);
+        String langue = Messages.langueDe(profils, annulee.patientId());
         String quand = rendezVous.parId(annulee.rendezVousId())
-                .map(rdv -> " du " + FormatDate.lisible(rdv.debut())).orElse("");
-        notifieur.notifier(annulee.patientId(), "Téléconsultation annulée",
-                "Votre médecin a annulé la téléconsultation de votre rendez-vous" + quand
-                        + ". Votre rendez-vous reste confirmé : il se tient en cabinet.", "/teleconsultations");
+                .map(rdv -> FormatDate.lisible(rdv.debut(), langue)).orElse(null);
+        notifieur.notifier(annulee.patientId(), Messages.teleconsultationAnnuleeSujet(langue),
+                Messages.teleconsultationAnnuleeMessage(langue, quand), "/teleconsultations");
         return annulee;
     }
 

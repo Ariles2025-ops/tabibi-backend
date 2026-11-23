@@ -13,7 +13,9 @@ import dz.tabibi.backend.annuaire.domain.MedecinRepository;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
 import dz.tabibi.backend.commun.domain.Courriel;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,14 @@ public class AdministrationService {
     private final Notifieur notifieur;
     private final AttributionRoleMedecin roles;
     private final String siteDomaine;
+
+    /** Profils : langue (FR/AR) du destinataire des notifications. */
+    private ProfilRepository profils;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
 
     public AdministrationService(CandidatureRepository candidatures, MedecinRepository medecins, Notifieur notifieur,
                                  AttributionRoleMedecin roles,
@@ -111,8 +121,9 @@ public class AdministrationService {
         if (comptes != null) {
             comptes.retirerRole(medecinId, "MEDECIN");
         }
-        notifieur.notifier(medecinId, "Compte suspendu",
-                "Votre compte médecin Ndawik a été suspendu. Motif : " + motif.strip(), "/medecin/candidature");
+        String langue = Messages.langueDe(profils, medecinId);
+        notifieur.notifier(medecinId, Messages.compteSuspenduSujet(langue),
+                Messages.compteSuspenduMessage(langue, motif.strip()), "/medecin/candidature");
         log.info("Medecin {} suspendu ({} rendez-vous annules). Motif : {}", medecinId, annules, motif.strip());
         return annules;
     }
@@ -129,9 +140,9 @@ public class AdministrationService {
         }
         medecins.enregistrer(fichePublique(validee));
         roles.accorder(medecinId);
-        notifieur.notifier(medecinId, "Compte rétabli",
-                "Votre compte médecin Ndawik est rétabli. Reconnectez-vous pour ouvrir votre espace médecin.",
-                "/medecin/agenda");
+        String langue = Messages.langueDe(profils, medecinId);
+        notifieur.notifier(medecinId, Messages.compteRetabliSujet(langue),
+                Messages.compteRetabliMessage(langue), "/medecin/agenda");
         log.info("Medecin {} retabli.", medecinId);
     }
 
