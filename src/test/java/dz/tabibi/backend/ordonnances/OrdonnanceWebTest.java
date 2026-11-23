@@ -66,7 +66,36 @@ class OrdonnanceWebTest {
     private static Ordonnance ordonnance() {
         return new Ordonnance(UUID.randomUUID(), MEDECIN, PATIENT, null,
                 List.of(new LigneOrdonnance("Paracetamol 1 g", "1 comprime matin et soir", "5 jours")),
-                Instant.parse("2026-09-18T10:00:00Z"), "AB23CD45", StatutOrdonnance.EMISE);
+                Instant.now().minus(5, java.time.temporal.ChronoUnit.DAYS), "AB23CD45", StatutOrdonnance.EMISE);
+    }
+
+    private static Ordonnance ordonnanceDeQuatreMois() {
+        return new Ordonnance(UUID.randomUUID(), MEDECIN, PATIENT, null,
+                List.of(new LigneOrdonnance("Paracetamol 1 g", "1 comprime matin et soir", "5 jours")),
+                Instant.now().minus(120, java.time.temporal.ChronoUnit.DAYS), "AB23CD45", StatutOrdonnance.EMISE);
+    }
+
+    @Test
+    void ordonnance_de_plus_de_90_jours_est_renvoyee_expiree_au_patient_et_au_medecin() throws Exception {
+        Ordonnance o = ordonnanceDeQuatreMois();
+        when(service.mesOrdonnances(PATIENT)).thenReturn(List.of(o));
+        when(service.ordonnancesDuMedecin(MEDECIN)).thenReturn(List.of(o));
+        when(service.parIdPour(PATIENT, o.id())).thenReturn(o);
+
+        mvc.perform(get("/api/ordonnances/mes").with(patient()))
+           .andExpect(jsonPath("$[0].statut").value("EXPIREE"));
+        mvc.perform(get("/api/medecin/ordonnances").with(medecin()))
+           .andExpect(jsonPath("$[0].statut").value("EXPIREE"));
+        mvc.perform(get("/api/ordonnances/{id}", o.id()).with(patient()))
+           .andExpect(jsonPath("$.statut").value("EXPIREE"));
+    }
+
+    @Test
+    void ordonnance_recente_reste_emise() throws Exception {
+        when(service.mesOrdonnances(PATIENT)).thenReturn(List.of(ordonnance()));
+
+        mvc.perform(get("/api/ordonnances/mes").with(patient()))
+           .andExpect(jsonPath("$[0].statut").value("EMISE"));
     }
 
     @Test
