@@ -88,6 +88,7 @@ class MessagesLangueTest {
         assertThat(Messages.deplaceCabinetMessage("fr", "d1", "d2")).contains("d1").contains("d2");
         assertThat(Messages.medecinIndisponibleSujet("fr")).isEqualTo("Rendez-vous annulé : médecin indisponible");
         assertThat(Messages.ordonnanceNouvelleSujet("fr")).isEqualTo("Nouvelle ordonnance");
+        assertThat(Messages.ordonnanceNouvelleMessage("ar")).contains("«وصفاتي الطبية»");
         assertThat(Messages.ordonnanceAnnuleeMessage("fr", null)).isEqualTo("Votre médecin a annulé une ordonnance.");
         assertThat(Messages.ordonnanceDelivreeSujet("fr")).isEqualTo("Ordonnance délivrée");
         assertThat(Messages.creneauDisponibleSujet("fr")).isEqualTo("Créneau disponible");
