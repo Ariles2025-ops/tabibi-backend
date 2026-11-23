@@ -177,7 +177,13 @@ public class PhoneOtpAuthenticator implements Authenticator {
             }
             auth.setAuthNote(TRIES, String.valueOf(tries + 1));
             ctx.getEvent().detail("phone", phone).error(Errors.INVALID_USER_CREDENTIALS);
-            fail(ctx, otpForm(ctx).setError("auth.otp.wrong", digits(MAX_TRIES - tries - 1)).createForm("tabibi-otp.ftl"));
+            int left = MAX_TRIES - tries - 1;
+            if (left <= 0) { // dernière erreur : code épuisé, comme le flux appli
+                clearCode(auth);
+                fail(ctx, phoneForm(ctx, null).setError("auth.otp.locked", digits(15)).createForm("tabibi-phone.ftl"));
+                return;
+            }
+            fail(ctx, otpForm(ctx).setError(wrongKey(left), digits(left)).createForm("tabibi-otp.ftl"));
             return;
         }
 
@@ -306,6 +312,10 @@ public class PhoneOtpAuthenticator implements Authenticator {
      * Nombre passé en texte : formaté par la locale arabe, Keycloak afficherait des chiffres arabes orientaux
      * (٥٩). Tabibi affiche toujours les chiffres 0-9, comme en Algérie.
      */
+    static String wrongKey(int left) {
+        return left == 1 ? "auth.otp.wrongOne" : "auth.otp.wrong";
+    }
+
     static String digits(long n) {
         return "\u2066" + n + "\u2069";
     }
