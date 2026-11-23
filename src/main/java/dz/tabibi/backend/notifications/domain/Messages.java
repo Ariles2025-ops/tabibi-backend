@@ -169,7 +169,7 @@ public final class Messages {
     public static String ordonnanceNouvelleMessage(String langue) {
         return ar(langue)
                 ? "أصدر لك طبيبك وصفة طبية: يمكنك الاطلاع عليها في «وصفاتي الطبية»."
-                : "Votre médecin vous a délivré une ordonnance : retrouvez-la dans « Mes ordonnances ».";
+                : "Votre médecin a émis une ordonnance pour vous : retrouvez-la dans « Mes ordonnances ».";
     }
 
     public static String ordonnanceAnnuleeSujet(String langue) {
