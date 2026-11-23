@@ -9,7 +9,9 @@ import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.creneaux.application.CreneauService;
 import dz.tabibi.backend.creneaux.domain.Creneau;
 import dz.tabibi.backend.creneaux.domain.CreneauInvalideException;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.rendezvous.application.RendezVousService;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
@@ -34,6 +36,14 @@ public class CabinetService {
     private final RendezVousService rendezVous;
     private final CreneauService creneaux;
     private final Notifieur notifieur;
+
+    /** Profils : langue (FR/AR) du destinataire des notifications. */
+    private ProfilRepository profils;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
+    }
 
     public CabinetService(RattachementRepository rattachements, RendezVousService rendezVous,
                           CreneauService creneaux, Notifieur notifieur) {
@@ -64,8 +74,9 @@ public class CabinetService {
             throw new TransitionInvalideException("Cette secrétaire est déjà invitée ou rattachée à votre cabinet.");
         }
         Rattachement enregistre = rattachements.enregistrer(rattachement);
-        notifieur.notifier(secretaireId, "Invitation à rejoindre un cabinet",
-                "Un médecin vous invite à gérer l'agenda de son cabinet. Acceptez ou refusez l'invitation.", "/invitations");
+        String langue = Messages.langueDe(profils, secretaireId);
+        notifieur.notifier(secretaireId, Messages.invitationCabinetSujet(langue),
+                Messages.invitationCabinetMessage(langue), "/invitations");
         return enregistre;
     }
 
@@ -91,8 +102,9 @@ public class CabinetService {
             comptes.accorderRole(secretaireId, "SECRETAIRE");
         }
         Rattachement accepte = rattachements.enregistrer(r.accepter());
-        notifieur.notifier(r.medecinId(), "Invitation acceptée",
-                "Votre secrétaire a accepté l'invitation : elle peut maintenant gérer votre agenda.", "/medecin/secretaires");
+        String langue = Messages.langueDe(profils, r.medecinId());
+        notifieur.notifier(r.medecinId(), Messages.invitationAccepteeSujet(langue),
+                Messages.invitationAccepteeMessage(langue), "/medecin/secretaires");
         return accepte;
     }
 
@@ -104,8 +116,9 @@ public class CabinetService {
             throw new TransitionInvalideException("Cette invitation a déjà été acceptée.");
         }
         rattachements.supprimer(r.id());
-        notifieur.notifier(r.medecinId(), "Invitation refusée",
-                "La personne invitée a refusé de rejoindre votre cabinet.", "/medecin/secretaires");
+        String langue = Messages.langueDe(profils, r.medecinId());
+        notifieur.notifier(r.medecinId(), Messages.invitationRefuseeSujet(langue),
+                Messages.invitationRefuseeMessage(langue), "/medecin/secretaires");
     }
 
     private Rattachement invitationPour(UUID secretaireId, UUID rattachementId) {

@@ -267,10 +267,9 @@ public class RendezVousService {
         rdv.annuler();
         libererCreneau(rdv);
         RendezVous annule = repository.enregistrer(rdv);
-        String message = "Le rendez-vous du " + FormatDate.lisible(annule.debut()) + " a été annulé par le patient.";
-        notifieur.notifier(annule.medecinId(), "Rendez-vous annulé", message, "/medecin/agenda");
-        secretairesDe(annule.medecinId()).forEach(s ->
-                notifieur.notifier(s, "Rendez-vous annulé", message, "/secretaire"));
+        notifierCabinet(annule.medecinId(), "/medecin/agenda", "/secretaire",
+                Messages::annuleParPatientSujet, langue -> Messages.annuleParPatientMessage(
+                        langue, FormatDate.lisible(annule.debut(), langue)));
         return annule;
     }
 
@@ -380,8 +379,9 @@ public class RendezVousService {
                     Messages.absentMessage(langue, FormatDate.lisible(absent.debut(), langue)), "/mes-rendez-vous");
         }
         if (!medecinId.equals(auteurId)) {
-            notifieur.notifier(medecinId, "Patient absent",
-                    "Votre secrétaire a marqué absent le patient du rendez-vous du " + FormatDate.lisible(absent.debut()) + ".",
+            String langueMedecin = Messages.langueDe(profils, medecinId);
+            notifieur.notifier(medecinId, Messages.patientAbsentSujet(langueMedecin),
+                    Messages.patientAbsentMessage(langueMedecin, FormatDate.lisible(absent.debut(), langueMedecin)),
                     "/medecin/agenda");
         }
         return absent;
@@ -451,10 +451,9 @@ public class RendezVousService {
             throw new AccesRefuseException("Ce rendez-vous ne vous appartient pas.");
         }
         RendezVous nouveau = deplacerRdv(rdv, nouveauCreneauId);
-        String message = "Un patient a déplacé son rendez-vous du " + FormatDate.lisible(rdv.debut())
-                + " au " + FormatDate.lisible(nouveau.debut()) + ".";
-        notifieur.notifier(nouveau.medecinId(), "Rendez-vous déplacé", message, "/medecin/agenda");
-        secretairesDe(nouveau.medecinId()).forEach(s -> notifieur.notifier(s, "Rendez-vous déplacé", message, "/secretaire"));
+        notifierCabinet(nouveau.medecinId(), "/medecin/agenda", "/secretaire",
+                Messages::deplaceParPatientSujet, langue -> Messages.deplaceParPatientMessage(
+                        langue, FormatDate.lisible(rdv.debut(), langue), FormatDate.lisible(nouveau.debut(), langue)));
         return nouveau;
     }
 
@@ -532,6 +531,18 @@ public class RendezVousService {
     }
 
     /** Previent le patient (appli + SMS) que le cabinet a annule son rendez-vous. */
+    /** Prévient le médecin et ses secrétaires, chacun dans la langue de son profil. */
+    private void notifierCabinet(UUID medecinId, String lienMedecin, String lienSecretaire,
+                                 java.util.function.Function<String, String> sujet,
+                                 java.util.function.Function<String, String> message) {
+        String langueMedecin = Messages.langueDe(profils, medecinId);
+        notifieur.notifier(medecinId, sujet.apply(langueMedecin), message.apply(langueMedecin), lienMedecin);
+        secretairesDe(medecinId).forEach(s -> {
+            String langue = Messages.langueDe(profils, s);
+            notifieur.notifier(s, sujet.apply(langue), message.apply(langue), lienSecretaire);
+        });
+    }
+
     private void notifierAnnulationParCabinet(RendezVous annule) {
         String langue = Messages.langueDe(profils, annule.patientId());
         String date = FormatDate.lisible(annule.debut(), langue);
