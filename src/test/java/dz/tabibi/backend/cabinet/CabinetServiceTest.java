@@ -220,6 +220,25 @@ class CabinetServiceTest {
     }
 
     @Test
+    void suppression_du_compte_medecin_previent_ses_secretaires_rattachees_et_invitees_dans_leur_langue() {
+        UUID invitee = UUID.randomUUID();
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(invitee, "Amina", "0661234567",
+                null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        lier(MEDECIN, SECRETAIRE);
+        service.rattacher(MEDECIN, invitee);
+
+        service.retirerTousRattachementsDe(MEDECIN);
+
+        assertThat(service.secretairesDuMedecin(MEDECIN)).isEmpty();
+        assertThat(notifieur.pour(SECRETAIRE).get(notifieur.pour(SECRETAIRE).size() - 1).sujet())
+                .isEqualTo("Rattachement retiré");
+        assertThat(notifieur.pour(invitee).get(notifieur.pour(invitee).size() - 1).sujet())
+                .isEqualTo("تم إلغاء الدعوة");
+    }
+
+    @Test
     void annuler_une_invitation_en_attente_previent_par_invitation_annulee() {
         Rattachement r = service.rattacher(MEDECIN, SECRETAIRE);
 
