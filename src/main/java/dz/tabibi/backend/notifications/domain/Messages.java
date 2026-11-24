@@ -345,4 +345,34 @@ public final class Messages {
                 ? "رفض الشخص المدعو الانضمام إلى عيادتك."
                 : "La personne invitée a refusé de rejoindre votre cabinet.";
     }
+
+    public static String rattachementRetireSujet(String langue) {
+        return ar(langue) ? "تمت إزالة الارتباط" : "Rattachement retiré";
+    }
+
+    public static String rattachementRetireMessage(String langue) {
+        return ar(langue)
+                ? "أزال طبيب ارتباطك بعيادته."
+                : "Un médecin a retiré votre rattachement à son cabinet.";
+    }
+
+    public static String invitationAnnuleeSujet(String langue) {
+        return ar(langue) ? "تم إلغاء الدعوة" : "Invitation annulée";
+    }
+
+    public static String invitationAnnuleeMessage(String langue) {
+        return ar(langue)
+                ? "ألغى الطبيب دعوته للانضمام إلى عيادته."
+                : "Le médecin a annulé son invitation à rejoindre son cabinet.";
+    }
+
+    public static String secretairePartieSujet(String langue) {
+        return rattachementRetireSujet(langue);
+    }
+
+    public static String secretairePartieMessage(String langue) {
+        return ar(langue)
+                ? "حذفت سكرتيرة حسابها: لم تعد مرتبطة بعيادتك."
+                : "Une secrétaire a supprimé son compte : elle n'est plus rattachée à votre cabinet.";
+    }
 }

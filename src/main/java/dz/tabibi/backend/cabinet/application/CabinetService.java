@@ -148,12 +148,13 @@ public class CabinetService {
             throw new AccesRefuseException("Ce rattachement ne concerne pas votre cabinet.");
         }
         rattachements.supprimer(rattachement.id());
+        String langue = Messages.langueDe(profils, rattachement.secretaireId());
         if (rattachement.accepte()) {
-            notifieur.notifier(rattachement.secretaireId(), "Rattachement retiré",
-                    "Un médecin a retiré votre rattachement à son cabinet.");
+            notifieur.notifier(rattachement.secretaireId(), Messages.rattachementRetireSujet(langue),
+                    Messages.rattachementRetireMessage(langue));
         } else {
-            notifieur.notifier(rattachement.secretaireId(), "Invitation annulée",
-                    "Le médecin a annulé son invitation à rejoindre son cabinet.");
+            notifieur.notifier(rattachement.secretaireId(), Messages.invitationAnnuleeSujet(langue),
+                    Messages.invitationAnnuleeMessage(langue));
         }
         return rattachement.secretaireId();
     }
@@ -168,9 +169,9 @@ public class CabinetService {
         for (Rattachement r : rattachements.parSecretaire(compte)) {
             rattachements.supprimer(r.id());
             if (r.accepte()) {
-                notifieur.notifier(r.medecinId(), "Rattachement retiré",
-                        "Une secrétaire a supprimé son compte : elle n'est plus rattachée à votre cabinet.",
-                        "/medecin/secretaires");
+                String langue = Messages.langueDe(profils, r.medecinId());
+                notifieur.notifier(r.medecinId(), Messages.secretairePartieSujet(langue),
+                        Messages.secretairePartieMessage(langue), "/medecin/secretaires");
             }
         }
         for (Rattachement r : rattachements.parMedecin(compte)) {

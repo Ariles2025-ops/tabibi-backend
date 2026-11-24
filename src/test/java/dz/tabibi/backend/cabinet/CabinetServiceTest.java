@@ -186,6 +186,40 @@ class CabinetServiceTest {
     }
 
     @Test
+    void retrait_et_annulation_sont_notifies_en_arabe_si_la_secretaire_est_arabophone() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(SECRETAIRE, "Amina", "0661234567",
+                null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+
+        Rattachement invitation = service.rattacher(MEDECIN, SECRETAIRE);
+        service.retirer(MEDECIN, invitation.id());
+        assertThat(notifieur.pour(SECRETAIRE).get(1).sujet()).isEqualTo("تم إلغاء الدعوة");
+        assertThat(notifieur.pour(SECRETAIRE).get(1).message()).matches(".*[\\u0600-\\u06FF].*").doesNotContain("médecin");
+
+        Rattachement actif = lier(MEDECIN, SECRETAIRE);
+        service.retirer(MEDECIN, actif.id());
+        var dernier = notifieur.pour(SECRETAIRE).get(notifieur.pour(SECRETAIRE).size() - 1);
+        assertThat(dernier.sujet()).isEqualTo("تمت إزالة الارتباط");
+        assertThat(dernier.message()).matches(".*[\\u0600-\\u06FF].*").doesNotContain("médecin");
+    }
+
+    @Test
+    void depart_de_secretaire_notifie_le_medecin_dans_sa_langue() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(MEDECIN, "Dr", "0661234567",
+                null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        lier(MEDECIN, SECRETAIRE);
+
+        service.retirerTousRattachementsDe(SECRETAIRE);
+
+        var dernier = notifieur.pour(MEDECIN).get(notifieur.pour(MEDECIN).size() - 1);
+        assertThat(dernier.sujet()).isEqualTo("تمت إزالة الارتباط");
+        assertThat(dernier.message()).contains("سكرتيرة").doesNotContain("secrétaire");
+    }
+
+    @Test
     void annuler_une_invitation_en_attente_previent_par_invitation_annulee() {
         Rattachement r = service.rattacher(MEDECIN, SECRETAIRE);
 
