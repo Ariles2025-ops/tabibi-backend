@@ -238,8 +238,21 @@ class AdministrationServiceTest {
         avis.enregistrer(dz.tabibi.backend.avis.domain.Avis.deposer(UUID.randomUUID(), UUID.randomUUID(), MEDECIN, 5, null,
                 Instant.parse("2026-01-11T09:00:00Z")));
 
+        dz.tabibi.backend.demandes.domain.DemandePraticienRepository demandes =
+                new dz.tabibi.backend.demandes.adapter.EnMemoireDemandePraticienRepository();
+        service.setDemandesPraticien(demandes);
+        Instant t = Instant.parse("2026-01-10T09:00:00Z");
+        demandes.enregistrer(dz.tabibi.backend.demandes.domain.DemandePraticien.creer(UUID.randomUUID(), "Dr A", "cardiologue",
+                "16", null, "16-1", "0550000000", null, null, null, t));
+        demandes.enregistrer(dz.tabibi.backend.demandes.domain.DemandePraticien.creer(UUID.randomUUID(), "Dr B", "cardiologue",
+                "16", null, "16-2", "0550000001", null, null, null, t));
+        demandes.enregistrer(dz.tabibi.backend.demandes.domain.DemandePraticien.creer(UUID.randomUUID(), "Dr C", "cardiologue",
+                "16", null, "16-3", "0550000002", null, null, null, t)
+                .clôturee(dz.tabibi.backend.demandes.domain.StatutDemande.TRAITEE, t));
+
         StatistiquesAdministration stats = service.statistiques();
         assertThat(stats.avisSignales()).isEqualTo(1);
+        assertThat(stats.demandesNouvelles()).isEqualTo(2);
 
         assertThat(stats.candidaturesEnAttente()).isEqualTo(2);
         assertThat(stats.candidaturesValidees()).isEqualTo(1);
