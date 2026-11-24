@@ -5,5 +5,6 @@ public record StatistiquesAdministration(
         long candidaturesEnAttente,
         long candidaturesValidees,
         long candidaturesRefusees,
-        long avisSignales
+        long avisSignales,
+        long demandesNouvelles
 ) {}

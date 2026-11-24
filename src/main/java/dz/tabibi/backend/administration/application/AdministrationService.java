@@ -276,7 +276,17 @@ public class AdministrationService {
                 candidatures.compter(StatutCandidature.EN_ATTENTE),
                 candidatures.compter(StatutCandidature.VALIDEE),
                 candidatures.compter(StatutCandidature.REFUSEE),
-                avis == null ? 0 : avis.parStatut(dz.tabibi.backend.avis.domain.StatutAvis.SIGNALE).size());
+                avis == null ? 0 : avis.parStatut(dz.tabibi.backend.avis.domain.StatutAvis.SIGNALE).size(),
+                demandesPraticien == null ? 0
+                        : demandesPraticien.lister(Optional.of(dz.tabibi.backend.demandes.domain.StatutDemande.NOUVELLE)).size());
+    }
+
+    /** Demandes praticien : sert a compter les demandes nouvelles a traiter. */
+    private dz.tabibi.backend.demandes.domain.DemandePraticienRepository demandesPraticien;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDemandesPraticien(dz.tabibi.backend.demandes.domain.DemandePraticienRepository demandesPraticien) {
+        this.demandesPraticien = demandesPraticien;
     }
 
     private CandidatureMedecin charger(UUID candidatureId) {
