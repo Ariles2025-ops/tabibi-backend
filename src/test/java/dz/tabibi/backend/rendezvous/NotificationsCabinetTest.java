@@ -165,6 +165,35 @@ class NotificationsCabinetTest {
     }
 
     @Test
+    void l_annulation_par_la_secretaire_est_en_arabe_pour_un_medecin_arabophone() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(MEDECIN, "Dr Karim", null, null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        RendezVous rdv = reserve();
+
+        cabinet.annulerPour(SECRETAIRE, rdv.id());
+
+        assertThat(sujetsPour(MEDECIN)).containsExactly("ألغت سكرتيرتك موعدًا");
+        assertThat(appels.stream().filter(a -> a.destinataire().equals(MEDECIN)).findFirst().orElseThrow().message())
+                .contains("الساعة").doesNotContain("secrétaire");
+    }
+
+    @Test
+    void le_deplacement_par_la_secretaire_est_en_arabe_pour_un_medecin_arabophone() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(MEDECIN, "Dr Karim", null, null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        RendezVous rdv = reserve();
+        Creneau autre = creneaux.enregistrer(new Creneau(UUID.randomUUID(), MEDECIN, Instant.now().plusSeconds(172_800), 20, true));
+
+        service.deplacerParCabinet(MEDECIN, rdv.id(), autre.id(), SECRETAIRE);
+
+        assertThat(sujetsPour(MEDECIN)).containsExactly("نقلت سكرتيرتك موعدًا");
+        assertThat(appels.stream().filter(a -> a.destinataire().equals(MEDECIN)).findFirst().orElseThrow().message())
+                .contains("الساعة").doesNotContain("secrétaire");
+    }
+
+    @Test
     void l_absence_marquee_par_la_secretaire_previent_le_medecin() {
         RendezVous passe = rdvs.enregistrer(new RendezVous(UUID.randomUUID(), PATIENT, MEDECIN,
                 Instant.now().minusSeconds(3600), StatutRdv.CONFIRME));
