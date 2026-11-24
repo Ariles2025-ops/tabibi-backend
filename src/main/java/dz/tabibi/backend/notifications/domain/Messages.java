@@ -256,6 +256,26 @@ public final class Messages {
                 : "Votre secrétaire a marqué absent le patient du rendez-vous du " + date + ".";
     }
 
+    public static String annuleParSecretaireSujet(String langue) {
+        return ar(langue) ? "ألغت سكرتيرتك موعدًا" : "Rendez-vous annulé par votre secrétaire";
+    }
+
+    public static String annuleParSecretaireMessage(String langue, String date) {
+        return ar(langue)
+                ? "ألغت سكرتيرتك الموعد المقرر يوم " + date + "."
+                : "Votre secrétaire a annulé le rendez-vous du " + date + ".";
+    }
+
+    public static String deplaceParSecretaireSujet(String langue) {
+        return ar(langue) ? "نقلت سكرتيرتك موعدًا" : "Rendez-vous déplacé par votre secrétaire";
+    }
+
+    public static String deplaceParSecretaireMessage(String langue, String ancienneDate, String nouvelleDate) {
+        return ar(langue)
+                ? "نقلت سكرتيرتك الموعد من يوم " + ancienneDate + " إلى " + nouvelleDate + "."
+                : "Votre secrétaire a déplacé le rendez-vous du " + ancienneDate + " au " + nouvelleDate + ".";
+    }
+
     // --- Teleconsultation (patient) ---
 
     public static String teleconsultationProposeeSujet(String langue) {

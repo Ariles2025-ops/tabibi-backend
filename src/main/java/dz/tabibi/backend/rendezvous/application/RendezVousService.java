@@ -428,8 +428,10 @@ public class RendezVousService {
             notifierAnnulationParCabinet(annule);
         }
         if (!medecinId.equals(auteurId)) {
-            notifieur.notifier(medecinId, "Rendez-vous annulé par votre secrétaire",
-                    "Votre secrétaire a annulé le rendez-vous du " + FormatDate.lisible(annule.debut()) + ".", "/medecin/agenda");
+            String langueMedecin = Messages.langueDe(profils, medecinId);
+            notifieur.notifier(medecinId, Messages.annuleParSecretaireSujet(langueMedecin),
+                    Messages.annuleParSecretaireMessage(langueMedecin, FormatDate.lisible(annule.debut(), langueMedecin)),
+                    "/medecin/agenda");
         }
         return annule;
     }
@@ -479,9 +481,10 @@ public class RendezVousService {
             smsPatient(nouveau, Messages.deplaceCabinetSms(langue, ancienne, nouvelle));
         }
         if (!medecinId.equals(auteurId)) {
-            notifieur.notifier(medecinId, "Rendez-vous déplacé par votre secrétaire",
-                    "Votre secrétaire a déplacé le rendez-vous du " + FormatDate.lisible(rdv.debut()) + " au "
-                            + FormatDate.lisible(nouveau.debut()) + ".", "/medecin/agenda");
+            String langueMedecin = Messages.langueDe(profils, medecinId);
+            notifieur.notifier(medecinId, Messages.deplaceParSecretaireSujet(langueMedecin),
+                    Messages.deplaceParSecretaireMessage(langueMedecin, FormatDate.lisible(rdv.debut(), langueMedecin),
+                            FormatDate.lisible(nouveau.debut(), langueMedecin)), "/medecin/agenda");
         }
         return nouveau;
     }
