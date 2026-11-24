@@ -161,6 +161,30 @@ class AdministrationServiceTest {
     }
 
     @Test
+    void validation_et_refus_sont_notifies_en_arabe_si_le_medecin_est_arabophone() {
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(MEDECIN, "Nadia", "0550000000",
+                null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        CandidatureMedecin c = service.deposer(MEDECIN, DEMANDE);
+
+        service.valider(c.id());
+
+        assertThat(notificationsDe(MEDECIN).get(0).sujet()).isEqualTo("تم قبول الطلب");
+        assertThat(notificationsDe(MEDECIN).get(0).message()).contains("نداويك").doesNotContain("Candidature");
+
+        UUID autre = UUID.randomUUID();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(autre, "Karim", "0550000001",
+                null, null, "ar", Instant.now()));
+        CandidatureMedecin c2 = service.deposer(autre, DEMANDE);
+
+        service.refuser(c2.id(), "رقم غير مقروء");
+
+        assertThat(notificationsDe(autre).get(0).sujet()).isEqualTo("تم رفض الطلب");
+        assertThat(notificationsDe(autre).get(0).message()).contains("رقم غير مقروء");
+    }
+
+    @Test
     void valider_complete_les_libelles_absents_par_les_codes() {
         CandidatureMedecin c = service.deposer(MEDECIN,
                 new DemandeCandidature("Dr Nadia Bensalem", "cardiologue", null, "16", null, null, "16-12345", null));

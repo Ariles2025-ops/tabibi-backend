@@ -312,6 +312,29 @@ public final class Messages {
                         + ". Votre rendez-vous reste confirmé : il se tient en cabinet.";
     }
 
+    // --- Candidature medecin (validation / refus) ---
+
+    public static String candidatureValideeSujet(String langue) {
+        return ar(langue) ? "تم قبول الطلب" : "Candidature validée";
+    }
+
+    public static String candidatureValideeMessage(String langue) {
+        return ar(langue)
+                ? "تم قبول طلبك: أصبحت الآن ضمن منصة نداويك. أعد تسجيل الدخول لفتح فضاء الطبيب."
+                : "Votre candidature a été validée : vous figurez désormais sur la plateforme Ndawik. "
+                        + "Reconnectez-vous pour ouvrir votre espace médecin.";
+    }
+
+    public static String candidatureRefuseeSujet(String langue) {
+        return ar(langue) ? "تم رفض الطلب" : "Candidature refusée";
+    }
+
+    public static String candidatureRefuseeMessage(String langue, String motif) {
+        return ar(langue)
+                ? "تم رفض طلبك. السبب: " + motif
+                : "Votre candidature a été refusée. Motif : " + motif;
+    }
+
     // --- Compte medecin (suspension / retablissement) ---
 
     public static String compteSuspenduSujet(String langue) {

@@ -251,9 +251,9 @@ public class AdministrationService {
         }
         medecins.enregistrer(fichePublique(validee));
         roles.accorder(validee.medecinId());
-        notifieur.notifier(validee.medecinId(), "Candidature validée",
-                "Votre candidature a été validée : vous figurez désormais sur la plateforme Ndawik. "
-                        + "Reconnectez-vous pour ouvrir votre espace médecin.", "/medecin/agenda");
+        String langue = Messages.langueDe(profils, validee.medecinId());
+        notifieur.notifier(validee.medecinId(), Messages.candidatureValideeSujet(langue),
+                Messages.candidatureValideeMessage(langue), "/medecin/agenda");
         return validee;
     }
 
@@ -266,8 +266,9 @@ public class AdministrationService {
     @Transactional
     public CandidatureMedecin refuser(UUID candidatureId, String motif) {
         CandidatureMedecin refusee = candidatures.enregistrer(charger(candidatureId).refuser(motif, Instant.now()));
-        notifieur.notifier(refusee.medecinId(), "Candidature refusée",
-                "Votre candidature a été refusée. Motif : " + refusee.motifRefus(), "/medecin/candidature");
+        String langue = Messages.langueDe(profils, refusee.medecinId());
+        notifieur.notifier(refusee.medecinId(), Messages.candidatureRefuseeSujet(langue),
+                Messages.candidatureRefuseeMessage(langue, refusee.motifRefus()), "/medecin/candidature");
         return refusee;
     }
 
