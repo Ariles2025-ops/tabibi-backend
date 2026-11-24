@@ -226,6 +226,27 @@ class AdministrationWebTest {
     }
 
     @Test
+    void liste_admin_indique_si_le_medecin_est_suspendu() throws Exception {
+        CandidatureMedecin c = candidature().valider(Instant.parse("2026-09-19T10:00:00Z"));
+        when(service.lister(any())).thenReturn(List.of(c));
+        when(service.estSuspendu(c)).thenReturn(true);
+
+        mvc.perform(get("/api/admin/candidatures").with(admin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$[0].suspendu").value(true));
+    }
+
+    @Test
+    void liste_admin_indique_un_medecin_non_suspendu() throws Exception {
+        CandidatureMedecin c = candidature().valider(Instant.parse("2026-09-19T10:00:00Z"));
+        when(service.lister(any())).thenReturn(List.of(c));
+
+        mvc.perform(get("/api/admin/candidatures").with(admin()))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$[0].suspendu").value(false));
+    }
+
+    @Test
     void valider_par_l_admin_repond_200() throws Exception {
         CandidatureMedecin validee = candidature().valider(Instant.parse("2026-09-19T10:00:00Z"));
         when(service.valider(validee.id())).thenReturn(validee);

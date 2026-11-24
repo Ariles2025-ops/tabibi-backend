@@ -60,7 +60,7 @@ public class AdministrationController {
                                       String wilayaCode, String wilayaFr, String ville, String numeroOrdre, String telephone,
                                       String statut, String motifRefus, Instant deposeeLe, Instant traiteeLe,
                                       UUID ficheReclamee, String compteEmail, String ficheReclameeNom,
-                                      long doublonsNumeroOrdre) {
+                                      long doublonsNumeroOrdre, boolean suspendu) {
     }
 
     private dz.tabibi.backend.commun.domain.ComptesUtilisateurs comptes;
@@ -88,7 +88,8 @@ public class AdministrationController {
                 .count();
         return new CandidatureAdminVue(c.id(), c.medecinId(), c.nomComplet(), c.specialiteSlug(), c.specialiteFr(),
                 c.wilayaCode(), c.wilayaFr(), c.ville(), c.numeroOrdre(), c.telephone(), c.statut().name(), c.motifRefus(),
-                c.deposeeLe(), c.traiteeLe(), c.ficheReclamee(), email, fiche, doublons);
+                c.deposeeLe(), c.traiteeLe(), c.ficheReclamee(), email, fiche, doublons,
+                service.estSuspendu(c));
     }
 
     /** Indique si la fiche peut encore etre reclamee par son praticien (public : affiche le bouton sur la fiche). */
