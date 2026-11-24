@@ -176,6 +176,14 @@ public class CabinetService {
         }
         for (Rattachement r : rattachements.parMedecin(compte)) {
             rattachements.supprimer(r.id());
+            String langue = Messages.langueDe(profils, r.secretaireId());
+            if (r.accepte()) {
+                notifieur.notifier(r.secretaireId(), Messages.rattachementRetireSujet(langue),
+                        Messages.rattachementRetireMessage(langue));
+            } else {
+                notifieur.notifier(r.secretaireId(), Messages.invitationAnnuleeSujet(langue),
+                        Messages.invitationAnnuleeMessage(langue));
+            }
             if (comptes != null && medecinsDeLaSecretaire(r.secretaireId()).isEmpty()) {
                 comptes.retirerRole(r.secretaireId(), "SECRETAIRE");
             }
