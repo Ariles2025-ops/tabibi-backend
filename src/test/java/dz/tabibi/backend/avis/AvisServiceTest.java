@@ -293,4 +293,23 @@ class AvisServiceTest {
 
         assertThat(notifications.parDestinataire(MEDECIN).get(0).message()).contains("que vous aviez signalé");
     }
+
+    @Test
+    void la_decision_sur_un_avis_est_notifiee_en_arabe_au_medecin_arabophone() {
+        var notifications = new dz.tabibi.backend.notifications.adapter.EnMemoireNotificationRepository();
+        service.setNotifieur(new dz.tabibi.backend.notifications.application.NotifieurInterne(notifications));
+        var profils = new dz.tabibi.backend.profil.adapter.EnMemoireProfilRepository();
+        profils.enregistrer(new dz.tabibi.backend.profil.domain.Profil(MEDECIN, "Nadia", "0550000000",
+                null, null, "ar", Instant.now()));
+        service.setProfils(profils);
+        Avis a = depose(PATIENT, MEDECIN, 1, "Inadmissible.");
+
+        service.masquer(a.id());
+        service.retablir(a.id());
+
+        var n = notifications.parDestinataire(MEDECIN);
+        assertThat(n.get(0).sujet()).isEqualTo("تقييم: قرار الفريق");
+        assertThat(n.get(0).message()).contains("نداويك").doesNotContain("Ndawik");
+        assertThat(n.get(1).message()).contains("نداويك").doesNotContain("Ndawik");
+    }
 }
