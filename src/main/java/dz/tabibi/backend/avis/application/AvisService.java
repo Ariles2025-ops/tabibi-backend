@@ -8,7 +8,9 @@ import dz.tabibi.backend.avis.domain.StatutAvis;
 import dz.tabibi.backend.avis.domain.SyntheseAvis;
 import dz.tabibi.backend.commun.domain.AccesRefuseException;
 import dz.tabibi.backend.commun.domain.ComptesUtilisateurs;
+import dz.tabibi.backend.notifications.domain.Messages;
 import dz.tabibi.backend.notifications.domain.Notifieur;
+import dz.tabibi.backend.profil.domain.ProfilRepository;
 import dz.tabibi.backend.commun.domain.TransitionInvalideException;
 import dz.tabibi.backend.rendezvous.domain.RendezVous;
 import dz.tabibi.backend.rendezvous.domain.RendezVousIntrouvableException;
@@ -52,6 +54,14 @@ public class AvisService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setComptes(ComptesUtilisateurs comptes) {
         this.comptes = comptes;
+    }
+
+    /** Profils : langue (FR/AR) du medecin destinataire des decisions. */
+    private ProfilRepository profils;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProfils(ProfilRepository profils) {
+        this.profils = profils;
     }
 
     /**
@@ -148,17 +158,17 @@ public class AvisService {
         Avis avant = charger(avisId);
         boolean etaitSignale = avant.statut() == StatutAvis.SIGNALE;
         Avis masque = avis.enregistrer(avant.masquer());
-        prevenirLeMedecin(masque, etaitSignale,
-                etaitSignale
-                        ? "L'équipe Ndawik a masqué l'avis que vous aviez signalé : il n'est plus visible sur votre profil."
-                        : "L'équipe Ndawik a masqué un avis vous concernant : il n'est plus visible sur votre profil.");
+        prevenirLeMedecin(masque, etaitSignale, true);
         return masque;
     }
 
-    private void prevenirLeMedecin(Avis a, boolean etaitSignale, String message) {
+    private void prevenirLeMedecin(Avis a, boolean etaitSignale, boolean masque) {
         if (notifieur != null) {
-            String titre = etaitSignale ? "Avis signalé : décision de l'équipe" : "Avis : décision de l'équipe";
-            notifieur.notifier(a.medecinId(), titre, message, "/medecin/avis");
+            String langue = Messages.langueDe(profils, a.medecinId());
+            String message = masque
+                    ? Messages.avisMasqueMessage(langue, etaitSignale)
+                    : Messages.avisRetabliMessage(langue);
+            notifieur.notifier(a.medecinId(), Messages.avisDecisionSujet(langue, etaitSignale), message, "/medecin/avis");
         }
     }
 
@@ -172,7 +182,7 @@ public class AvisService {
         Avis avant = charger(avisId);
         Avis retabli = avis.enregistrer(avant.retablir());
         boolean etaitSignale = avant.statut() == StatutAvis.SIGNALE;
-        prevenirLeMedecin(retabli, etaitSignale, "L'équipe Ndawik a rétabli l'avis : il est visible sur votre profil.");
+        prevenirLeMedecin(retabli, etaitSignale, false);
         return retabli;
     }
 

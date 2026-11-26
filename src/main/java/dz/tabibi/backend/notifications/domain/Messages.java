@@ -312,6 +312,41 @@ public final class Messages {
                         + ". Votre rendez-vous reste confirmé : il se tient en cabinet.";
     }
 
+    // --- Avis : decision de l'equipe (medecin) ---
+
+    public static String avisDecisionSujet(String langue, boolean etaitSignale) {
+        return ar(langue)
+                ? (etaitSignale ? "تقييم تم الإبلاغ عنه: قرار الفريق" : "تقييم: قرار الفريق")
+                : (etaitSignale ? "Avis signalé : décision de l'équipe" : "Avis : décision de l'équipe");
+    }
+
+    public static String avisMasqueMessage(String langue, boolean etaitSignale) {
+        if (ar(langue)) {
+            return etaitSignale
+                    ? "أخفى فريق نداويك التقييم الذي أبلغت عنه: لم يعد ظاهرًا في ملفك."
+                    : "أخفى فريق نداويك تقييمًا يخصك: لم يعد ظاهرًا في ملفك.";
+        }
+        return etaitSignale
+                ? "L'équipe Ndawik a masqué l'avis que vous aviez signalé : il n'est plus visible sur votre profil."
+                : "L'équipe Ndawik a masqué un avis vous concernant : il n'est plus visible sur votre profil.";
+    }
+
+    public static String avisRetabliMessage(String langue) {
+        return ar(langue)
+                ? "أعاد فريق نداويك التقييم: أصبح ظاهرًا في ملفك."
+                : "L'équipe Ndawik a rétabli l'avis : il est visible sur votre profil.";
+    }
+
+    public static String teleconsultationAccepteeSujet(String langue) {
+        return ar(langue) ? "تم قبول الاستشارة عن بُعد" : "Téléconsultation acceptée";
+    }
+
+    public static String teleconsultationAccepteeMessage(String langue) {
+        return ar(langue)
+                ? "قبل المريض الاستشارة عن بُعد: يمكنك بدؤها في موعد الاستشارة."
+                : "Le patient a accepté la téléconsultation : vous pourrez la démarrer à l'heure du rendez-vous.";
+    }
+
     // --- Candidature medecin (validation / refus) ---
 
     public static String candidatureValideeSujet(String langue) {

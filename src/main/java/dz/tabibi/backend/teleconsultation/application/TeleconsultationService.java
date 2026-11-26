@@ -145,8 +145,9 @@ public class TeleconsultationService {
         }
         teleconsultation.consentir(Instant.now());
         Teleconsultation acceptee = repository.enregistrer(teleconsultation);
-        notifieur.notifier(acceptee.medecinId(), "Téléconsultation acceptée",
-                "Le patient a accepté la téléconsultation : vous pourrez la démarrer à l'heure du rendez-vous.", "/medecin/teleconsultations");
+        String langue = Messages.langueDe(profils, acceptee.medecinId());
+        notifieur.notifier(acceptee.medecinId(), Messages.teleconsultationAccepteeSujet(langue),
+                Messages.teleconsultationAccepteeMessage(langue), "/medecin/teleconsultations");
         return acceptee;
     }
 
