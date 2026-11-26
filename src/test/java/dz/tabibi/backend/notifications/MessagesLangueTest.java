@@ -33,10 +33,11 @@ class MessagesLangueTest {
 
     @Test
     void le_patient_absent_est_notifie_sur_un_ton_neutre_dans_sa_langue() {
-        assertThat(Messages.absentSujet("ar")).isEqualTo("لم يتم الحضور");
-        assertThat(Messages.absentMessage("ar", "d")).contains("d").doesNotContain("Vous");
-        assertThat(Messages.absentSujet("fr")).isEqualTo("Rendez-vous non honoré");
-        assertThat(Messages.absentMessage("fr", "d")).contains("n'a pas pu avoir lieu").doesNotContain("pas venu");
+        assertThat(Messages.absentSujet("ar")).isEqualTo("تم تسجيل غيابك");
+        assertThat(Messages.absentMessage("ar", "d")).contains("d").contains("سجّل الطبيب غيابك").doesNotContain("Vous");
+        assertThat(Messages.absentSujet("fr")).isEqualTo("Absence au rendez-vous");
+        assertThat(Messages.absentMessage("fr", "d")).contains("Le cabinet a noté votre absence")
+                .doesNotContain("non honoré").doesNotContain("n'a pas pu avoir lieu").doesNotContain("pas venu");
     }
 
     @Test

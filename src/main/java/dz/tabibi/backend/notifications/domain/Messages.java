@@ -88,14 +88,14 @@ public final class Messages {
     // --- Rendez-vous non honore (patient), ton neutre ---
 
     public static String absentSujet(String langue) {
-        return ar(langue) ? "لم يتم الحضور" : "Rendez-vous non honoré";
+        return ar(langue) ? "تم تسجيل غيابك" : "Absence au rendez-vous";
     }
 
     public static String absentMessage(String langue, String date) {
         return ar(langue)
-                ? "لم يتم موعدك يوم " + date + " (لم يتم الحضور). يرجى الإلغاء مسبقًا لإتاحة المكان."
-                : "Votre rendez-vous du " + date + " n'a pas pu avoir lieu (non honoré). "
-                        + "Pensez à annuler à l'avance pour libérer la place.";
+                ? "سجّل الطبيب غيابك عن موعدك يوم " + date + ". إذا تعذّر حضورك، يرجى الإلغاء مسبقًا لإتاحة المكان."
+                : "Le cabinet a noté votre absence au rendez-vous du " + date + ". "
+                        + "Si vous ne pouvez pas venir, pensez à annuler à l'avance pour libérer la place.";
     }
 
     // --- Nouveau rendez-vous (medecin, secretaire) ---
